@@ -10,9 +10,35 @@ import { CalculatorModule } from './components/CalculatorModule';
 import { VademecumModule } from './components/VademecumModule';
 import { EducationModule } from './components/EducationModule';
 import { ShockIndexModule } from './components/ShockIndexModule';
-
+import { OfflineIndicator } from './components/OfflinePWAControls';
+import { forceAppUpdate } from './registerServiceWorker';
+import { RefreshCw, Sparkles, X } from 'lucide-react';
 
 export default function App() {
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+  const [updateRegistration, setUpdateRegistration] = useState<ServiceWorkerRegistration | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const customEvent = e as CustomEvent<{ registration: ServiceWorkerRegistration }>;
+      setUpdateAvailable(true);
+      if (customEvent.detail?.registration) {
+        setUpdateRegistration(customEvent.detail.registration);
+      }
+    };
+    window.addEventListener('anestesiapro-update-available', handler);
+    return () => window.removeEventListener('anestesiapro-update-available', handler);
+  }, []);
+
+  const handleApplyUpdate = async () => {
+    setIsUpdating(true);
+    if (updateRegistration && updateRegistration.waiting) {
+      updateRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
+    } else {
+      await forceAppUpdate();
+    }
+  };
   const [activeTab, setActiveTab] = useState<TabType>(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
@@ -59,6 +85,37 @@ export default function App() {
         }} 
       />
 
+      {/* PWA Update Banner */}
+      {updateAvailable && (
+        <div className="bg-gradient-to-r from-cyan-600 via-teal-600 to-emerald-600 text-slate-950 px-4 py-2.5 shadow-xl flex items-center justify-between gap-3 text-xs font-semibold z-40 border-b border-cyan-400/40 animate-in slide-in-from-top duration-300">
+          <div className="flex items-center gap-2 max-w-2xl">
+            <span className="p-1 rounded-full bg-slate-950/20 text-slate-950 shrink-0">
+              <Sparkles className="w-4 h-4" />
+            </span>
+            <span>
+              <strong>¡Nueva versión clínica disponible!</strong> Se han actualizado infografías, atlas anatómico y protocolos offline.
+            </span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={handleApplyUpdate}
+              disabled={isUpdating}
+              className="bg-slate-950 hover:bg-slate-900 text-white font-bold px-3 py-1.5 rounded-lg shadow-md transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isUpdating ? 'animate-spin' : ''}`} />
+              <span>{isUpdating ? 'Actualizando...' : 'Actualizar ahora'}</span>
+            </button>
+            <button
+              onClick={() => setUpdateAvailable(false)}
+              className="p-1 hover:bg-black/10 rounded-md text-slate-900 transition-colors"
+              title="Cerrar aviso"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Navigation Bar - Sticky at top */}
       <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
 
@@ -91,6 +148,9 @@ export default function App() {
           <span>Maracay, Venezuela &bull; 2026</span>
         </div>
       </footer>
+
+      {/* Persistent Offline & Quirófano Status Indicator */}
+      <OfflineIndicator />
     </div>
   );
 }

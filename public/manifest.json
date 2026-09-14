@@ -1,27 +1,36 @@
 {
+  "id": "/",
   "short_name": "AnestesiaPro",
   "name": "AnestesiaPro - Suite Clínica (Dr. Carlos Leal)",
-  "description": "Aplicación clínica para anestesiólogos y residentes: evaluación preanestésica, calculadoras de dosis, escalas de vía aérea y protocolos actualizados.",
+  "description": "Suite clínica integral para anestesiología y quirófano: preanestésica, calculadoras de dosis, escalas y protocolos 100% funcional offline.",
   "icons": [
     {
-      "src": "/app_logo.svg",
-      "type": "image/svg+xml",
-      "sizes": "192x192 512x512 any"
-    },
-    {
-      "src": "/app_logo.svg",
-      "type": "image/svg+xml",
+      "src": "/pwa-192x192.png",
       "sizes": "192x192",
-      "purpose": "any maskable"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "/app_logo.svg",
       "type": "image/svg+xml",
-      "sizes": "512x512",
-      "purpose": "any maskable"
+      "sizes": "192x192 512x512",
+      "purpose": "any"
     }
   ],
-  "start_url": "/?source=pwa",
+  "start_url": "/",
+  "scope": "/",
   "background_color": "#0f172a",
   "theme_color": "#0f172a",
   "display": "standalone",

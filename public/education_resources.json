@@ -1,0 +1,43 @@
+[
+  {
+    "id": "res-ciprofol-hsk3486-hipnotico-gabaa-2026",
+    "title": "Ciprofol (HSK3486): Nuevo Agente Anestésico e Hipnótico GABAA — Atlas de Láminas HD, Dosis y Perlas Perioperatorias",
+    "category": "infografia",
+    "description": "Ciprofol (HSK3486): Agente anestésico intravenoso de última generación modulador alostérico positivo del receptor GABA-A. 4 a 5 veces más potente que propofol con mayor índice terapéutico, preservación hemodinámica superior y ausencia de dolor a la inyección venosa.",
+    "date": "2026-09-12",
+    "author": "Dr. Carlos Leal • Especialista en Anestesiología y Reanimación • Vanguardia Farmacológica",
+    "url": "/images/ciprofol/slide_1_mecanismo_gabaa.svg",
+    "fileName": "Guia_Oficial_Ciprofol_HSK3486_Dr_Carlos_Leal.pdf",
+    "fileSize": "6 Láminas Ultra-HD",
+    "fileExtension": "svg",
+    "tags": [
+      "#Ciprofol",
+      "#HSK3486",
+      "#GABAA",
+      "#TIVA",
+      "#Sedacion",
+      "#Vademecum",
+      "#AnestesiaPro",
+      "#DrCarlosLeal"
+    ],
+    "downloadable": true,
+    "isCarousel": true,
+    "images": [
+      "/images/ciprofol/slide_1_mecanismo_gabaa.svg",
+      "/images/ciprofol/slide_2_farmacocinetica_farmacodinamia.svg",
+      "/images/ciprofol/slide_3_dosificacion_clinica_tiva.svg",
+      "/images/ciprofol/slide_4_estabilidad_hemodinamica.svg",
+      "/images/ciprofol/slide_5_dolor_inyeccion_tolerancia.svg",
+      "/images/ciprofol/slide_6_comparativa_ciprofol_vs_propofol.svg"
+    ],
+    "imageCaptions": [
+      "Lámina 1: Mecanismo de Acción Celular y Receptor GABA-A",
+      "Lámina 2: Farmacocinética de 3 Compartimentos y Aclaramiento Plasmático",
+      "Lámina 3: Dosificación Clínica de Precisión: Inducción, Mantenimiento y Sedación",
+      "Lámina 4: Estabilidad Cardiovascular y Hemodinamia Comparada",
+      "Lámina 5: Tolerancia Vascular: Erradicación del Dolor a la Inyección",
+      "Lámina 6: Cuadro Comparativo Global Ciprofol (HSK3486) vs Propofol"
+    ],
+    "createdAt": "2026-09-12T12:00:00.000Z"
+  }
+]

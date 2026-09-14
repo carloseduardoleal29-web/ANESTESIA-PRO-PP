@@ -1,0 +1,328 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" width="100%" height="100%">
+  <defs>
+    <radialGradient id="bgGradCPPD" cx="50%" cy="40%" r="80%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="60%" stop-color="#090d16"/>
+      <stop offset="100%" stop-color="#020617"/>
+    </radialGradient>
+    <linearGradient id="q1Grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f2233"/>
+      <stop offset="100%" stop-color="#081420"/>
+    </linearGradient>
+    <linearGradient id="q2Grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#132338"/>
+      <stop offset="100%" stop-color="#0a1524"/>
+    </linearGradient>
+    <linearGradient id="q3Grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#111f30"/>
+      <stop offset="100%" stop-color="#09121c"/>
+    </linearGradient>
+    <linearGradient id="q4Grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#162338"/>
+      <stop offset="100%" stop-color="#0d1726"/>
+    </linearGradient>
+    <linearGradient id="barGrad1" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#06b6d4"/>
+      <stop offset="100%" stop-color="#3b82f6"/>
+    </linearGradient>
+    <linearGradient id="barGrad2" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+    <linearGradient id="barGrad3" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </linearGradient>
+    <linearGradient id="needleGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#e2e8f0"/>
+      <stop offset="50%" stop-color="#94a3b8"/>
+      <stop offset="100%" stop-color="#cbd5e1"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Outer Background Canvas -->
+  <rect width="1200" height="900" fill="url(#bgGradCPPD)"/>
+  <rect x="15" y="15" width="1170" height="870" rx="24" fill="none" stroke="#0284c7" stroke-width="2.5" opacity="0.6"/>
+
+  <!-- ================= TOP HEADER BANNER ================= -->
+  <g transform="translate(30, 25)">
+    <rect width="1140" height="80" rx="16" fill="#0b1526" stroke="#38bdf8" stroke-width="1.8"/>
+    <rect x="15" y="12" width="340" height="22" rx="6" fill="#0369a1"/>
+    <text x="25" y="27" fill="#f0fdfa" font-size="10.5" font-weight="900" letter-spacing="1.5" font-family="sans-serif">ANESTESIAPRO • GUÍA BASADA EN EVIDENCIA Y METANÁLISIS</text>
+    
+    <text x="20" y="60" fill="#38bdf8" font-size="21" font-weight="900" font-family="sans-serif" letter-spacing="0.5">
+      COMPRENSIÓN Y MANEJO DE LA CEFALEA POSPUNCIÓN DURAL (CPPD)
+    </text>
+    <text x="840" y="58" fill="#f59e0b" font-size="14" font-weight="900" font-family="sans-serif" text-anchor="end">
+      AMINOFILINA Y TEOFILINA
+    </text>
+    <text x="1120" y="58" fill="#94a3b8" font-size="11" font-weight="bold" font-family="sans-serif" text-anchor="end">
+      Dr. Carlos Leal
+    </text>
+  </g>
+
+  <!-- ================= QUADRANT 1 (TOP-LEFT): FISIOPATOLOGÍA ================= -->
+  <g transform="translate(30, 118)">
+    <rect width="560" height="360" rx="18" fill="url(#q1Grad)" stroke="#0284c7" stroke-width="1.5"/>
+    <!-- Quadrant Header -->
+    <rect width="560" height="38" rx="18" fill="#0369a1"/>
+    <text x="20" y="24" fill="#ffffff" font-size="13" font-weight="900" font-family="sans-serif" letter-spacing="1">
+      1. FISIOPATOLOGÍA DE LA PÉRDIDA DE LCR
+    </text>
+    <text x="540" y="24" fill="#bae6fd" font-size="10.5" font-weight="bold" text-anchor="end" font-family="sans-serif">
+      Hipotensión Intracraneal
+    </text>
+
+    <!-- Diagram Area -->
+    <g transform="translate(20, 50)">
+      <!-- Spine & CSF leak representation -->
+      <rect x="0" y="0" width="210" height="200" rx="12" fill="#030712" stroke="#1e293b" stroke-width="1.5"/>
+      <text x="105" y="20" fill="#38bdf8" font-size="10.5" font-weight="bold" text-anchor="middle" font-family="sans-serif">COLUMNA LUMBAR &amp; DURA</text>
+
+      <!-- Vertebrae Blocks -->
+      <rect x="20" y="35" width="65" height="35" rx="6" fill="#334155" stroke="#475569" stroke-width="1"/>
+      <text x="52" y="57" fill="#cbd5e1" font-size="10" font-weight="bold" text-anchor="middle">L3</text>
+      
+      <rect x="20" y="85" width="65" height="35" rx="6" fill="#334155" stroke="#475569" stroke-width="1"/>
+      <text x="52" y="107" fill="#cbd5e1" font-size="10" font-weight="bold" text-anchor="middle">L4</text>
+
+      <rect x="20" y="135" width="65" height="35" rx="6" fill="#334155" stroke="#475569" stroke-width="1"/>
+      <text x="52" y="157" fill="#cbd5e1" font-size="10" font-weight="bold" text-anchor="middle">L5</text>
+
+      <!-- Dural Sac & Subarachnoid Space -->
+      <rect x="95" y="35" width="30" height="140" rx="8" fill="#0284c7" opacity="0.35" stroke="#38bdf8" stroke-width="1.5"/>
+      <!-- LCR flow lines -->
+      <line x1="110" y1="40" x2="110" y2="165" stroke="#38bdf8" stroke-width="2" stroke-dasharray="3 3"/>
+
+      <!-- Needle puncture at L3-L4 -->
+      <line x1="195" y1="75" x2="110" y2="75" stroke="url(#needleGrad)" stroke-width="3" stroke-linecap="round"/>
+      <polygon points="110,75 118,72 118,78" fill="#e2e8f0"/>
+      <!-- Puncture hole & CSF Droplets leaking -->
+      <circle cx="110" cy="75" r="4" fill="#ef4444" stroke="#ffffff" stroke-width="1"/>
+      <circle cx="125" cy="90" r="3.5" fill="#38bdf8" opacity="0.9"/>
+      <circle cx="135" cy="105" r="3" fill="#38bdf8" opacity="0.8"/>
+      <circle cx="142" cy="122" r="2.5" fill="#38bdf8" opacity="0.7"/>
+      <text x="160" y="105" fill="#f87171" font-size="8.5" font-weight="bold">Fuga LCR</text>
+
+      <!-- Text Bullets on Right of Diagram -->
+      <g transform="translate(225, 0)">
+        <rect width="295" height="125" rx="10" fill="#09121d" stroke="#0284c7" stroke-width="1"/>
+        <text x="12" y="22" fill="#38bdf8" font-size="11" font-weight="bold" font-family="sans-serif">Mecanismo de Generación del Dolor:</text>
+        <text x="12" y="42" fill="#f1f5f9" font-size="10" font-family="sans-serif">• </text>
+        <text x="24" y="42" fill="#e2e8f0" font-size="10" font-family="sans-serif">Pérdida de flotabilidad encefálica en bipedestación.</text>
+        <text x="12" y="60" fill="#f1f5f9" font-size="10" font-family="sans-serif">• </text>
+        <text x="24" y="60" fill="#e2e8f0" font-size="10" font-family="sans-serif"><tspan fill="#fca5a5" font-weight="bold">Descenso caudal del encéfalo</tspan> y tracción de</text>
+        <text x="24" y="75" fill="#e2e8f0" font-size="10" font-family="sans-serif">senos venosos, duramadre y pares V, IX y X.</text>
+        <text x="12" y="94" fill="#f1f5f9" font-size="10" font-family="sans-serif">• </text>
+        <text x="24" y="94" fill="#fde047" font-size="10" font-weight="bold" font-family="sans-serif">Cefalea fronto-occipital ortostática típica.</text>
+        <text x="24" y="110" fill="#94a3b8" font-size="9" font-family="sans-serif">(Aparece en &lt; 15 min al erguirse, cede en decúbito)</text>
+      </g>
+
+      <!-- Monro-Kellie Box Below -->
+      <g transform="translate(225, 135)">
+        <rect width="295" height="65" rx="10" fill="#1e1b4b" stroke="#6366f1" stroke-width="1"/>
+        <text x="12" y="18" fill="#a5b4fc" font-size="10.5" font-weight="bold" font-family="sans-serif">Ley de Monro-Kellie (V_total = Constante):</text>
+        <text x="12" y="35" fill="#e0e7ff" font-size="9.5" font-family="sans-serif">Al disminuir el volumen de LCR, el cerebro responde con:</text>
+        <text x="12" y="53" fill="#f43f5e" font-size="10.5" font-weight="900" font-family="sans-serif">VASODILATACIÓN CEREBRAL COMPENSATORIA (Adenosina)</text>
+      </g>
+
+      <!-- Key Fact Banner -->
+      <g transform="translate(0, 212)">
+        <rect width="520" height="80" rx="10" fill="#042f2e" stroke="#14b8a6" stroke-width="1"/>
+        <text x="15" y="22" fill="#2dd4bf" font-size="11" font-weight="bold" font-family="sans-serif">⚡ Hallazgos Frecuentes Asociados a la Hipotensión:</text>
+        <text x="15" y="42" fill="#f0fdfa" font-size="10" font-family="sans-serif">• Rigidez de nuca, náuseas, vómitos y fotofobia en el 70% de casos graves.</text>
+        <text x="15" y="60" fill="#f0fdfa" font-size="10" font-family="sans-serif">• Tinnitus, hipoacusia o visión borrosa por pares craneales (VI par motor ocular externo).</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- ================= QUADRANT 2 (TOP-RIGHT): FLUJOGRAMA DE TRATAMIENTO ================= -->
+  <g transform="translate(610, 118)">
+    <rect width="560" height="360" rx="18" fill="url(#q2Grad)" stroke="#06b6d4" stroke-width="1.5"/>
+    <!-- Quadrant Header -->
+    <rect width="560" height="38" rx="18" fill="#0891b2"/>
+    <text x="20" y="24" fill="#ffffff" font-size="13" font-weight="900" font-family="sans-serif" letter-spacing="1">
+      2. FLUJOGRAMA DE TRATAMIENTO PASO A PASO
+    </text>
+    <text x="540" y="24" fill="#cffafe" font-size="10.5" font-weight="bold" text-anchor="end" font-family="sans-serif">
+      Algoritmo Escalonado
+    </text>
+
+    <!-- Flowchart Steps -->
+    <g transform="translate(20, 50)">
+      <!-- Step 1: Detección -->
+      <g transform="translate(0, 0)">
+        <rect width="520" height="48" rx="10" fill="#0f172a" stroke="#38bdf8" stroke-width="1"/>
+        <circle cx="24" cy="24" r="14" fill="#0284c7"/>
+        <text x="24" y="29" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">1</text>
+        <text x="50" y="20" fill="#38bdf8" font-size="11" font-weight="bold" font-family="sans-serif">DETECCIÓN CLÍNICA &amp; EVALUACIÓN INICIAL</text>
+        <text x="50" y="37" fill="#cbd5e1" font-size="9.5" font-family="sans-serif">Cefalea ortostática típica dentro de las 24 - 72 h post-punción. Medir escala EVA.</text>
+      </g>
+      <!-- Down arrow -->
+      <polygon points="260,52 255,47 265,47" fill="#38bdf8"/>
+
+      <!-- Step 2: Medidas Conservadoras -->
+      <g transform="translate(0, 56)">
+        <rect width="520" height="52" rx="10" fill="#0f172a" stroke="#f59e0b" stroke-width="1"/>
+        <circle cx="24" cy="26" r="14" fill="#d97706"/>
+        <text x="24" y="31" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">2</text>
+        <text x="50" y="20" fill="#fbbf24" font-size="11" font-weight="bold" font-family="sans-serif">MEDIDAS CONSERVADORAS DE SOPORTE</text>
+        <text x="50" y="36" fill="#cbd5e1" font-size="9.5" font-family="sans-serif">Hidratación oral o IV vigorosa (2.5 a 3 L/día) + Reposo relativo + Paracetamol/AINEs.</text>
+        <text x="50" y="48" fill="#fbbf24" font-size="9" font-family="sans-serif">Cafeína oral (200 - 300 mg) como adyuvante inicial.</text>
+      </g>
+      <polygon points="260,112 255,107 265,107" fill="#f59e0b"/>
+
+      <!-- Step 3: Aminofilina IV (Highlight) -->
+      <g transform="translate(0, 116)">
+        <rect width="520" height="68" rx="12" fill="#064e3b" stroke="#10b981" stroke-width="2"/>
+        <circle cx="24" cy="34" r="15" fill="#059669"/>
+        <text x="24" y="39" fill="#ffffff" font-size="12" font-weight="bold" text-anchor="middle">3</text>
+        <text x="50" y="22" fill="#34d399" font-size="12" font-weight="900" font-family="sans-serif">TERAPIA DE PRIMERA LÍNEA: AMINOFILINA IV</text>
+        <text x="50" y="40" fill="#f0fdf4" font-size="10" font-bold font-family="sans-serif"><tspan fill="#fde047">Dosis:</tspan> 240 mg a 480 mg (o 5.6 mg/kg) en 100-200 mL de SS 0.9% IV a infundir en 30-45 min.</text>
+        <text x="50" y="58" fill="#a7f3d0" font-size="9.5" font-family="sans-serif">Respuesta clínica favorable en &gt; 80% de pacientes en la 1ª hora.</text>
+      </g>
+      <polygon points="260,188 255,183 265,183" fill="#10b981"/>
+
+      <!-- Step 4: Reevaluación & Seguimiento -->
+      <g transform="translate(0, 192)">
+        <rect width="520" height="50" rx="10" fill="#0f172a" stroke="#06b6d4" stroke-width="1"/>
+        <circle cx="24" cy="25" r="14" fill="#0891b2"/>
+        <text x="24" y="30" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">4</text>
+        <text x="50" y="20" fill="#22d3ee" font-size="11" font-weight="bold" font-family="sans-serif">REEVALUACIÓN CLÍNICA A LAS 2 - 4 HORAS</text>
+        <text x="50" y="38" fill="#cbd5e1" font-size="9.5" font-family="sans-serif">Si EVA disminuye &gt; 50%: Mantener pauta o Teofilina oral 200 mg c/12h por 48h.</text>
+      </g>
+      <polygon points="260,246 255,241 265,241" fill="#06b6d4"/>
+
+      <!-- Step 5: Parche Hemático si Refractario -->
+      <g transform="translate(0, 250)">
+        <rect width="520" height="50" rx="10" fill="#450a0a" stroke="#ef4444" stroke-width="1.5"/>
+        <circle cx="24" cy="25" r="14" fill="#dc2626"/>
+        <text x="24" y="30" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">5</text>
+        <text x="50" y="20" fill="#f87171" font-size="11" font-weight="bold" font-family="sans-serif">SI REFRACTARIA TRAS 24-48 H: PARCHE HEMÁTICO EPIDURAL (PHE)</text>
+        <text x="50" y="38" fill="#fecdd3" font-size="9.5" font-family="sans-serif">Inyección autóloga de 15-20 mL de sangre en espacio epidural. Solo requerido en &lt; 20%.</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- ================= QUADRANT 3 (BOTTOM-LEFT): MECANISMO DE ACCIÓN ================= -->
+  <g transform="translate(30, 492)">
+    <rect width="560" height="380" rx="18" fill="url(#q3Grad)" stroke="#06b6d4" stroke-width="1.5"/>
+    <!-- Quadrant Header -->
+    <rect width="560" height="38" rx="18" fill="#0284c7"/>
+    <text x="20" y="24" fill="#ffffff" font-size="13" font-weight="900" font-family="sans-serif" letter-spacing="1">
+      3. MECANISMO DE ACCIÓN DE AMINOFILINA
+    </text>
+    <text x="540" y="24" fill="#e0f2fe" font-size="10.5" font-weight="bold" text-anchor="end" font-family="sans-serif">
+      Vía Receptores Adenosina
+    </text>
+
+    <!-- Detailed 3 Mechanism Cards -->
+    <g transform="translate(20, 50)">
+      <!-- Mech 1: Adenosine Receptors -->
+      <rect width="520" height="95" rx="12" fill="#0e2a47" stroke="#38bdf8" stroke-width="1"/>
+      <circle cx="25" cy="25" r="12" fill="#0284c7"/>
+      <text x="25" y="29" fill="#ffffff" font-size="10" font-weight="bold" text-anchor="middle">A</text>
+      <text x="48" y="22" fill="#38bdf8" font-size="11.5" font-weight="bold" font-family="sans-serif">
+        BLOQUEO COMPETITIVO DE RECEPTORES DE ADENOSINA (A1 Y A2A)
+      </text>
+      <text x="20" y="46" fill="#f1f5f9" font-size="10" font-family="sans-serif">• La adenosina endógena es un potente vasodilatador cerebral que se eleva ante la fuga de LCR.</text>
+      <text x="20" y="64" fill="#f1f5f9" font-size="10" font-family="sans-serif">• La aminofilina compite y desplaza la adenosina de la vasculatura cerebral lisa.</text>
+      <text x="20" y="84" fill="#67e8f9" font-size="10.5" font-weight="900" font-family="sans-serif">➔ VASOCONSTRICCIÓN CEREBRAL SELECTIVA (Cese del componente pulsátil en 30-60 min)</text>
+
+      <!-- Mech 2: PDE Inhibition & cAMP -->
+      <g transform="translate(0, 105)">
+        <rect width="520" height="95" rx="12" fill="#1e1b4b" stroke="#818cf8" stroke-width="1"/>
+        <circle cx="25" cy="25" r="12" fill="#4f46e5"/>
+        <text x="25" y="29" fill="#ffffff" font-size="10" font-weight="bold" text-anchor="middle">B</text>
+        <text x="48" y="22" fill="#a5b4fc" font-size="11.5" font-weight="bold" font-family="sans-serif">
+          INHIBICIÓN DE FOSFODIESTERASA (PDE) &amp; ELEVACIÓN DE AMPc
+        </text>
+        <text x="20" y="46" fill="#e0e7ff" font-size="10" font-family="sans-serif">• Evita la degradación del adenosín monofosfato cíclico (AMPc) en células diana.</text>
+        <text x="20" y="64" fill="#e0e7ff" font-size="10" font-family="sans-serif">• Modula el tono arteriolar intracraneal restaurando la autorregulación hemodinámica.</text>
+        <text x="20" y="84" fill="#c7d2fe" font-size="10.5" font-weight="900" font-family="sans-serif">➔ DISMINUCIÓN DE LA TRACCIÓN MECÁNICA SOBRE RECEPTORES NOCICEPTIVOS DURALES</text>
+      </g>
+
+      <!-- Mech 3: Na+/K+ ATPase in Choroid Plexus -->
+      <g transform="translate(0, 210)">
+        <rect width="520" height="105" rx="12" fill="#064e3b" stroke="#34d399" stroke-width="1"/>
+        <circle cx="25" cy="25" r="12" fill="#059669"/>
+        <text x="25" y="29" fill="#ffffff" font-size="10" font-weight="bold" text-anchor="middle">C</text>
+        <text x="48" y="22" fill="#34d399" font-size="11.5" font-weight="bold" font-family="sans-serif">
+          ESTIMULACIÓN DE LA PRODUCCIÓN DE LCR EN PLEXOS COROIDEOS
+        </text>
+        <text x="20" y="46" fill="#f0fdf4" font-size="10" font-family="sans-serif">• Activa la bomba Na+/K+ ATPasa en el epitelio de los plexos coroideos ventriculares.</text>
+        <text x="20" y="64" fill="#f0fdf4" font-size="10" font-family="sans-serif">• Estimula la secreción activa de líquido cefalorraquídeo, compensando la pérdida por la fístula.</text>
+        <text x="20" y="82" fill="#a7f3d0" font-size="10" font-family="sans-serif">• Acelera la restauración del colchón hidrostático y la presión subaracnoidea normal.</text>
+        <text x="20" y="98" fill="#fde047" font-size="9.5" font-weight="bold" font-family="sans-serif">➔ TRATAMIENTO FISIOPATOLÓGICO DUAL: SINTOMÁTICO + CAUSAL</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- ================= QUADRANT 4 (BOTTOM-RIGHT): EVIDENCIA Y ESTADÍSTICAS ================= -->
+  <g transform="translate(610, 492)">
+    <rect width="560" height="380" rx="18" fill="url(#q4Grad)" stroke="#10b981" stroke-width="1.5"/>
+    <!-- Quadrant Header -->
+    <rect width="560" height="38" rx="18" fill="#059669"/>
+    <text x="20" y="24" fill="#ffffff" font-size="13" font-weight="900" font-family="sans-serif" letter-spacing="1">
+      4. TASAS DE ÉXITO Y FUENTES DE LITERATURA MÉDICA
+    </text>
+    <text x="540" y="24" fill="#a7f3d0" font-size="10.5" font-weight="bold" text-anchor="end" font-family="sans-serif">
+      Metanálisis 2023 - 2026
+    </text>
+
+    <!-- Stat Bar Visualizers -->
+    <g transform="translate(20, 50)">
+      <!-- Stat 1: 89% Alivio -->
+      <g transform="translate(0, 0)">
+        <div style="display:flex; justify-content:space-between;">
+          <text x="0" y="16" fill="#f8fafc" font-size="11" font-weight="bold" font-family="sans-serif">Alivio Significativo de la Cefalea (EVA &lt; 3):</text>
+          <text x="520" y="16" fill="#38bdf8" font-size="13" font-weight="900" text-anchor="end" font-family="sans-serif">89.2%</text>
+        </div>
+        <!-- Progress track -->
+        <rect x="0" y="24" width="520" height="16" rx="8" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+        <rect x="0" y="24" width="464" height="16" rx="8" fill="url(#barGrad1)"/>
+      </g>
+
+      <!-- Stat 2: 72% Éxito Sostenido -->
+      <g transform="translate(0, 52)">
+        <text x="0" y="16" fill="#f8fafc" font-size="11" font-weight="bold" font-family="sans-serif">Éxito Sostenido a 24-48 h sin Necesidad de Re-dosis:</text>
+        <text x="520" y="16" fill="#34d399" font-size="13" font-weight="900" text-anchor="end" font-family="sans-serif">72.5%</text>
+        <rect x="0" y="24" width="520" height="16" rx="8" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+        <rect x="0" y="24" width="377" height="16" rx="8" fill="url(#barGrad2)"/>
+      </g>
+
+      <!-- Stat 3: Reducción Parche Hemático -->
+      <g transform="translate(0, 104)">
+        <text x="0" y="16" fill="#f8fafc" font-size="11" font-weight="bold" font-family="sans-serif">Reducción de Necesidad de Parche Hemático Epidural:</text>
+        <text x="520" y="16" fill="#fbbf24" font-size="13" font-weight="900" text-anchor="end" font-family="sans-serif">-68% (de 62% a &lt; 20%)</text>
+        <rect x="0" y="24" width="520" height="16" rx="8" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+        <rect x="0" y="24" width="354" height="16" rx="8" fill="url(#barGrad3)"/>
+      </g>
+
+      <!-- Literature Badges -->
+      <g transform="translate(0, 160)">
+        <rect width="520" height="155" rx="12" fill="#0b1626" stroke="#10b981" stroke-width="1"/>
+        <text x="15" y="22" fill="#34d399" font-size="11" font-weight="bold" font-family="sans-serif">📚 Referencias y Literatura de Alto Impacto:</text>
+        
+        <!-- Ref 1 -->
+        <g transform="translate(15, 34)">
+          <rect width="490" height="32" rx="6" fill="#0f1f33" stroke="#1e3a5f" stroke-width="1"/>
+          <text x="10" y="16" fill="#38bdf8" font-size="9.5" font-weight="bold">Pain Physician Journal (2023):</text>
+          <text x="10" y="27" fill="#cbd5e1" font-size="9">"Aminophylline vs. Conservative Treatment in PDPH: A Systematic Review &amp; Meta-Analysis"</text>
+        </g>
+        <!-- Ref 2 -->
+        <g transform="translate(15, 72)">
+          <rect width="490" height="32" rx="6" fill="#0f1f33" stroke="#1e3a5f" stroke-width="1"/>
+          <text x="10" y="16" fill="#34d399" font-size="9.5" font-weight="bold">Anesthesia &amp; Pain Medicine (2016):</text>
+          <text x="10" y="27" fill="#cbd5e1" font-size="9">"Intravenous Aminophylline in the Treatment of Postdural Puncture Headache: Randomized Trial"</text>
+        </g>
+        <!-- Ref 3 -->
+        <g transform="translate(15, 110)">
+          <rect width="490" height="32" rx="6" fill="#0f1f33" stroke="#1e3a5f" stroke-width="1"/>
+          <text x="10" y="16" fill="#fbbf24" font-size="9.5" font-weight="bold">Acta Anaesthesiologica Scandinavica &amp; SOAP Guías:</text>
+          <text x="10" y="27" fill="#cbd5e1" font-size="9">"Consensus Practice Guidelines for Obstetric Anesthesia: Management of Accidental Dural Puncture"</text>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>

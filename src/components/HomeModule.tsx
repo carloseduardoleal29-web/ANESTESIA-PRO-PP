@@ -3,6 +3,7 @@ import { TabType } from '../types';
 import { FileText, Wind, BarChart2, Calculator, BookOpen, GraduationCap, Sparkles, ArrowRight, ShieldCheck, Stethoscope, Instagram, Activity, Zap, Flame, Clock, CheckCircle2, ChevronRight, BookMarked, Brain, Film, Compass, Play, LifeBuoy, Droplet, HeartHandshake, Syringe, Pill, Layers, Trophy, Download, Eye } from 'lucide-react';
 import { LOGO_SHIELD_BASE64, LOGO_FALLBACK_SVG } from '../lib/logoData';
 import { getCanonicalAppOrigin, getGlobalStats, getModuleVisits } from '../lib/statsService';
+import { HomeNotificationBanner } from './HomeNotificationBanner';
 
 interface HomeModuleProps {
   setActiveTab: (tab: TabType) => void;
@@ -81,6 +82,19 @@ export const HomeModule: React.FC<HomeModuleProps> = ({ setActiveTab, onSelectEd
   // NOVEDADES ORDENADAS ESTRICTAMENTE DE LO MÁS NUEVO A LO MÁS VIEJO (Últimas 48 horas)
   const novedades = [
     {
+      id: 'res-ciprofol-hsk3486-hipnotico-gabaa-2026',
+      type: 'education',
+      title: '💊 Ciprofol (HSK3486): El Nuevo Hipnótico Modulador del Receptor GABA-A (BJA / EJA 2026)',
+      tag: '🔥 NUEVO • DESTACADO OFICIAL',
+      date: 'Septiembre 2026 • Farmacología & TIVA',
+      badgeColor: 'bg-purple-500/20 text-purple-300 border-purple-400/40',
+      gradient: 'from-slate-900 via-purple-950 to-indigo-950 border-purple-500/50 hover:border-purple-400',
+      iconColor: 'bg-gradient-to-br from-purple-500 to-indigo-600 text-white',
+      image: '/images/ciprofol/slide_1_mecanismo_gabaa.svg',
+      desc: 'Nuevo agente anestésico intravenoso no esteroideo: 4-5 veces más potente que propofol, estabilidad hemodinámica cardiovascular superior, eliminación del dolor a la inyección venosa (0%) y recuperación psicomotriz ultrarrápida. Álbum interactivo con 6 láminas deslizables en HD, calculadora de inducción/mantenimiento TIVA y Guía Oficial en PDF.',
+      cta: 'Ver Álbum HD, Calculadora & PDF'
+    },
+    {
       id: 'res-preeclampsia-eclampsia-enfoque-anestesiologico',
       type: 'education',
       title: '🧬 Protocolo Obstétrico y Atlas Visual: Preeclampsia, Eclampsia y Síndrome HELLP (ACOG / FIGO / SOAP 2026)',
@@ -89,7 +103,7 @@ export const HomeModule: React.FC<HomeModuleProps> = ({ setActiveTab, onSelectEd
       badgeColor: 'bg-rose-500/20 text-rose-300 border-rose-400/40',
       gradient: 'from-slate-900 via-rose-950 to-indigo-950 border-rose-500/50 hover:border-rose-400',
       iconColor: 'bg-gradient-to-br from-rose-500 to-pink-600 text-white',
-      image: '/images/gemini_trofoblasto_arterias_espirales.jpg',
+      image: '/images/preeclampsia_placenta_maternal_connection.svg',
       desc: 'Compendio de alta complejidad obstétrica y anestésica: Fisiopatología celular en dos fases (sFlt-1/PlGF), neuroprotección NMDA con Sulfato de Magnesio (Zuspan/Pritchard), manejo escalonado de crisis hipertensiva en 15 min (Labetalol, Hidralazina, Nifedipino oral), restricción hídrica estricta (60-80 mL/h), umbrales de plaquetas para punción neuroaxial (≥70-80k) y Atlas Visual Interactivo con 8 Láminas Ultra-HD. Incluye Guía Oficial descargable en PDF de 5 páginas.',
       cta: 'Ver Protocolo, Atlas HD & PDF'
     },
@@ -102,7 +116,7 @@ export const HomeModule: React.FC<HomeModuleProps> = ({ setActiveTab, onSelectEd
       badgeColor: 'bg-rose-500/20 text-rose-300 border-rose-400/40',
       gradient: 'from-slate-900 via-rose-950 to-indigo-950 border-rose-500/50 hover:border-rose-400',
       iconColor: 'bg-gradient-to-br from-rose-500 to-red-600 text-white',
-      image: '/images/blood_smear_schistocytes.jpg',
+      image: '/images/emotive_vdrape.jpg',
       desc: 'Detección temprana con bolsa colectora calibrada V-Drape y respuesta médica simultánea en los primeros 15 minutos: Masaje bimanual + Uterotónicos + Ácido Tranexámico 1g IV + Cristaloides tibios 37°C + Examen 4Ts + Balón de Bakri y PTM 1:1:1. Reduce en un 60% la HPP severa. Incluye Atlas visual con imágenes por cada letra, simulador cronológico y Guía PDF Oficial.',
       cta: 'Ver Protocolo E-MOTIVE (Atlas & PDF)'
     },
@@ -216,6 +230,17 @@ export const HomeModule: React.FC<HomeModuleProps> = ({ setActiveTab, onSelectEd
 
   return (
     <div className="space-y-6 animate-fadeIn pb-8">
+      {/* BLINKING NOTIFICATION BANNER (Eliminates upon click/dismiss) */}
+      <HomeNotificationBanner
+        onOpenResource={(resourceId) => {
+          if (onSelectEducationResource) {
+            onSelectEducationResource(resourceId);
+          } else {
+            setActiveTab('educacion');
+          }
+        }}
+      />
+
       {/* Hero Header */}
       <div className="bg-gradient-to-br from-blue-900 via-indigo-900 to-slate-900 border border-blue-800 rounded-3xl p-6 md:p-8 shadow-xl relative overflow-hidden text-white">
         <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
@@ -254,6 +279,9 @@ export const HomeModule: React.FC<HomeModuleProps> = ({ setActiveTab, onSelectEd
           </p>
 
           <div className="pt-2 flex flex-wrap gap-2 text-[11px] text-blue-100">
+            <span className="flex items-center gap-1.5 bg-emerald-950/70 text-emerald-300 px-3 py-1.5 rounded-xl border border-emerald-700/60 font-bold shadow-sm">
+              <Zap className="w-3.5 h-3.5 text-emerald-400 fill-current" /> 100% Funcional Offline (Quirófano)
+            </span>
             <span className="flex items-center gap-1.5 bg-blue-950/60 px-3 py-1.5 rounded-xl border border-blue-800/50">
               <ShieldCheck className="w-3.5 h-3.5 text-cyan-300" /> Formato de Evaluación Oficial
             </span>
@@ -389,9 +417,9 @@ export const HomeModule: React.FC<HomeModuleProps> = ({ setActiveTab, onSelectEd
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-1">
               <div className="relative shrink-0 group/img">
                 <img 
-                  src="/images/gemini_trofoblasto_arterias_espirales.jpg" 
-                  alt="Atlas Preeclampsia 2026" 
-                  className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover border-2 border-rose-400/60 shadow-xl shadow-rose-950/50 group-hover/img:scale-105 transition-transform"
+                  src="/images/preeclampsia_placenta_maternal_connection.svg" 
+                  alt="Placenta Humana, Conexión Materna & Cascada de Preeclampsia" 
+                  className="w-28 h-28 sm:w-36 sm:h-36 rounded-2xl object-cover border-2 border-rose-400/60 shadow-xl shadow-rose-950/50 group-hover/img:scale-105 transition-transform"
                 />
                 <span className="absolute -bottom-1 -right-1 bg-gradient-to-r from-rose-500 to-amber-400 text-slate-950 p-1 rounded-full shadow-md">
                   <Sparkles className="w-3.5 h-3.5 fill-current" />

@@ -150,6 +150,37 @@ export const GraphicPreeclampsiaPathophysiology: React.FC = () => {
         </g>
       </svg>
 
+      {/* Galería Médica Integrada de Alta Definición */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+        <div className="bg-slate-900/90 border border-slate-800 hover:border-emerald-500/50 transition-all rounded-xl p-3 flex gap-3 items-center">
+          <img 
+            src="/images/gemini_trofoblasto_arterias_espirales.jpg" 
+            alt="Isquemia Placentaria & Remodelado Vascular" 
+            className="w-24 h-20 object-cover rounded-lg border border-slate-700 shrink-0"
+            onError={(e) => { e.currentTarget.src = '/images/atlas_trofoblasto_arterias_espirales.svg'; }}
+          />
+          <div className="min-w-0">
+            <span className="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider block">Ilustración Ultra-HD</span>
+            <h4 className="text-xs font-bold text-white truncate">Invasión Citotrofoblástica & Arterias Espirales</h4>
+            <p className="text-[11px] text-slate-300 line-clamp-2 mt-0.5">Falla en la segunda oleada (sem 16-18) con persistencia de manto muscular e isquemia del espacio intervelloso.</p>
+          </div>
+        </div>
+
+        <div className="bg-slate-900/90 border border-slate-800 hover:border-teal-500/50 transition-all rounded-xl p-3 flex gap-3 items-center">
+          <img 
+            src="/images/gemini_desbalance_sflt1_glicocalix.jpg" 
+            alt="Desbalance sFlt-1 y Lisis del Glicocálix" 
+            className="w-24 h-20 object-cover rounded-lg border border-slate-700 shrink-0"
+            onError={(e) => { e.currentTarget.src = '/images/atlas_desbalance_angiogenico.svg'; }}
+          />
+          <div className="min-w-0">
+            <span className="text-[10px] font-mono font-bold text-teal-400 uppercase tracking-wider block">Microscopía Molecular HD</span>
+            <h4 className="text-xs font-bold text-white truncate">sFlt-1 vs VEGF y Descamación del Glicocálix</h4>
+            <p className="text-[11px] text-slate-300 line-clamp-2 mt-0.5">Neutralización de VEGF/PlGF que destruye el glicocálix de sindecano-1 provocando fuga capilar generalizada.</p>
+          </div>
+        </div>
+      </div>
+
       <div className="mt-4 p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-xs text-slate-300 flex items-start gap-2.5">
         <span className="text-base leading-none text-rose-400 font-bold">💡</span>
         <p className="leading-relaxed">
@@ -314,6 +345,26 @@ export const GraphicBrainAstrocytesBBB: React.FC = () => {
                 <p className="text-rose-200 text-[11px]">La entrada incesante de Ca²⁺ activa calpaínas y caspasas que dañan la mitocondria y disparan la actividad comicial.</p>
               </div>
             </div>
+
+            {/* Neuroimagen & Ilustración de Ruptura de BHE */}
+            <div className="bg-slate-900/95 border border-purple-900/50 hover:border-purple-500/60 transition-all rounded-xl p-3 flex flex-col sm:flex-row gap-3 items-center">
+              <img 
+                src="/images/gemini_pres_edema_cerebral.jpg" 
+                alt="Síndrome PRES y Edema Vasogénico Parieto-Occipital" 
+                className="w-full sm:w-32 h-24 object-cover rounded-lg border border-purple-800/60 shrink-0"
+                onError={(e) => { e.currentTarget.src = '/images/mri_pres_brain_flair.svg'; }}
+              />
+              <div className="min-w-0 text-left w-full">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-mono font-bold text-purple-400 uppercase tracking-wider">Neuroimagen &amp; Resonancia Magnética FLAIR</span>
+                  <span className="text-[9px] bg-purple-900/60 text-purple-200 px-1.5 py-0.5 rounded font-bold border border-purple-700/50">Gemini Ultra-HD</span>
+                </div>
+                <h4 className="text-xs font-bold text-white mt-0.5">Disrupción de la BHE y Edema Vasogénico Occipito-Parietal (PRES)</h4>
+                <p className="text-[11px] text-slate-300 mt-1 leading-relaxed">
+                  Hiperintensidad simétrica en secuencias T2/FLAIR que respeta el córtex paramediano y traduce pérdida de autorregulación del territorio vértebro-basilar por crisis hipertensiva aguda (PAS &gt; 160 mmHg).
+                </p>
+              </div>
+            </div>
           </div>
         )}
 
@@ -373,7 +424,7 @@ export const GraphicBrainAstrocytesBBB: React.FC = () => {
       <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 flex flex-col md:flex-row items-center gap-4">
         <div className="w-full md:w-56 h-36 rounded-xl overflow-hidden border-2 border-cyan-500/50 bg-slate-950 flex-shrink-0 relative group shadow-lg">
           <img 
-            src="/images/blood_brain_barrier_nih.png" 
+            src="/images/blood_brain_barrier_nih.svg" 
             alt="Barrera Hematoencefálica y Astrocitos NIH BioArt"
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
@@ -551,7 +602,7 @@ export const GraphicRenalPodocytes: React.FC = () => {
       <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 flex flex-col md:flex-row items-center gap-4">
         <div className="w-full md:w-56 h-36 rounded-xl overflow-hidden border-2 border-sky-500/50 bg-slate-950 flex-shrink-0 relative group shadow-lg">
           <img 
-            src="/images/kidney_glomerulus_podocytes.png" 
+            src="/images/kidney_glomerulus_podocytes.svg" 
             alt="Glomérulo Renal, Podocitos y Capilares Fenestrados Anatomía"
             className="w-full h-full object-contain p-1 group-hover:scale-105 transition-transform duration-300"
           />

@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" width="1200" height="900" style="background:#090d16; font-family:system-ui, -apple-system, sans-serif;">
+  <defs>
+    <linearGradient id="cardGrad3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#1e293b" />
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="900" fill="#090d16"/>
+  <circle cx="250" cy="180" r="300" fill="#6366f1" opacity="0.08" filter="blur(80px)"/>
+  <circle cx="950" cy="720" r="320" fill="#06b6d4" opacity="0.08" filter="blur(80px)"/>
+
+  <!-- Top Banner -->
+  <rect x="50" y="40" width="1100" height="100" rx="20" fill="url(#cardGrad3)" stroke="#1e3a5f" stroke-width="1.5"/>
+  <rect x="70" y="58" width="6" height="64" rx="3" fill="#818cf8"/>
+  <text x="95" y="85" fill="#a5b4fc" font-size="14" font-weight="900" letter-spacing="2">LÁMINA 3 • PROTOCOLO TERAPÉUTICO Y GUÍA DE ADMINISTRACIÓN</text>
+  <text x="95" y="118" fill="#ffffff" font-size="28" font-weight="900">DOSIFICACIÓN CLÍNICA: Inducción, Mantenimiento y Sedación</text>
+  <text x="1120" y="85" fill="#94a3b8" font-size="13" font-weight="700" text-anchor="end">Dr. Carlos Leal</text>
+  <text x="1120" y="105" fill="#38bdf8" font-size="12" font-weight="800" text-anchor="end">AnestesiaPro • Guía Oficial</text>
+
+  <!-- Card 1: Inducción Anestesia General -->
+  <g transform="translate(50, 165)">
+    <rect width="350" height="680" rx="18" fill="url(#cardGrad3)" stroke="#38bdf8" stroke-width="1.5"/>
+    <rect x="20" y="20" width="310" height="42" rx="10" fill="#0284c7" opacity="0.25"/>
+    <text x="35" y="47" fill="#38bdf8" font-size="16" font-weight="800">1. INDUCCIÓN GENERAL</text>
+
+    <!-- Big Dose Pill -->
+    <rect x="20" y="80" width="310" height="95" rx="14" fill="#030712" stroke="#1e293b"/>
+    <text x="35" y="112" fill="#94a3b8" font-size="12" font-weight="700">DOSIS BOLO INICIAL IV:</text>
+    <text x="35" y="152" fill="#38bdf8" font-size="34" font-weight="900">0.4 - 0.5 <tspan font-size="18" fill="#94a3b8">mg/kg</tspan></text>
+
+    <text x="25" y="210" fill="#ffffff" font-size="14" font-weight="800">Modo de Administración:</text>
+    <text x="25" y="235" fill="#cbd5e1" font-size="13">• Infundir en 30 a 60 segundos.</text>
+    <text x="25" y="260" fill="#cbd5e1" font-size="13">• Paciente anciano o ASA III-IV:</text>
+    <text x="40" y="285" fill="#facc15" font-size="13" font-weight="800">Reducir a 0.2 - 0.3 mg/kg.</text>
+
+    <text x="25" y="330" fill="#ffffff" font-size="14" font-weight="800">Asociación Coadyuvante:</text>
+    <text x="25" y="355" fill="#94a3b8" font-size="13">Fentanilo 2-3 µg/kg o Remifentanilo</text>
+    <text x="25" y="375" fill="#94a3b8" font-size="13">0.25-0.5 µg/kg/min + Rocuronio.</text>
+
+    <rect x="20" y="420" width="310" height="230" rx="12" fill="#0f172a" stroke="#1e293b"/>
+    <text x="35" y="450" fill="#34d399" font-size="13" font-weight="800">Objetivos Neurofisiológicos:</text>
+    <text x="35" y="480" fill="#cbd5e1" font-size="13">✓ Pérdida de reflejos en 45-60 s</text>
+    <text x="35" y="510" fill="#cbd5e1" font-size="13">✓ BIS de inducción entre 40 - 55</text>
+    <text x="35" y="540" fill="#cbd5e1" font-size="13">✓ Condiciones óptimas de intubación</text>
+    <text x="35" y="570" fill="#cbd5e1" font-size="13">✓ Excelente relajación mandibular</text>
+    <text x="35" y="615" fill="#38bdf8" font-size="12" font-weight="700">Sin caída brusca de la TAM (&gt;65 mmHg)</text>
+  </g>
+
+  <!-- Card 2: Mantenimiento TIVA / Infusión Continua -->
+  <g transform="translate(425, 165)">
+    <rect width="350" height="680" rx="18" fill="url(#cardGrad3)" stroke="#818cf8" stroke-width="1.5"/>
+    <rect x="20" y="20" width="310" height="42" rx="10" fill="#4338ca" opacity="0.25"/>
+    <text x="35" y="47" fill="#a5b4fc" font-size="16" font-weight="800">2. MANTENIMIENTO TIVA</text>
+
+    <!-- Big Dose Pill -->
+    <rect x="20" y="80" width="310" height="95" rx="14" fill="#030712" stroke="#1e293b"/>
+    <text x="35" y="112" fill="#94a3b8" font-size="12" font-weight="700">INFUSIÓN CONTINUA:</text>
+    <text x="35" y="152" fill="#a5b4fc" font-size="34" font-weight="900">0.8 - 1.5 <tspan font-size="18" fill="#94a3b8">mg/kg/h</tspan></text>
+
+    <text x="25" y="210" fill="#ffffff" font-size="14" font-weight="800">Rango de Titulación:</text>
+    <text x="25" y="235" fill="#cbd5e1" font-size="13">• Inicio tras inducción: 1.2 mg/kg/h.</text>
+    <text x="25" y="260" fill="#cbd5e1" font-size="13">• Titular según BIS (meta 40-60).</text>
+    <text x="25" y="285" fill="#cbd5e1" font-size="13">• Disminuir a 0.8 mg/kg/h al cierre.</text>
+
+    <text x="25" y="330" fill="#ffffff" font-size="14" font-weight="800">Equivalencia vs Propofol:</text>
+    <text x="25" y="355" fill="#94a3b8" font-size="13">Equivale a 4 - 8 mg/kg/h de Propofol</text>
+    <text x="25" y="375" fill="#94a3b8" font-size="13">con volumen lipídico reducido al 20%.</text>
+
+    <rect x="20" y="420" width="310" height="230" rx="12" fill="#0f172a" stroke="#1e293b"/>
+    <text x="35" y="450" fill="#a5b4fc" font-size="13" font-weight="800">Ventajas en Cirugías Largas:</text>
+    <text x="35" y="480" fill="#cbd5e1" font-size="13">✓ Menor carga de triglicéridos</text>
+    <text x="35" y="510" fill="#cbd5e1" font-size="13">✓ Cero riesgo de síndrome PRIS</text>
+    <text x="35" y="540" fill="#cbd5e1" font-size="13">✓ Estabilidad hemodinámica estable</text>
+    <text x="35" y="570" fill="#cbd5e1" font-size="13">✓ Despertar en 6 a 10 minutos</text>
+    <text x="35" y="615" fill="#34d399" font-size="12" font-weight="700">Sin náuseas ni vómitos postoperatorios</text>
+  </g>
+
+  <!-- Card 3: Sedación Diagnóstica y Endoscopias -->
+  <g transform="translate(800, 165)">
+    <rect width="350" height="680" rx="18" fill="url(#cardGrad3)" stroke="#34d399" stroke-width="1.5"/>
+    <rect x="20" y="20" width="310" height="42" rx="10" fill="#065f46" opacity="0.25"/>
+    <text x="35" y="47" fill="#34d399" font-size="16" font-weight="800">3. SEDACIÓN PROCEDIMIENTOS</text>
+
+    <!-- Big Dose Pill -->
+    <rect x="20" y="80" width="310" height="95" rx="14" fill="#030712" stroke="#1e293b"/>
+    <text x="35" y="112" fill="#94a3b8" font-size="12" font-weight="700">DOSIS INICIAL SEDACIÓN:</text>
+    <text x="35" y="152" fill="#34d399" font-size="34" font-weight="900">0.2 - 0.4 <tspan font-size="18" fill="#94a3b8">mg/kg</tspan></text>
+
+    <text x="25" y="210" fill="#ffffff" font-size="14" font-weight="800">Bolos de Rescate si Requiere:</text>
+    <text x="25" y="235" fill="#cbd5e1" font-size="13">• 0.1 a 0.2 mg/kg cada 2-3 min.</text>
+    <text x="25" y="260" fill="#cbd5e1" font-size="13">• Máximo recomendado en sesión:</text>
+    <text x="40" y="285" fill="#facc15" font-size="13" font-weight="800">Hasta 1.0 - 1.2 mg/kg total.</text>
+
+    <text x="25" y="330" fill="#ffffff" font-size="14" font-weight="800">Indicaciones de Elección:</text>
+    <text x="25" y="355" fill="#94a3b8" font-size="13">Endoscopia digestiva alta, Colonoscopia,</text>
+    <text x="25" y="375" fill="#94a3b8" font-size="13">Broncoscopia, CPRE y Resonancia.</text>
+
+    <rect x="20" y="420" width="310" height="230" rx="12" fill="#0f172a" stroke="#1e293b"/>
+    <text x="35" y="450" fill="#34d399" font-size="13" font-weight="800">Seguridad en Ambulatorio:</text>
+    <text x="35" y="480" fill="#cbd5e1" font-size="13">✓ Ventilación espontánea preservada</text>
+    <text x="35" y="510" fill="#cbd5e1" font-size="13">✓ Mínima depresión respiratoria (&lt;3%)</text>
+    <text x="35" y="540" fill="#cbd5e1" font-size="13">✓ Satisfacción del paciente &gt;98%</text>
+    <text x="35" y="570" fill="#cbd5e1" font-size="13">✓ Criterios de alta Aldrete 10 rápido</text>
+    <text x="35" y="615" fill="#facc15" font-size="12" font-weight="700">Ideal en pacientes ancianos frágiles</text>
+  </g>
+</svg>

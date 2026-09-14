@@ -2,6 +2,18 @@
 <html lang="es" class="dark">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      // Filter benign Vite websocket disconnection logs in AI Studio preview environment
+      (function() {
+        const origErr = console.error;
+        console.error = function(...args) {
+          if (typeof args[0] === 'string' && (args[0].includes('[vite] failed to connect to websocket') || args[0].includes('vite-plugin-pwa:dev-ready'))) {
+            return;
+          }
+          origErr.apply(console, args);
+        };
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#0f172a" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -18,11 +30,11 @@
     <!-- Open Graph / Facebook / WhatsApp Preview Meta Tags -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="AnestesiaPro" />
-    <meta property="og:url" content="https://ais-pre-pmfsaxxhmz7bew34l7t3ny-65009198887.us-east1.run.app" />
+    <meta property="og:url" content="https://anestesiapro.ai.studio" />
     <meta property="og:title" content="AnestesiaPro - Suite Anestésica Clínica (Dr. Carlos Leal)" />
     <meta property="og:description" content="Aplicación clínica para anestesiólogos y residentes: evaluación preanestésica digital con informe en PDF, calculadoras de inducción, escalas de vía aérea (VORTEX, Mallampati, Cormack) y protocolos actualizados. Funciona 100% offline." />
-    <meta property="og:image" content="https://ais-pre-pmfsaxxhmz7bew34l7t3ny-65009198887.us-east1.run.app/og_banner.jpg?v=6" />
-    <meta property="og:image:secure_url" content="https://ais-pre-pmfsaxxhmz7bew34l7t3ny-65009198887.us-east1.run.app/og_banner.jpg?v=6" />
+    <meta property="og:image" content="https://anestesiapro.ai.studio/og_banner.jpg?v=6" />
+    <meta property="og:image:secure_url" content="https://anestesiapro.ai.studio/og_banner.jpg?v=6" />
     <meta property="og:image:type" content="image/jpeg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
@@ -32,7 +44,7 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="AnestesiaPro - Suite Anestésica Clínica" />
     <meta name="twitter:description" content="Aplicación clínica para anestesiólogos y residentes: evaluación preanestésica, calculadoras de dosis, vía aérea y protocolos 100% offline." />
-    <meta name="twitter:image" content="https://ais-pre-pmfsaxxhmz7bew34l7t3ny-65009198887.us-east1.run.app/og_banner.jpg?v=6" />
+    <meta name="twitter:image" content="https://anestesiapro.ai.studio/og_banner.jpg?v=6" />
 
     <link rel="manifest" href="/manifest.json?v=6" />
     <title>AnestesiaPro - Suite Anestésica Clínica</title>

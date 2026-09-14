@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" width="1200" height="900" style="background:#090d16; font-family:system-ui, -apple-system, sans-serif;">
+  <defs>
+    <linearGradient id="cardGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#1e293b" />
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="900" fill="#090d16"/>
+  <circle cx="300" cy="200" r="320" fill="#10b981" opacity="0.06" filter="blur(80px)"/>
+  <circle cx="950" cy="700" r="300" fill="#0284c7" opacity="0.07" filter="blur(80px)"/>
+
+  <!-- Top Banner -->
+  <rect x="50" y="40" width="1100" height="100" rx="20" fill="url(#cardGrad2)" stroke="#1e3a5f" stroke-width="1.5"/>
+  <rect x="70" y="58" width="6" height="64" rx="3" fill="#34d399"/>
+  <text x="95" y="85" fill="#34d399" font-size="14" font-weight="900" letter-spacing="2">LÁMINA 2 • PARÁMETROS FARMACOCINÉTICOS Y METABOLISMO</text>
+  <text x="95" y="118" fill="#ffffff" font-size="28" font-weight="900">CIPROFOL: Farmacocinética de 3 Compartimentos y Aclaramiento</text>
+  <text x="1120" y="85" fill="#94a3b8" font-size="13" font-weight="700" text-anchor="end">Dr. Carlos Leal</text>
+  <text x="1120" y="105" fill="#38bdf8" font-size="12" font-weight="800" text-anchor="end">AnestesiaPro • TIVA &amp; PK/PD</text>
+
+  <!-- Left: 4 Metric Cards -->
+  <g transform="translate(50, 165)">
+    <!-- Box 1 -->
+    <rect x="0" y="0" width="255" height="155" rx="16" fill="url(#cardGrad2)" stroke="#334155" stroke-width="1.5"/>
+    <text x="25" y="38" fill="#94a3b8" font-size="13" font-weight="800">POTENCIA RELATIVA</text>
+    <text x="25" y="88" fill="#38bdf8" font-size="44" font-weight="900">4-5 x</text>
+    <text x="25" y="125" fill="#cbd5e1" font-size="13">Vs. Propofol (1 mg = 4-5 mg Prop)</text>
+
+    <!-- Box 2 -->
+    <rect x="280" y="0" width="255" height="155" rx="16" fill="url(#cardGrad2)" stroke="#334155" stroke-width="1.5"/>
+    <text x="305" y="38" fill="#94a3b8" font-size="13" font-weight="800">LATENCIA DE ACCIÓN</text>
+    <text x="305" y="88" fill="#34d399" font-size="44" font-weight="900">45-60 s</text>
+    <text x="305" y="125" fill="#cbd5e1" font-size="13">Pérdida del reflejo palpebral</text>
+
+    <!-- Box 3 -->
+    <rect x="0" y="180" width="255" height="155" rx="16" fill="url(#cardGrad2)" stroke="#334155" stroke-width="1.5"/>
+    <text x="25" y="218" fill="#94a3b8" font-size="13" font-weight="800">ACLARAMIENTO (Cl)</text>
+    <text x="25" y="268" fill="#fbbf24" font-size="40" font-weight="900">1.8 L/min</text>
+    <text x="25" y="305" fill="#cbd5e1" font-size="13">Elevado aclaramiento hepático</text>
+
+    <!-- Box 4 -->
+    <rect x="280" y="180" width="255" height="155" rx="16" fill="url(#cardGrad2)" stroke="#334155" stroke-width="1.5"/>
+    <text x="305" y="218" fill="#94a3b8" font-size="13" font-weight="800">VOLUMEN DISTRIB. (Vss)</text>
+    <text x="305" y="268" fill="#a78bfa" font-size="40" font-weight="900">140-180 L</text>
+    <text x="305" y="305" fill="#cbd5e1" font-size="13">Amplia distribución tisular lipofílica</text>
+
+    <!-- Detailed PK Table Card -->
+    <rect x="0" y="360" width="535" height="320" rx="16" fill="url(#cardGrad2)" stroke="#334155" stroke-width="1.5"/>
+    <text x="25" y="395" fill="#ffffff" font-size="17" font-weight="800">Metabolismo y Eliminación Orgánica</text>
+    
+    <g transform="translate(25, 420)">
+      <rect width="485" height="65" rx="10" fill="#0f172a" stroke="#1e293b"/>
+      <text x="18" y="28" fill="#38bdf8" font-size="14" font-weight="800">Glucuronidación Hepática Predominante</text>
+      <text x="18" y="50" fill="#94a3b8" font-size="12">Vía principal: UGT1A9 (metabolito inactivo Ciprofol-glucurónido M4).</text>
+    </g>
+
+    <g transform="translate(25, 500)">
+      <rect width="485" height="65" rx="10" fill="#0f172a" stroke="#1e293b"/>
+      <text x="18" y="28" fill="#34d399" font-size="14" font-weight="800">Excreción Renal de Metabolitos Inactivos</text>
+      <text x="18" y="50" fill="#94a3b8" font-size="12">&gt;85% excretado en orina como glucurónido hidrosoluble no tóxico.</text>
+    </g>
+
+    <g transform="translate(25, 580)">
+      <rect width="485" height="75" rx="10" fill="#0f172a" stroke="#1e293b"/>
+      <text x="18" y="28" fill="#fbbf24" font-size="14" font-weight="800">Semivida Contexto-Sensible (CSHT)</text>
+      <text x="18" y="50" fill="#94a3b8" font-size="12">Permanece corta (&lt;15 min) tras infusiones continuas de 2 a 4 horas,</text>
+      <text x="18" y="66" fill="#cbd5e1" font-size="11">asegurando extubación rápida en quirófano.</text>
+    </g>
+  </g>
+
+  <!-- Right: PK Curve Graph -->
+  <g transform="translate(615, 165)">
+    <rect width="535" height="680" rx="20" fill="url(#cardGrad2)" stroke="#334155" stroke-width="1.5"/>
+    <text x="35" y="45" fill="#38bdf8" font-size="18" font-weight="800">📈 Curva de Concentración Plasmática vs Tiempo</text>
+
+    <!-- Graph Canvas -->
+    <rect x="35" y="70" width="465" height="310" rx="14" fill="#030712" stroke="#1e293b"/>
+    
+    <!-- Axis -->
+    <line x1="75" y1="330" x2="465" y2="330" stroke="#475569" stroke-width="2"/>
+    <line x1="75" y1="105" x2="75" y2="330" stroke="#475569" stroke-width="2"/>
+    <text x="465" y="355" fill="#64748b" font-size="11" font-weight="700" text-anchor="end">Tiempo (minutos)</text>
+    <text x="65" y="100" fill="#64748b" font-size="11" font-weight="700">Cp (µg/mL)</text>
+
+    <!-- Threshold Guide Line -->
+    <line x1="75" y1="260" x2="465" y2="260" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,4"/>
+    <text x="455" y="252" fill="#f87171" font-size="10" font-weight="800" text-anchor="end">Umbral de Despertar (Cp &lt; 0.15 µg/mL)</text>
+
+    <!-- Ciprofol Curve (Sharp drop, steady recovery) -->
+    <path d="M 75,120 C 95,140 140,240 210,270 C 270,290 380,310 460,320" fill="none" stroke="#38bdf8" stroke-width="4"/>
+    <circle cx="75" cy="120" r="5" fill="#38bdf8"/>
+    <text x="90" y="135" fill="#38bdf8" font-size="12" font-weight="900">Bolo IV (0.4 mg/kg)</text>
+
+    <!-- Bis Graph Indicator -->
+    <circle cx="210" cy="270" r="6" fill="#34d399"/>
+    <text x="220" y="275" fill="#34d399" font-size="11" font-weight="800">Despertar a los ~8-12 min</text>
+
+    <!-- Summary Highlights -->
+    <rect x="35" y="405" width="465" height="245" rx="14" fill="#0f172a" stroke="#1e293b"/>
+    <text x="55" y="435" fill="#ffffff" font-size="16" font-weight="800">Ventajas de la Cinética de Ciprofol:</text>
+
+    <text x="55" y="475" fill="#38bdf8" font-size="14" font-weight="700">✓ Distribución Rápida Tridimensional:</text>
+    <text x="55" y="495" fill="#94a3b8" font-size="13">Equilibrio plasma-efecto (t1/2ke0) de tan solo 1.5 a 2 minutos.</text>
+
+    <text x="55" y="535" fill="#34d399" font-size="14" font-weight="700">✓ No genera Acumulación Tisular Excesiva:</text>
+    <text x="55" y="555" fill="#94a3b8" font-size="13">Menor saturación del compartimento periférico profundo.</text>
+
+    <text x="55" y="595" fill="#fbbf24" font-size="14" font-weight="700">✓ Rápido Aclaramiento Metabólico:</text>
+    <text x="55" y="615" fill="#94a3b8" font-size="13">Evita la resedación en la Unidad de Cuidados Postanestésicos (URPA).</text>
+  </g>
+</svg>

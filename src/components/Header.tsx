@@ -5,6 +5,7 @@ import { LOGO_SHIELD_BASE64, LOGO_FULL_BASE64 } from '../lib/logoData';
 import { TabType } from '../types';
 import { ShareModal } from './ShareModal';
 import { EliteLabModule } from './EliteLabModule';
+import { forceAppUpdate } from '../registerServiceWorker';
 
 interface HeaderProps {
   setActiveTab?: (tab: TabType) => void;
@@ -789,29 +790,31 @@ export const Header: React.FC<HeaderProps> = ({ setActiveTab, onSelectEducationR
 
             {/* ACTION BUTTONS GROUP - RESPONSIVE COMPACT ALIGNMENT */}
             <div className="flex items-center gap-1.5 sm:gap-2">
-              {/* PANEL PRIVADO AUTOR BUTTON - ACCESSIBLE FOR AUTHOR DR. CARLOS LEAL (PIN: 2534) */}
-              <button
-                onClick={() => {
-                  getGlobalStats().then(s => { if (s) updateStatsSafely(s); });
-                  loadAdminEvents();
-                  markAdminEventsAsSeen();
-                  setStatsPinInput('');
-                  setStatsPinError(false);
-                  setShowStatsModal(true);
-                }}
-                className="relative flex items-center gap-1.5 bg-gradient-to-r from-slate-950 via-cyan-950 to-slate-950 hover:bg-slate-900 text-cyan-300 hover:text-cyan-200 border border-cyan-400/60 text-[11px] sm:text-xs font-black px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl shadow-md transition-all cursor-pointer active:scale-95 ring-1 ring-cyan-500/30 shrink-0"
-                title="Panel Privado del Autor (Dr. Carlos Leal • PIN: 2534)"
-              >
-                <Lock className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                <span className="hidden sm:inline">Panel Privado</span>
-                <span className="sm:hidden">Panel</span>
-                {unreadAdminCount > 0 && (
-                  <span className="bg-rose-500 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full animate-pulse shadow-sm shadow-rose-500/50 flex items-center gap-0.5">
-                    <Radio className="w-2.5 h-2.5" />
-                    {unreadAdminCount}
-                  </span>
-                )}
-              </button>
+              {/* PANEL PRIVADO AUTOR BUTTON - ACCESSIBLE ONLY FOR AUTHOR DR. CARLOS LEAL */}
+              {showAdminButton && (
+                <button
+                  onClick={() => {
+                    getGlobalStats().then(s => { if (s) updateStatsSafely(s); });
+                    loadAdminEvents();
+                    markAdminEventsAsSeen();
+                    setStatsPinInput('');
+                    setStatsPinError(false);
+                    setShowStatsModal(true);
+                  }}
+                  className="relative flex items-center gap-1.5 bg-gradient-to-r from-slate-950 via-cyan-950 to-slate-950 hover:bg-slate-900 text-cyan-300 hover:text-cyan-200 border border-cyan-400/60 text-[11px] sm:text-xs font-black px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl shadow-md transition-all cursor-pointer active:scale-95 ring-1 ring-cyan-500/30 shrink-0"
+                  title="Panel Privado del Autor (Dr. Carlos Leal)"
+                >
+                  <Lock className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                  <span className="hidden sm:inline">Panel Privado</span>
+                  <span className="sm:hidden">Panel</span>
+                  {unreadAdminCount > 0 && (
+                    <span className="bg-rose-500 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full animate-pulse shadow-sm shadow-rose-500/50 flex items-center gap-0.5">
+                      <Radio className="w-2.5 h-2.5" />
+                      {unreadAdminCount}
+                    </span>
+                  )}
+                </button>
+              )}
 
               {/* CONTACTO & SUGERENCIAS BUTTON */}
               <button
@@ -852,6 +855,16 @@ export const Header: React.FC<HeaderProps> = ({ setActiveTab, onSelectEducationR
               >
                 <Share2 className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
                 <span className="hidden sm:inline">Compartir</span>
+              </button>
+
+              {/* BOTÓN ACTUALIZAR APP / SINCRONIZAR VERSIÓN */}
+              <button
+                onClick={() => forceAppUpdate()}
+                className="flex items-center gap-1 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 hover:text-amber-200 border border-amber-400/40 text-[11px] sm:text-xs font-bold px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl shadow-md transition-all cursor-pointer active:scale-95 shrink-0"
+                title="Sincronizar y actualizar a la última versión (limpiar caché y recargar cambios)"
+              >
+                <RefreshCw className="w-3.5 h-3.5 text-amber-400 shrink-0 hover:rotate-180 transition-transform duration-500" />
+                <span className="hidden lg:inline">Actualizar</span>
               </button>
 
               {/* INSTALL BUTTON */}
@@ -1023,6 +1036,9 @@ export const Header: React.FC<HeaderProps> = ({ setActiveTab, onSelectEducationR
                                 if (notif.resourceId === 'res-indice-de-shock' || notif.title.toLowerCase().includes('shock')) {
                                   setActiveTab('indiceShock');
                                 } else {
+                                  if (onSelectEducationResource && notif.resourceId) {
+                                    onSelectEducationResource(notif.resourceId);
+                                  }
                                   setActiveTab('educacion');
                                 }
                               }}
@@ -1067,10 +1083,10 @@ export const Header: React.FC<HeaderProps> = ({ setActiveTab, onSelectEducationR
                     setShowStatsModal(true);
                   }}
                   className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-extrabold text-[11px] px-3 py-1.5 rounded-xl flex items-center gap-1 cursor-pointer transition-all"
-                  title="Publicar una notificación a los usuarios (Clave: 2534)"
+                  title="Publicar una notificación oficial a los usuarios"
                 >
                   <Send className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Publicar Alerta (Clave: 2534)</span>
+                  <span>Publicar Alerta (Autor)</span>
                 </button>
               </div>
 
@@ -1151,7 +1167,7 @@ export const Header: React.FC<HeaderProps> = ({ setActiveTab, onSelectEducationR
                   <KeyRound className="w-8 h-8 text-cyan-400 mx-auto" />
                   <div>
                     <p className="text-xs font-bold text-slate-200">Ingresa tu clave PIN para desbloquear el panel privado</p>
-                    <p className="text-[11px] text-slate-400 mt-1">Tu clave PIN confidencial: <code className="text-cyan-300 font-bold bg-slate-900 px-1.5 py-0.5 rounded">2534</code></p>
+                    <p className="text-[11px] text-slate-400 mt-1">Acceso restringido para el Dr. Carlos Leal</p>
                   </div>
 
                   <input
@@ -1168,7 +1184,7 @@ export const Header: React.FC<HeaderProps> = ({ setActiveTab, onSelectEducationR
                   />
 
                   {statsPinError && (
-                    <p className="text-xs font-bold text-rose-400">PIN incorrecto. Inténtalo de nuevo (clave: 2534).</p>
+                    <p className="text-xs font-bold text-rose-400">PIN incorrecto. Acceso reservado para el Dr. Carlos Leal.</p>
                   )}
                 </div>
 
@@ -1872,7 +1888,7 @@ export const Header: React.FC<HeaderProps> = ({ setActiveTab, onSelectEducationR
                             <p className="text-[11px] font-black text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
                               <Zap className="w-3.5 h-3.5 text-amber-400" /> Sincronización Rápida & Reinicio Maestro
                             </p>
-                            <span className="text-[10px] text-slate-400 font-mono">PIN: 2534</span>
+                            <span className="text-[10px] text-emerald-400 font-mono font-bold">Autor Dr. Carlos Leal</span>
                           </div>
 
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
@@ -1952,6 +1968,21 @@ export const Header: React.FC<HeaderProps> = ({ setActiveTab, onSelectEducationR
                             >
                               <RotateCcw className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                               <span>Restaurar Base (865)</span>
+                            </button>
+
+                            {/* Botón 5: Forzar Actualización PWA & Caché Local */}
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (confirm('¿Deseas forzar la descarga de las últimas actualizaciones e imágenes anatómicas borrando la caché local de este dispositivo?')) {
+                                  await forceAppUpdate();
+                                }
+                              }}
+                              className="px-3 py-2 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/70 rounded-xl text-emerald-300 text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow active:scale-95 text-center col-span-2 sm:col-span-1"
+                              title="Descarga la versión más reciente borrando la memoria caché del navegador"
+                            >
+                              <RefreshCw className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                              <span>⚡ Forzar Actualización & Limpiar Caché</span>
                             </button>
                           </div>
                         </div>

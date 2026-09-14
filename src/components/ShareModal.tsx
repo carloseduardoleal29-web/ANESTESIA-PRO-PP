@@ -37,10 +37,16 @@ export const ShareModal: React.FC<ShareModalProps> = ({
 
   if (!isOpen) return null;
 
-  // Resolve current app URL (prioritize short link)
+  // Resolve current app URL (prioritize official domain: https://anestesiapro.ai.studio)
   let rawUrl = shareData?.url || SHORT_APP_URL;
-  if (rawUrl.includes('ais-pre-pmfsaxxhmz7bew34l7t3ny-65009198887.us-east1.run.app')) {
-    rawUrl = rawUrl.replace('https://ais-pre-pmfsaxxhmz7bew34l7t3ny-65009198887.us-east1.run.app', SHORT_APP_URL);
+  if (rawUrl.includes('run.app') || rawUrl.includes('localhost') || rawUrl.includes('pmfsaxxhmz7bew34l7t3ny')) {
+    try {
+      const parsed = new URL(rawUrl);
+      const suffix = `${parsed.pathname !== '/' ? parsed.pathname : ''}${parsed.search}${parsed.hash}`;
+      rawUrl = `${SHORT_APP_URL}${suffix}`;
+    } catch {
+      rawUrl = SHORT_APP_URL;
+    }
   }
   const finalUrl = rawUrl;
   const itemTitle = shareData?.title || 'AnestesiaPro';

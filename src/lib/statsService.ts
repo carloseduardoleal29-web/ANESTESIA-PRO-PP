@@ -75,11 +75,11 @@ export interface UserFeedback {
   date: string;
 }
 
-// Canonical public URL for AnestesiaPro in Cloud Run
-export const CANONICAL_APP_URL = 'https://ais-pre-pmfsaxxhmz7bew34l7t3ny-65009198887.us-east1.run.app';
+// Canonical public URL for AnestesiaPro
+export const CANONICAL_APP_URL = 'https://tinyurl.com/AnestesiaProApp';
 
 // Official short public URL for AnestesiaPro (easy to share on Instagram, WhatsApp and social media)
-export const SHORT_APP_URL = 'https://tinyurl.com/Anestespro';
+export const SHORT_APP_URL = 'https://tinyurl.com/AnestesiaProApp';
 
 export function getShortAppUrl(paramStr?: string): string {
   if (!paramStr) return SHORT_APP_URL;
@@ -1120,4 +1120,14 @@ export async function resetAllAdminStats(pin = '2534'): Promise<AppStats | null>
     clearEvents: true
   }, pin);
 }
-export const statsService = {};
+export const statsService = {
+  recordDownload: (name: string) => recordGlobalDownload(name),
+  recordGlobalDownload,
+  getGlobalStats,
+  publishNewNotification,
+  trackEvent: (event: string, details?: any) => {
+    try {
+      console.log('Event tracked:', event, details);
+    } catch (e) {}
+  }
+};

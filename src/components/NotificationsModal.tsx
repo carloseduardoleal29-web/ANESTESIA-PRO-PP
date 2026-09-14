@@ -208,7 +208,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
               className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-extrabold text-[11px] px-3 py-1.5 rounded-xl flex items-center gap-1 cursor-pointer transition-all"
             >
               <Send className="w-3.5 h-3.5 text-amber-400" />
-              <span>Publicar Alerta (Clave: 2534)</span>
+              <span>Publicar Alerta (Autor)</span>
             </button>
           </div>
 

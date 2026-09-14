@@ -1,20 +1,254 @@
-// FonaCricoVisualizer.tsx
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from 'react/jsx-runtime';
-import * as LucideIcons from 'lucide-react';
+import React, { useState } from 'react';
+import { 
+  TriangleAlert, 
+  Download, 
+  FileText, 
+  Maximize2, 
+  Eye, 
+  ZoomIn, 
+  ZoomOut, 
+  RotateCcw,
+  CheckCircle2,
+  Activity,
+  ChevronRight
+} from 'lucide-react';
 
-const e = { jsx: _jsx, jsxs: _jsxs, Fragment: _Fragment };
-const ie = React;
+interface FonaCricoVisualizerProps {
+  onDownload?: () => void;
+}
 
-const Es = (LucideIcons as any).TriangleAlert || LucideIcons.HelpCircle;
-const tt = (LucideIcons as any).Download || LucideIcons.HelpCircle;
-const it = (LucideIcons as any).FileText || LucideIcons.HelpCircle;
-const Mn = (LucideIcons as any).Maximize2 || LucideIcons.HelpCircle;
-const Lt = (LucideIcons as any).Eye || LucideIcons.HelpCircle;
+export const FonaCricoVisualizer: React.FC<FonaCricoVisualizerProps> = ({ onDownload }) => {
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [activeStep, setActiveStep] = useState<number | null>(null);
 
+  const downloadImage = () => {
+    const link = document.createElement('a');
+    link.href = '/fona_infografia.svg';
+    link.download = 'Procedimiento_FONA_Acceso_Frontal_al_Cuello_Dr_Carlos_Leal.svg';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
+  const steps = [
+    {
+      num: 1,
+      title: 'POSICIONAMIENTO Y LOCALIZACIÓN',
+      badge: 'MEMBRANA CRICOTIROIDEA (OBJETIVO)',
+      badgeColor: 'bg-cyan-950/80 border-cyan-500/40 text-cyan-200',
+      borderColor: 'border-cyan-500/40 hover:border-cyan-400',
+      numColor: 'bg-cyan-600 shadow-cyan-600/40',
+      iconText: '👤',
+      desc: 'Paciente en decúbito supino con hiperextensión cervical ("laryngeal handshake"). La mano no dominante estabiliza el cartílago tiroides mientras el dedo índice localiza el espacio cricotiroideo (entre tiroides y cricoides).',
+      detail: 'Espacio de 9 a 10 mm de altura x 22 a 30 mm de ancho, libre de grandes vasos en línea media.'
+    },
+    {
+      num: 2,
+      title: 'INCISIÓN CUTÁNEA VERTICAL',
+      badge: 'INCISIÓN VERTICAL 4 CM',
+      badgeColor: 'bg-rose-950/80 border-rose-500/40 text-rose-200',
+      borderColor: 'border-rose-500/40 hover:border-rose-400',
+      numColor: 'bg-rose-600 shadow-rose-600/40',
+      iconText: '🔪',
+      desc: 'Incisión vertical de 4 cm en la piel estrictamente sobre la línea media, desde el tercio inferior del cartílago tiroides hasta el cricoides.',
+      detail: 'La dirección vertical evita lesionar las venas yugulares anteriores y permite ampliar el abordaje en cuellos gruesos u obesos.'
+    },
+    {
+      num: 3,
+      title: 'INCISIÓN TRANSVERSAL C-T',
+      badge: 'INCISIÓN TRANSVERSAL DIRECTA',
+      badgeColor: 'bg-amber-950/80 border-amber-500/40 text-amber-200',
+      borderColor: 'border-amber-500/40 hover:border-amber-400',
+      numColor: 'bg-amber-600 shadow-amber-600/40',
+      iconText: '📍',
+      desc: 'Con la hoja de bisturí horizontal (#10 o #20), punción directa a través de la membrana cricotiroidea hasta percibir la pérdida brusca de resistencia ("pop") y salida de aire.',
+      detail: 'Mantener la hoja apoyada contra el borde superior del cartílago cricoides para no seccionar la arteria cricotiroidea transversa.'
+    },
+    {
+      num: 4,
+      title: 'DILATACIÓN E INSERCIÓN BOUGIE',
+      badge: 'GUÍA BOUGIE 14 Fr CAUDAL',
+      badgeColor: 'bg-indigo-950/80 border-indigo-500/40 text-indigo-200',
+      borderColor: 'border-indigo-500/40 hover:border-indigo-400',
+      numColor: 'bg-indigo-600 shadow-indigo-600/40',
+      iconText: '📐',
+      desc: 'Rotar el bisturí 90° hacia caudal para abrir la luz. Deslizar la guía bougie de 14 Fr con punta acodada hacia la tráquea distal hasta percibir los clics de los anillos traqueales o el tope de carina.',
+      detail: 'El tope o "carinal hold-up" a los 10-15 cm confirma de forma inequívoca la posición intratraqueal antes de introducir el tubo.'
+    },
+    {
+      num: 5,
+      title: 'INSERCIÓN DE TUBO & CAPNOGRAFÍA',
+      badge: 'TUBO 5.0 - 6.0 mm CON BALÓN',
+      badgeColor: 'bg-emerald-950/80 border-emerald-500/40 text-emerald-200',
+      borderColor: 'border-emerald-500/40 hover:border-emerald-400',
+      numColor: 'bg-emerald-600 shadow-emerald-600/40',
+      iconText: '✅',
+      desc: 'Avanzar un tubo endotraqueal o de traqueostomía lubricado de 5.0 a 6.0 mm sobre el bougie. Retirar la guía, inflar el balón de neumotaponamiento y confirmar ventilación inmediata.',
+      detail: 'Estándar de Oro: Monitorización de capnografía con curva de ETCO₂ sostenida y auscultación pulmonar bilateral simétrica.'
+    }
+  ];
 
-const N4=({onDownload:t})=>{const[i,n]=ie.useState(!1),[o,d]=ie.useState(1);return e.jsxs("div",{className:`bg-slate-950 text-white rounded-3xl overflow-hidden border border-amber-500/40 shadow-2xl space-y-0 ${i?"fixed inset-0 z-50 rounded-none overflow-y-auto p-4 md:p-8 bg-slate-950/98":""}`,children:[e.jsxs("div",{className:"bg-gradient-to-r from-amber-950 via-slate-900 to-slate-950 p-4 sm:p-5 border-b border-amber-500/30 flex flex-wrap items-center justify-between gap-3",children:[e.jsxs("div",{className:"space-y-1 max-w-2xl",children:[e.jsxs("div",{className:"flex items-center gap-2",children:[e.jsxs("span",{className:"bg-amber-500 text-slate-950 font-black text-[10px] px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1",children:[e.jsx(Es,{className:"w-3.5 h-3.5 fill-current"})," INFOGRAFÍA TÉCNICA ORIGINAL"]}),e.jsx("span",{className:"text-cyan-400 font-bold text-xs",children:"Vía Aérea de Emergencia"})]}),e.jsx("h3",{className:"text-base sm:text-lg font-black text-white tracking-tight leading-snug",children:"PROCEDIMIENTO FONA: ACCESO FRONTAL AL CUELLO - CRICOTIROTOMÍA DE EMERGENCIA"})]}),e.jsxs("div",{className:"flex flex-wrap items-center gap-2",children:[e.jsxs("button",{onClick:()=>cp(),className:"flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs px-3 py-2 rounded-xl transition-all shadow-md cursor-pointer",title:"Descargar archivo de Imagen Original (.JPG)",children:[e.jsx(tt,{className:"w-4 h-4"}),e.jsx("span",{children:"Descargar Imagen Original (.JPG)"})]}),e.jsxs("button",{onClick:()=>F1(),className:"flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs px-3 py-2 rounded-xl transition-all shadow-md shadow-amber-500/20 cursor-pointer",title:"Descargar en formato Documento PDF",children:[e.jsx(it,{className:"w-4 h-4"}),e.jsx("span",{children:"Descargar PDF"})]}),e.jsx("button",{onClick:()=>n(!i),className:"p-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl transition-colors cursor-pointer",title:i?"Cerrar pantalla completa":"Pantalla completa",children:e.jsx(Mn,{className:"w-4 h-4"})})]})]}),e.jsxs("div",{className:"p-3 sm:p-6 bg-slate-900 border-b border-slate-800 space-y-3",children:[e.jsxs("div",{className:"flex flex-wrap items-center justify-between gap-2 text-xs text-slate-300",children:[e.jsxs("span",{className:"font-bold flex items-center gap-1.5 text-amber-300",children:[e.jsx(Lt,{className:"w-4 h-4 text-amber-400"})," Imagen Original de la Infografía Técnica:"]}),e.jsxs("div",{className:"flex items-center gap-2 text-[11px]",children:[e.jsx("button",{onClick:()=>d(c=>Math.max(.8,c-.2)),className:"bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-1 rounded-lg font-bold cursor-pointer",children:"- Zoom"}),e.jsxs("span",{className:"font-mono text-cyan-300 font-bold",children:[Math.round(o*100),"%"]}),e.jsx("button",{onClick:()=>d(c=>Math.min(2,c+.2)),className:"bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-1 rounded-lg font-bold cursor-pointer",children:"+ Zoom"}),e.jsx("button",{onClick:()=>d(1),className:"bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white px-2 py-1 rounded-lg cursor-pointer",children:"Restablecer"})]})]}),e.jsx("div",{className:"overflow-auto bg-slate-950 rounded-2xl border border-amber-500/30 p-2 flex justify-center items-center min-h-[300px] max-h-[75vh] md:max-h-[85vh]",children:e.jsx("img",{src:"/fona_infografia.jpg",alt:"Procedimiento FONA - Cricotirotomía de Emergencia",style:{transform:`scale(${o})`,transformOrigin:"top center"},className:"rounded-xl max-w-full h-auto object-contain max-h-[70vh] md:max-h-[80vh] shadow-2xl transition-transform duration-200",onError:c=>{c.target.style.display="none"}})}),e.jsx("p",{className:"text-[11px] text-center text-slate-400 italic",children:"💡 Puedes pulsar en la imagen o ajustar el Zoom para examinar cada detalle y texto del procedimiento."})]}),e.jsxs("div",{className:"p-4 sm:p-6 bg-slate-900/80 space-y-6",children:[e.jsxs("div",{className:"grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4",children:[e.jsx("div",{className:"bg-slate-950 rounded-2xl p-4 border border-cyan-500/30 flex flex-col justify-between space-y-3 relative group hover:border-cyan-400 transition-all shadow-lg",children:e.jsxs("div",{className:"space-y-2",children:[e.jsxs("div",{className:"flex items-center gap-2",children:[e.jsx("span",{className:"w-7 h-7 bg-cyan-600 text-white rounded-full flex items-center justify-center font-black text-xs shadow-md shadow-cyan-600/40",children:"1"}),e.jsx("h4",{className:"text-xs font-black text-cyan-300 uppercase tracking-tight",children:"POSICIONAMIENTO Y LOCALIZACIÓN"})]}),e.jsxs("div",{className:"bg-slate-900/90 rounded-xl p-3 border border-slate-800 text-center space-y-2 py-5 relative overflow-hidden",children:[e.jsx("div",{className:"w-12 h-12 bg-cyan-500/10 text-cyan-400 rounded-full flex items-center justify-center mx-auto border border-cyan-500/30",children:e.jsx("span",{className:"text-xl",children:"👤"})}),e.jsx("div",{className:"bg-cyan-950/80 border border-cyan-500/40 rounded px-2 py-1 text-[10px] font-extrabold text-cyan-200",children:"MEMBRANA CRICOTIROIDEA (Objetivo)"})]}),e.jsx("p",{className:"text-[11px] text-slate-300 leading-relaxed font-medium",children:"1. Paciente en supino, cuello extendido. Identificar la membrana cricotiroidea por palpación."})]})}),e.jsx("div",{className:"bg-slate-950 rounded-2xl p-4 border border-cyan-500/30 flex flex-col justify-between space-y-3 relative group hover:border-cyan-400 transition-all shadow-lg",children:e.jsxs("div",{className:"space-y-2",children:[e.jsxs("div",{className:"flex items-center gap-2",children:[e.jsx("span",{className:"w-7 h-7 bg-cyan-600 text-white rounded-full flex items-center justify-center font-black text-xs shadow-md shadow-cyan-600/40",children:"2"}),e.jsx("h4",{className:"text-xs font-black text-cyan-300 uppercase tracking-tight",children:"INCISIÓN CUTÁNEA"})]}),e.jsxs("div",{className:"bg-slate-900/90 rounded-xl p-3 border border-slate-800 text-center space-y-2 py-5",children:[e.jsx("div",{className:"w-12 h-12 bg-rose-500/10 text-rose-400 rounded-full flex items-center justify-center mx-auto border border-rose-500/30",children:e.jsx("span",{className:"text-xl",children:"🔪"})}),e.jsx("div",{className:"bg-rose-950/80 border border-rose-500/40 rounded px-2 py-1 text-[10px] font-black text-rose-200",children:"INCISIÓN VERTICAL 4 CM"})]}),e.jsx("p",{className:"text-[11px] text-slate-300 leading-relaxed font-medium",children:"2. Incisión vertical en la piel sobre la línea media, centrada en la membrana cricotiroidea."})]})}),e.jsx("div",{className:"bg-slate-950 rounded-2xl p-4 border border-cyan-500/30 flex flex-col justify-between space-y-3 relative group hover:border-cyan-400 transition-all shadow-lg",children:e.jsxs("div",{className:"space-y-2",children:[e.jsxs("div",{className:"flex items-center gap-2",children:[e.jsx("span",{className:"w-7 h-7 bg-cyan-600 text-white rounded-full flex items-center justify-center font-black text-xs shadow-md shadow-cyan-600/40",children:"3"}),e.jsx("h4",{className:"text-xs font-black text-cyan-300 uppercase tracking-tight",children:"IDENTIFICACIÓN Y PUNCIÓN"})]}),e.jsxs("div",{className:"bg-slate-900/90 rounded-xl p-3 border border-slate-800 text-center space-y-2 py-5",children:[e.jsx("div",{className:"w-12 h-12 bg-amber-500/10 text-amber-400 rounded-full flex items-center justify-center mx-auto border border-amber-500/30",children:e.jsx("span",{className:"text-xl",children:"📍"})}),e.jsx("div",{className:"bg-amber-950/80 border border-amber-500/40 rounded px-2 py-1 text-[10px] font-extrabold text-amber-200",children:"INCISIÓN TRANSVERSAL DIRECTA"})]}),e.jsx("p",{className:"text-[11px] text-slate-300 leading-relaxed font-medium",children:"3. Profundizar disección roma. Identificar cartílagos. Incisión transversal directa a través de la membrana."})]})}),e.jsx("div",{className:"bg-slate-950 rounded-2xl p-4 border border-cyan-500/30 flex flex-col justify-between space-y-3 relative group hover:border-cyan-400 transition-all shadow-lg",children:e.jsxs("div",{className:"space-y-2",children:[e.jsxs("div",{className:"flex items-center gap-2",children:[e.jsx("span",{className:"w-7 h-7 bg-cyan-600 text-white rounded-full flex items-center justify-center font-black text-xs shadow-md shadow-cyan-600/40",children:"4"}),e.jsx("h4",{className:"text-xs font-black text-cyan-300 uppercase tracking-tight",children:"DILATACIÓN DEL TRACTO"})]}),e.jsxs("div",{className:"bg-slate-900/90 rounded-xl p-3 border border-slate-800 text-center space-y-2 py-5",children:[e.jsx("div",{className:"w-12 h-12 bg-indigo-500/10 text-indigo-400 rounded-full flex items-center justify-center mx-auto border border-indigo-500/30",children:e.jsx("span",{className:"text-xl",children:"✂️"})}),e.jsx("div",{className:"bg-indigo-950/80 border border-indigo-500/40 rounded px-2 py-1 text-[10px] font-extrabold text-indigo-200",children:"ROTAR BISTURÍ / PINZA ROMA"})]}),e.jsx("p",{className:"text-[11px] text-slate-300 leading-relaxed font-medium",children:"4. Rotar bisturí o insertar pinza roma para dilatar el tracto. Mantener permeabilidad."})]})}),e.jsx("div",{className:"bg-slate-950 rounded-2xl p-4 border border-emerald-500/40 flex flex-col justify-between space-y-3 relative group hover:border-emerald-400 transition-all shadow-lg",children:e.jsxs("div",{className:"space-y-2",children:[e.jsxs("div",{className:"flex items-center gap-2",children:[e.jsx("span",{className:"w-7 h-7 bg-emerald-600 text-white rounded-full flex items-center justify-center font-black text-xs shadow-md shadow-emerald-600/40",children:"5"}),e.jsx("h4",{className:"text-xs font-black text-emerald-300 uppercase tracking-tight",children:"INSERCIÓN Y CONFIRMACIÓN"})]}),e.jsxs("div",{className:"bg-slate-900/90 rounded-xl p-3 border border-slate-800 text-center space-y-2 py-5",children:[e.jsxs("div",{className:"flex items-center justify-center gap-1.5 text-emerald-400 font-mono text-xs bg-slate-950 p-1 rounded border border-emerald-500/30",children:[e.jsx("span",{children:"CO₂"}),e.jsx("span",{className:"text-[10px] text-emerald-300 font-bold",children:"/\\/\\/\\"})]}),e.jsx("div",{className:"bg-emerald-950/80 border border-emerald-500/40 rounded px-2 py-1 text-[10px] font-black text-emerald-200",children:"CAPNOGRAFÍA (ESTÁNDAR ORO)"})]}),e.jsx("p",{className:"text-[11px] text-slate-300 leading-relaxed font-medium",children:"5. Insertar tubo de calibre adecuado (ej. 6.0mm). Inflar balón. Confirmar con capnografía y auscultación."})]})})]}),e.jsx("div",{className:"bg-gradient-to-r from-red-950 via-rose-950 to-slate-950 border border-rose-500/50 rounded-2xl p-4 text-xs text-rose-200 font-bold flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg",children:e.jsxs("div",{className:"flex items-center gap-2.5",children:[e.jsx(Es,{className:"w-6 h-6 text-rose-400 shrink-0"}),e.jsxs("p",{className:"leading-relaxed",children:[e.jsx("strong",{children:"NOTA IMPORTANTE:"})," Este procedimiento es una medida de último recurso en situaciones de crisis de ",e.jsx("strong",{children:'"No puedo intubar, No puedo oxigenar" (NINO / CICO)'}),". Realizar bajo protocolos hospitalarios y por personal debidamente entrenado."]})]})})]})]})};
+  return (
+    <div className={`bg-slate-950 text-white rounded-3xl overflow-hidden border border-amber-500/40 shadow-2xl space-y-0 ${
+      isFullscreen ? 'fixed inset-0 z-50 rounded-none overflow-y-auto p-4 md:p-8 bg-slate-950/98' : ''
+    }`}>
+      {/* Header */}
+      <div className="bg-gradient-to-r from-amber-950 via-slate-900 to-slate-950 p-4 sm:p-5 border-b border-amber-500/30 flex flex-wrap items-center justify-between gap-3">
+        <div className="space-y-1 max-w-2xl">
+          <div className="flex items-center gap-2">
+            <span className="bg-amber-500 text-slate-950 font-black text-[10px] px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1">
+              <TriangleAlert className="w-3.5 h-3.5 fill-current" />
+              INFOGRAFÍA TÉCNICA ORIGINAL
+            </span>
+            <span className="text-cyan-400 font-bold text-xs">Vía Aérea de Emergencia</span>
+          </div>
+          <h3 className="text-base sm:text-lg font-black text-white tracking-tight leading-snug">
+            PROCEDIMIENTO FONA: ACCESO FRONTAL AL CUELLO - CRICOTIROTOMÍA DE EMERGENCIA
+          </h3>
+        </div>
 
-export const FonaCricoVisualizer = N4;
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={downloadImage}
+            className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs px-3.5 py-2 rounded-xl transition-all shadow-md cursor-pointer hover:shadow-emerald-500/20"
+            title="Descargar archivo vectorial SVG de alta definición"
+          >
+            <Download className="w-4 h-4" />
+            <span>Descargar Infografía (SVG HD)</span>
+          </button>
+
+          <button
+            onClick={() => setIsFullscreen(!isFullscreen)}
+            className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl transition-colors cursor-pointer"
+            title={isFullscreen ? 'Cerrar pantalla completa' : 'Pantalla completa'}
+          >
+            <Maximize2 className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Main Infographic Display */}
+      <div className="p-3 sm:p-6 bg-slate-900 border-b border-slate-800 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-300">
+          <span className="font-bold flex items-center gap-1.5 text-amber-300">
+            <Eye className="w-4 h-4 text-amber-400" />
+            Infografía Técnica Oficial (Algoritmo Scalpel-Bougie-Tube):
+          </span>
+          <div className="flex items-center gap-2 text-[11px]">
+            <button
+              onClick={() => setZoomLevel(prev => Math.max(0.7, prev - 0.15))}
+              className="flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1 rounded-lg font-bold cursor-pointer"
+            >
+              <ZoomOut className="w-3.5 h-3.5" />
+              <span>- Zoom</span>
+            </button>
+            <span className="font-mono text-cyan-300 font-bold px-1.5 min-w-[45px] text-center">
+              {Math.round(zoomLevel * 100)}%
+            </span>
+            <button
+              onClick={() => setZoomLevel(prev => Math.min(2.5, prev + 0.15))}
+              className="flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1 rounded-lg font-bold cursor-pointer"
+            >
+              <ZoomIn className="w-3.5 h-3.5" />
+              <span>+ Zoom</span>
+            </button>
+            <button
+              onClick={() => setZoomLevel(1)}
+              className="flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white px-2 py-1 rounded-lg cursor-pointer"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>Restablecer</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="overflow-auto bg-slate-950 rounded-2xl border border-amber-500/30 p-2 flex justify-center items-center min-h-[350px] max-h-[75vh] md:max-h-[85vh]">
+          <img
+            src="/fona_infografia.svg"
+            alt="Procedimiento FONA - Cricotirotomía de Emergencia"
+            style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'top center' }}
+            className="rounded-xl max-w-full h-auto object-contain max-h-[70vh] md:max-h-[80vh] shadow-2xl transition-transform duration-200"
+          />
+        </div>
+        <p className="text-[11px] text-center text-slate-400 italic">
+          💡 Puedes pulsar los controles de Zoom para examinar cada detalle anatómico, puntos de incisión y flujo del procedimiento.
+        </p>
+      </div>
+
+      {/* 5 Sequence Steps Cards */}
+      <div className="p-4 sm:p-6 bg-slate-900/80 space-y-6">
+        <div className="flex items-center justify-between">
+          <h4 className="text-xs sm:text-sm font-black text-cyan-300 uppercase tracking-wider flex items-center gap-2">
+            <Activity className="w-4 h-4 text-cyan-400" />
+            DESGLOSE CLÍNICO PASO A PASO DEL ALGORITMO
+          </h4>
+          <span className="text-[11px] text-slate-400 font-semibold">Técnica Scalpel-Bougie-Tube</span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          {steps.map((step) => (
+            <div
+              key={step.num}
+              onClick={() => setActiveStep(activeStep === step.num ? null : step.num)}
+              className={`bg-slate-950 rounded-2xl p-4 border flex flex-col justify-between space-y-3 relative group transition-all shadow-lg cursor-pointer ${
+                step.borderColor
+              } ${activeStep === step.num ? 'ring-2 ring-cyan-400 bg-slate-900' : ''}`}
+            >
+              <div className="space-y-2.5">
+                <div className="flex items-center gap-2">
+                  <span className={`w-7 h-7 text-white rounded-full flex items-center justify-center font-black text-xs shadow-md ${step.numColor}`}>
+                    {step.num}
+                  </span>
+                  <h5 className="text-[11px] font-black text-cyan-300 uppercase tracking-tight leading-tight">
+                    {step.title}
+                  </h5>
+                </div>
+
+                <div className="bg-slate-900/90 rounded-xl p-3 border border-slate-800 text-center space-y-2 py-4 relative overflow-hidden">
+                  <div className="w-11 h-11 bg-slate-800/80 rounded-full flex items-center justify-center mx-auto border border-slate-700">
+                    <span className="text-xl">{step.iconText}</span>
+                  </div>
+                  <div className={`rounded px-2 py-1 text-[9.5px] font-extrabold border ${step.badgeColor}`}>
+                    {step.badge}
+                  </div>
+                </div>
+
+                <p className="text-[11.5px] text-slate-300 leading-relaxed font-normal">
+                  {step.desc}
+                </p>
+
+                {activeStep === step.num && (
+                  <div className="p-2.5 bg-cyan-950/40 rounded-xl border border-cyan-500/30 text-[11px] text-cyan-200 mt-2">
+                    <span className="font-bold block text-cyan-300 mb-1">Detalle crítico:</span>
+                    {step.detail}
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-[10px] text-slate-400 font-semibold">
+                <span>Paso {step.num} de 5</span>
+                <span className="text-cyan-400 group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5">
+                  {activeStep === step.num ? 'Ocultar' : 'Ver detalle'} <ChevronRight className="w-3 h-3" />
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Warning Banner */}
+        <div className="bg-gradient-to-r from-red-950 via-rose-950 to-slate-950 border border-rose-500/50 rounded-2xl p-4 text-xs text-rose-200 font-medium flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg">
+          <div className="flex items-center gap-3">
+            <TriangleAlert className="w-6 h-6 text-rose-400 shrink-0" />
+            <p className="leading-relaxed">
+              <strong className="text-white font-bold">NOTA DE SEGURIDAD CRÍTICA:</strong> El procedimiento FONA es una medida emergente de último recurso en situaciones de crisis de{' '}
+              <strong className="text-rose-300">"No puedo intubar, No puedo oxigenar" (NINO / CICO)</strong>. Debe realizarse de forma inmediata tras el fracaso de la ventilación con mascarilla facial, dispositivo supraglótico e intubación traqueal.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default FonaCricoVisualizer;

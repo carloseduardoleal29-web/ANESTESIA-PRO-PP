@@ -3,7 +3,7 @@ export type TabType = 'inicio' | 'preanestesia' | 'viaAerea' | 'escalas' | 'calc
 export interface EducationalResource {
   id: string;
   title: string;
-  category: 'reel' | 'pdf' | 'infografia' | 'pauta' | 'video' | 'presentacion' | 'foto' | 'archivo' | 'articulo' | 'link';
+  category: 'reel' | 'pdf' | 'infografia' | 'pauta' | 'video' | 'presentacion' | 'foto' | 'archivo' | 'articulo' | 'link' | 'carrusel';
   description: string;
   date: string;
   author?: string;
@@ -19,6 +19,11 @@ export interface EducationalResource {
   instagramUrl?: string;
   downloadable?: boolean;
   isDraft?: boolean;
+  isCustom?: boolean;
+  isCommunity?: boolean;
+  images?: string[];
+  isCarousel?: boolean;
+  imageCaptions?: string[];
 }
 
 export interface PreanesthesiaData {

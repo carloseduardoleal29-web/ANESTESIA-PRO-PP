@@ -66,8 +66,8 @@ export const PreeclampsiaComplicationsAtlas: React.FC = () => {
       mortality: '1 a 3% en países con protocolos activos; hasta 15% en zonas remotas',
       hallmark: 'Convulsiones tónico-clónicas agudas que no pueden ser atribuidas a otra causa neurológica en una gestante con preeclampsia.',
       realImage: {
-        imageSrc: '/images/mri_pres_brain_flair.jpg',
-        secondarySrc: '/images/mri_pres_coronal.jpg',
+        imageSrc: '/images/mri_pres_brain_flair.svg',
+        secondarySrc: '/images/mri_pres_coronal.svg',
         imageTitle: 'Resonancia Magnética Cerebral Real (Secuencia Axial FLAIR)',
         modality: 'RM Cerebral T2/FLAIR en Paciente Eclámptica',
         imageDescription: 'Extenso edema vasogénico cortico-subcortical bilateral y simétrico de predominio en regiones parieto-occipitales, patognomónico del Síndrome de Encefalopatía Posterior Reversible (PRES) asociado a eclampsia.',
@@ -120,8 +120,8 @@ export const PreeclampsiaComplicationsAtlas: React.FC = () => {
       mortality: '1 al 5% materna; hasta 30% morbimortalidad fetal/neonatal',
       hallmark: 'Tríada de anemia hemolítica microangiopática con esquistocitos, lesión celular periportal hepática con elevación enzimática y consumo periférico de plaquetas.',
       realImage: {
-        imageSrc: '/images/blood_smear_schistocytes.jpg',
-        secondarySrc: '/images/doppler_ultrasound_vessels.jpg',
+        imageSrc: '/images/blood_smear_schistocytes.svg',
+        secondarySrc: '/images/doppler_ultrasound_vessels.svg',
         imageTitle: 'Frotis Sanguíneo Real con Esquistocitos (Síndrome HELLP)',
         modality: 'Frotis de Sangre Periférica (Tinción Wright 100x)',
         imageDescription: 'Presencia patognomónica de múltiples esquistocitos (hematíes fragmentados en "casco de astronauta" o "triángulos") mutilados mecánicamente por el impacto contra mallas de fibrina en microvasos endoteliales estenosados.',
@@ -174,9 +174,10 @@ export const PreeclampsiaComplicationsAtlas: React.FC = () => {
       mortality: '18 a 50% materna; hasta 60% fetal',
       hallmark: 'Hemorragia intrahepática confluente que distiende la cápsula de Glisson hasta su rotura al peritoneo con colapso cardiovascular súbito.',
       realImage: {
-        imageSrc: '/images/doppler_ultrasound_vessels.jpg',
-        imageTitle: 'Ecografía Doppler Hepática & Eco-FAST en Quirófano',
-        modality: 'Ecografía POCUS Urgencias / Doppler de Parénquima Hepático',
+        imageSrc: '/images/atlas_hematoma_hepatico.svg',
+        secondarySrc: '/images/doppler_ultrasound_vessels.svg',
+        imageTitle: 'Hematoma Subcapsular Hepático de Glisson & Eco-FAST en Quirófano',
+        modality: 'Diagrama Quirúrgico Anatómico + Ecografía Doppler Hepática / Eco-FAST',
         imageDescription: 'Colección subcapsular heterogénea a alta tensión en lóbulo hepático derecho con disrupción de la cápsula de Glisson y abundante hemoperitoneo hipoecoico en receso hepatorrenal de Morrison.',
         radiologicalFindings: [
           'Colección heterogénea subcapsular hepática > 5-10 cm de espesor.',
@@ -226,9 +227,10 @@ export const PreeclampsiaComplicationsAtlas: React.FC = () => {
       mortality: 'Causa directa de hasta el 30% de las muertes maternas evitables en preeclampsia',
       hallmark: 'Acumulación patológica de líquido en los espacios intersticiales y alvéolos pulmonares por fallo del drenaje linfático ante hipertensión capilar y colapso oncótico.',
       realImage: {
-        imageSrc: '/images/xray_pulmonary_edema.jpg',
-        imageTitle: 'Radiografía de Tórax Portátil Real (Edema Agudo de Pulmón)',
-        modality: 'Radiografía AP de Tórax Portátil en UCI Obstétrica',
+        imageSrc: '/images/xray_pulmonary_edema.svg',
+        secondarySrc: '/images/atlas_pocus_pulmonar_eap.svg',
+        imageTitle: 'Radiografía de Tórax & POCUS Pulmonar (Edema Agudo de Pulmón)',
+        modality: 'Radiografía AP de Tórax Portátil + Ultrasonografía POCUS (Líneas B)',
         imageDescription: 'Opacidades alveolares algodonosas simétricas en "alas de mariposa" de distribución perihiliar bilateral, redistribución vascular hacia los vértices, cardiomegalia y líneas B de Kerley por engrosamiento de los septos interlobulillares.',
         radiologicalFindings: [
           'Patrón alveolar difuso perihiliar bilateral en alas de mariposa.',
@@ -281,8 +283,8 @@ export const PreeclampsiaComplicationsAtlas: React.FC = () => {
       mortality: 'El ACV hemorrágico es la causa de muerte de más del 45% de fallecimientos maternos',
       hallmark: 'Síndrome clínico-radiológico de edema vasogénico cerebral parieto-occipital con cefalea, ceguera y convulsiones que puede culminar en hematoma intraparenquimatoso.',
       realImage: {
-        imageSrc: '/images/mri_pres_brain_flair.jpg',
-        secondarySrc: '/images/mri_pres_coronal.jpg',
+        imageSrc: '/images/mri_pres_brain_flair.svg',
+        secondarySrc: '/images/mri_pres_coronal.svg',
         imageTitle: 'Resonancia Magnética (Síndrome PRES & Ruptura de BHE)',
         modality: 'RM Axial y Coronal FLAIR en Preeclampsia Severa',
         imageDescription: 'Colapso de la autorregulación cerebral por crisis hipertensiva (PAS > 160 mmHg): hiperintensidad subcortical occipito-parietal bilateral característica de edema vasogénico cerebral reversible con alto riesgo de sangrado si no se titula la presión.',
@@ -333,9 +335,10 @@ export const PreeclampsiaComplicationsAtlas: React.FC = () => {
       mortality: 'Mortalidad perinatal de 20 a 35%; riesgo materno de hemorragia masiva y shock',
       hallmark: 'Separación total o parcial de la placenta de su inserción decidual antes del expulsivo fetal por hemorragia en la interfase deciduo-placentaria.',
       realImage: {
-        imageSrc: '/images/placenta_specimen.jpg',
+        imageSrc: '/images/placenta_specimen.svg',
+        secondarySrc: '/images/placenta_specimen.jpg',
         imageTitle: 'Espécimen Quirúrgico Real: Placenta con DPPNI y Hematoma',
-        modality: 'Fotografía Anatomopatológica de Pieza Quirúrgica',
+        modality: 'Fotografía Anatomopatológica de Pieza Quirúrgica + Macroscopía',
         imageDescription: 'Cara materna de la placenta que evidencia una marcada depresión excavada ocupada por un extenso hematoma retroplacentario organizado de sangre oscura, con cotiledones circundantes pálidos e infartados.',
         radiologicalFindings: [
           'Hematoma retroplacentario organizado con compresión del parénquima vellositario.',
@@ -386,8 +389,8 @@ export const PreeclampsiaComplicationsAtlas: React.FC = () => {
       mortality: 'Aumenta significativamente el riesgo de diálisis materna y morbilidad crónica',
       hallmark: 'Deterioro rápido de la Tasa de Filtración Glomerular con oliguria persistente (< 30 mL/h por más de 2 horas consecutivas) y elevación de azoados.',
       realImage: {
-        imageSrc: '/images/kidney_glomerulus_podocytes.png',
-        secondarySrc: '/images/blood_smear_schistocytes.jpg',
+        imageSrc: '/images/kidney_glomerulus_podocytes.svg',
+        secondarySrc: '/images/blood_smear_schistocytes.svg',
         imageTitle: 'Microscopía Renal Real: Endoteliosis Glomerular y Podocitopatía',
         modality: 'Microscopía Electrónica & Óptica de Alta Resolución',
         imageDescription: 'Marcada tumefacción reactiva de las células endoteliales ("endoteliosis capilar glomerular") que colapsa la luz vascular de los penachos capilares, junto a borramiento masivo de pedicelos podocitarios, explicando la proteinuria de rango nefrótico y la insuficiencia renal anúrica.',

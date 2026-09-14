@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" width="1200" height="900" style="background:#090d16; font-family:system-ui, -apple-system, sans-serif;">
+  <defs>
+    <linearGradient id="cardGrad4" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#1e293b" />
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="900" fill="#090d16"/>
+  <circle cx="200" cy="250" r="300" fill="#ef4444" opacity="0.06" filter="blur(80px)"/>
+  <circle cx="1000" cy="700" r="300" fill="#10b981" opacity="0.07" filter="blur(80px)"/>
+
+  <!-- Top Banner -->
+  <rect x="50" y="40" width="1100" height="100" rx="20" fill="url(#cardGrad4)" stroke="#1e3a5f" stroke-width="1.5"/>
+  <rect x="70" y="58" width="6" height="64" rx="3" fill="#f87171"/>
+  <text x="95" y="85" fill="#f87171" font-size="14" font-weight="900" letter-spacing="2">LÁMINA 4 • SEGURIDAD CARDIOVASCULAR Y HEMODINAMIA</text>
+  <text x="95" y="118" fill="#ffffff" font-size="28" font-weight="900">ESTABILIDAD HEMODINÁMICA: Menor Hipotensión y Colapso</text>
+  <text x="1120" y="85" fill="#94a3b8" font-size="13" font-weight="700" text-anchor="end">Dr. Carlos Leal</text>
+  <text x="1120" y="105" fill="#38bdf8" font-size="12" font-weight="800" text-anchor="end">AnestesiaPro • Hemodinamia</text>
+
+  <!-- Left: Comparison Bars -->
+  <g transform="translate(50, 165)">
+    <rect width="535" height="680" rx="20" fill="url(#cardGrad4)" stroke="#334155" stroke-width="1.5"/>
+    <text x="35" y="45" fill="#ffffff" font-size="18" font-weight="800">Comparación de Caída Tensional en Inducción</text>
+
+    <!-- Bar Chart -->
+    <rect x="35" y="70" width="465" height="260" rx="14" fill="#030712" stroke="#1e293b"/>
+
+    <text x="60" y="105" fill="#94a3b8" font-size="13" font-weight="700">Incidencia de Hipotensión Arterial (TAM &lt; 65 mmHg):</text>
+
+    <!-- Propofol Bar -->
+    <text x="60" y="145" fill="#f87171" font-size="13" font-weight="800">Propofol (2.0 mg/kg): 38.5%</text>
+    <rect x="60" y="155" width="400" height="28" rx="8" fill="#1e293b"/>
+    <rect x="60" y="155" width="280" height="28" rx="8" fill="#ef4444"/>
+    <text x="350" y="174" fill="#ffffff" font-size="12" font-weight="900">~38.5%</text>
+
+    <!-- Ciprofol Bar -->
+    <text x="60" y="225" fill="#34d399" font-size="13" font-weight="800">Ciprofol (0.4 mg/kg): 12.8% (-66% de reducción)</text>
+    <rect x="60" y="235" width="400" height="28" rx="8" fill="#1e293b"/>
+    <rect x="60" y="235" width="95" height="28" rx="8" fill="#10b981"/>
+    <text x="165" y="254" fill="#ffffff" font-size="12" font-weight="900">~12.8%</text>
+
+    <text x="60" y="300" fill="#94a3b8" font-size="11">Diferencia estadísticamente significativa (p &lt; 0.001) en ensayos fase III.</text>
+
+    <!-- Bullet Points -->
+    <g transform="translate(35, 350)">
+      <rect width="465" height="85" rx="12" fill="#0f172a" stroke="#1e293b"/>
+      <text x="18" y="30" fill="#38bdf8" font-size="14" font-weight="800">Preservación del Tono Vascular y RVS</text>
+      <text x="18" y="55" fill="#94a3b8" font-size="12">Menor inhibición simpática central directa sobre el centro vasomotor</text>
+      <text x="18" y="72" fill="#94a3b8" font-size="12">y menor relajación del músculo liso vascular arterial periférico.</text>
+    </g>
+
+    <g transform="translate(35, 450)">
+      <rect width="465" height="85" rx="12" fill="#0f172a" stroke="#1e293b"/>
+      <text x="18" y="30" fill="#34d399" font-size="14" font-weight="800">Menor Requerimiento de Vasopresores</text>
+      <text x="18" y="55" fill="#94a3b8" font-size="12">Reduce en más del 50% la necesidad de bolos de rescate con</text>
+      <text x="18" y="72" fill="#cbd5e1" font-size="12">Efedrina o Fenilefrina en la inducción.</text>
+    </g>
+
+    <g transform="translate(35, 550)">
+      <rect width="465" height="95" rx="12" fill="#0f172a" stroke="#1e293b"/>
+      <text x="18" y="30" fill="#fbbf24" font-size="14" font-weight="800">Estabilidad del Gasto Cardíaco y Frecuencia</text>
+      <text x="18" y="55" fill="#94a3b8" font-size="12">No atenúa el barorreflejo con la severidad observada en propofol,</text>
+      <text x="18" y="72" fill="#cbd5e1" font-size="12">evitando episodios de bradicardia severa asociada a opioides.</text>
+    </g>
+  </g>
+
+  <!-- Right: Cardiovascular Mechanism Details -->
+  <g transform="translate(615, 165)">
+    <rect width="535" height="680" rx="20" fill="url(#cardGrad4)" stroke="#334155" stroke-width="1.5"/>
+    <text x="35" y="45" fill="#38bdf8" font-size="18" font-weight="800">Impacto en Poblaciones Quirúrgicas Especiales</text>
+
+    <!-- Card A -->
+    <rect x="35" y="70" width="465" height="135" rx="14" fill="#0f172a" stroke="#1e293b"/>
+    <text x="55" y="102" fill="#34d399" font-size="15" font-weight="800">👴 Paciente Anciano y Fragilidad Clínica (ASA III-IV)</text>
+    <text x="55" y="128" fill="#cbd5e1" font-size="13">La compliance arterial reducida y la reserva miocárdica límite</text>
+    <text x="55" y="148" fill="#cbd5e1" font-size="13">hacen de Ciprofol un agente ideal, reduciendo el riesgo de</text>
+    <text x="55" y="168" fill="#34d399" font-size="13" font-weight="700">hipoperfusión coronaria y cerebral perioperatoria.</text>
+
+    <!-- Card B -->
+    <rect x="35" y="225" width="465" height="135" rx="14" fill="#0f172a" stroke="#1e293b"/>
+    <text x="55" y="257" fill="#38bdf8" font-size="15" font-weight="800">🫀 Cirugía Cardiovascular y Paciente Cardiópata</text>
+    <text x="55" y="283" fill="#cbd5e1" font-size="13">Mantiene la presión de perfusión coronaria (PPC = PAD - PFDVI)</text>
+    <text x="55" y="303" fill="#cbd5e1" font-size="13">sin inducir depresión inotrópica negativa marcada en el</text>
+    <text x="55" y="323" fill="#38bdf8" font-size="13" font-weight="700">ventrículo izquierdo disfuncionante.</text>
+
+    <!-- Card C -->
+    <rect x="35" y="380" width="465" height="135" rx="14" fill="#0f172a" stroke="#1e293b"/>
+    <text x="55" y="412" fill="#fbbf24" font-size="15" font-weight="800">🧠 Neuroanestesia y Presión de Perfusión Cerebral (PPC)</text>
+    <text x="55" y="438" fill="#cbd5e1" font-size="13">Conserva el acoplamiento flujo-metabolismo (CMR/CBF)</text>
+    <text x="55" y="458" fill="#cbd5e1" font-size="13">disminuyendo la PIC sin comprometer la PPC por hipotensión</text>
+    <text x="55" y="478" fill="#fbbf24" font-size="13" font-weight="700">arterial sistémica no deseada.</text>
+
+    <!-- Clinical Takeaway Box -->
+    <rect x="35" y="535" width="465" height="115" rx="14" fill="#1e1b4b" stroke="#6366f1" stroke-width="1.5"/>
+    <text x="55" y="568" fill="#a5b4fc" font-size="14" font-weight="900">🛡️ MENSAJE CLAVE PARA LA PRÁCTICA DIARIA:</text>
+    <text x="55" y="595" fill="#e0e7ff" font-size="13">Ciprofol ofrece la velocidad y confiabilidad hipnótica de propofol,</text>
+    <text x="55" y="618" fill="#e0e7ff" font-size="13">pero con un margen de estabilidad hemodinámica cercano al etomidato.</text>
+  </g>
+</svg>

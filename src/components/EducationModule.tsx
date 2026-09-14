@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import jsPDF from 'jspdf';
 import { EducationalResource } from '../types';
-import { recordGlobalDownload, getGlobalStats, publishNewNotification, AppStats, resolveAppUrl } from '../lib/statsService';
+import { recordGlobalDownload, getGlobalStats, publishNewNotification, getNotifications, AppStats, AppNotification, resolveAppUrl } from '../lib/statsService';
 import { VortexApproachVisualizer } from './education/VortexApproachVisualizer';
 import { EmotiveProtocolVisualizer } from './education/EmotiveProtocolVisualizer';
 import { PreeclampsiaProtocolVisualizer } from './education/PreeclampsiaProtocolVisualizer';
 import { downloadPreeclampsiaGuidePDF } from './education/preeclampsiaPdfGenerator';
+import { InstagramCarouselViewer } from './education/InstagramCarouselViewer';
+import { CiprofolVisualizer } from './education/CiprofolVisualizer';
+import { persistResources, loadStoredResources, mergeResources, compressImageFile } from '../lib/educationStorage';
 import { WhatsAppShareBanner } from './WhatsAppShareBanner';
+import { ResourceShareStrip } from './education/ResourceShareStrip';
 import { 
   GraduationCap, 
   Video, 
@@ -63,7 +67,15 @@ import {
   Crosshair,
   Compass,
   ShieldAlert,
-  Droplet
+  Droplet,
+  Trash2,
+  RefreshCw,
+  CloudUpload,
+  Check,
+  AlertCircle,
+  Bell,
+  ChevronUp,
+  ChevronDown
 } from 'lucide-react';
 
 export const sortResourcesNewestToOldest = (list: EducationalResource[]): EducationalResource[] => {
@@ -87,12 +99,61 @@ export const sortResourcesNewestToOldest = (list: EducationalResource[]): Educat
 
 const INITIAL_RESOURCES: EducationalResource[] = [
   {
+    id: 'res-ciprofol-hsk3486-hipnotico-gabaa-2026',
+    title: 'Ciprofol (HSK3486): Nuevo Agente Anestésico e Hipnótico GABAA — Atlas de Láminas HD, Dosis y Perlas Perioperatorias',
+    category: 'infografia',
+    date: '2026-09-12',
+    author: 'Dr. Carlos Leal • Especialista en Anestesiología y Reanimación • Vanguardia Farmacológica',
+    url: '/images/ciprofol/slide_1_mecanismo_gabaa.svg',
+    isDraft: false,
+    fileName: 'Guia_Oficial_Ciprofol_HSK3486_Dr_Carlos_Leal.pdf',
+    fileExtension: 'svg',
+    downloadable: true,
+    isCarousel: true,
+    images: [
+      '/images/ciprofol/slide_1_mecanismo_gabaa.svg',
+      '/images/ciprofol/slide_2_farmacocinetica_farmacodinamia.svg',
+      '/images/ciprofol/slide_3_dosificacion_clinica_tiva.svg',
+      '/images/ciprofol/slide_4_estabilidad_hemodinamica.svg',
+      '/images/ciprofol/slide_5_dolor_inyeccion_tolerancia.svg',
+      '/images/ciprofol/slide_6_comparativa_ciprofol_vs_propofol.svg'
+    ],
+    imageCaptions: [
+      'Lámina 1: Mecanismo de Acción Celular y Receptor GABA-A',
+      'Lámina 2: Farmacocinética de 3 Compartimentos y Aclaramiento Plasmático',
+      'Lámina 3: Dosificación Clínica de Precisión: Inducción, Mantenimiento y Sedación',
+      'Lámina 4: Estabilidad Cardiovascular y Hemodinamia Comparada',
+      'Lámina 5: Tolerancia Vascular: Erradicación del Dolor a la Inyección',
+      'Lámina 6: Cuadro Comparativo Global Ciprofol (HSK3486) vs Propofol'
+    ],
+    tags: [
+      '#Ciprofol',
+      '#HSK3486',
+      '#GABAA',
+      '#TIVA',
+      '#Sedacion',
+      '#Vademecum',
+      '#AnestesiaPro',
+      '#DrCarlosLeal'
+    ],
+    description: `CIPROFOL (HSK3486): NUEVO AGENTE ANESTÉSICO INTRAVENOSO E HIPNÓTICO SELECTIVO DEL RECEPTOR GABA-A
+[PUBLICACIÓN MÉDICA OFICIAL • DR. CARLOS LEAL • SEPTIEMBRE 2026]
+
+Álbum interactivo y compendio farmacológico completo sobre Ciprofol (HSK3486):
+• Mecanismo de acción y afinidad alostérica por receptores GABA-A (4 a 5 veces más potente que propofol).
+• Farmacocinética tricompartimental, semivida contextual corta y metabolismo hepático a glucurónidos inactivos.
+• Dosificación clínica de precisión para sedación en procedimientos diagnósticos (0.4 - 0.5 mg/kg), inducción en AG (0.4 - 0.5 mg/kg) y perfusión continua TIVA (0.8 - 2.0 mg/kg/h).
+• Mayor margen de seguridad terapéutica y estabilidad hemodinámica con menor caída de presión arterial media.
+• Excelente tolerancia en inyección periférica sin dolor venoso ni flebitis (<5% vs 60-80% con propofol).
+• Incluye 6 láminas clínicas Ultra-HD, calculadora interactiva de dosis por peso y descarga de guía oficial en PDF.`
+  },
+  {
     id: 'res-preeclampsia-eclampsia-enfoque-anestesiologico',
     title: 'Preeclampsia, Eclampsia y sus Complicaciones: Enfoque para Anestesiólogo (Guías Actualizadas ACOG / FIGO / SOAP 2026)',
     category: 'articulo',
     date: '2026-09-06',
     author: 'Dr. Carlos Leal • Especialista en Anestesiología y Reanimación • Consenso ACOG / FIGO / SOAP',
-    url: 'https://tinyurl.com/Anestespro?tab=educacion&recurso=preeclampsia',
+    url: 'https://anestesiapro.ai.studio?tab=educacion&recurso=preeclampsia',
     isDraft: false,
     fileName: 'Guia_Preeclampsia_Eclampsia_Enfoque_Anestesiologico_2026.pdf',
     fileExtension: 'pdf',
@@ -1430,12 +1491,26 @@ const triggerFileDownload = async (url: string, filename: string) => {
 
 const downloadOriginalFonaImage = () => {
   recordGlobalDownload('res-fona-cricotiroidotomia');
-  triggerFileDownload('/fona_infografia.jpg', 'Procedimiento_FONA_Acceso_Frontal_al_Cuello_Original.jpg');
+  try {
+    const customImg = localStorage.getItem('anestesiapro_custom_fona_img');
+    if (customImg) {
+      triggerFileDownload(customImg, 'Procedimiento_FONA_Acceso_Frontal_al_Cuello_Dr_Carlos_Leal.jpg');
+      return;
+    }
+  } catch {}
+  triggerFileDownload('/fona_infografia.svg', 'Procedimiento_FONA_Acceso_Frontal_al_Cuello_Original.svg');
 };
 
 const downloadOriginalAminofilinaImage = () => {
   recordGlobalDownload('res-aminofilina-teofilina-cppd');
-  triggerFileDownload('/cppd_aminofilina_infografia.jpg', 'Infografia_Aminofilina_Teofilina_CPPD_Dr_Carlos_Leal.jpg');
+  try {
+    const customImg = localStorage.getItem('anestesiapro_custom_cppd_img');
+    if (customImg) {
+      triggerFileDownload(customImg, 'Infografia_Aminofilina_Teofilina_CPPD_Dr_Carlos_Leal.jpg');
+      return;
+    }
+  } catch {}
+  triggerFileDownload('/cppd_aminofilina_infografia.svg', 'Infografia_Aminofilina_Teofilina_CPPD_Dr_Carlos_Leal.svg');
 };
 
 const downloadAminofilinaMetaanalysisPDF = () => {
@@ -2588,6 +2663,15 @@ const ElaineSlideViewer: React.FC = () => {
 const FonaInfographicVisual: React.FC<{ onDownload?: () => void }> = ({ onDownload }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [zoomLevel, setZoomLevel] = useState<number>(1);
+  const [customImg] = useState<string>(() => {
+    try {
+      return localStorage.getItem('anestesiapro_custom_fona_img') || '';
+    } catch {
+      return '';
+    }
+  });
+
+  const activeSrc = customImg || '/fona_infografia.svg';
 
   return (
     <div className={`bg-slate-950 text-white rounded-3xl overflow-hidden border border-amber-500/40 shadow-2xl space-y-0 ${isFullscreen ? 'fixed inset-0 z-50 rounded-none overflow-y-auto p-4 md:p-8 bg-slate-950/98' : ''}`}>
@@ -2599,6 +2683,11 @@ const FonaInfographicVisual: React.FC<{ onDownload?: () => void }> = ({ onDownlo
               <AlertTriangle className="w-3.5 h-3.5 fill-current" /> INFOGRAFÍA TÉCNICA ORIGINAL
             </span>
             <span className="text-cyan-400 font-bold text-xs">Vía Aérea de Emergencia</span>
+            {customImg && (
+              <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Tu archivo original activo
+              </span>
+            )}
           </div>
           <h3 className="text-base sm:text-lg font-black text-white tracking-tight leading-snug">
             PROCEDIMIENTO FONA: ACCESO FRONTAL AL CUELLO - CRICOTIROTOMÍA DE EMERGENCIA
@@ -2609,10 +2698,10 @@ const FonaInfographicVisual: React.FC<{ onDownload?: () => void }> = ({ onDownlo
           <button
             onClick={() => downloadOriginalFonaImage()}
             className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs px-3 py-2 rounded-xl transition-all shadow-md cursor-pointer"
-            title="Descargar archivo de Imagen Original (.JPG)"
+            title="Descargar archivo de Imagen"
           >
             <Download className="w-4 h-4" />
-            <span>Descargar Imagen Original (.JPG)</span>
+            <span>Descargar Imagen</span>
           </button>
           <button
             onClick={() => downloadFonaInfographicPDF()}
@@ -2635,9 +2724,12 @@ const FonaInfographicVisual: React.FC<{ onDownload?: () => void }> = ({ onDownlo
       {/* EXACT ORIGINAL INFOGRAPHIC IMAGE POSTER */}
       <div className="p-3 sm:p-6 bg-slate-900 border-b border-slate-800 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-300">
-          <span className="font-bold flex items-center gap-1.5 text-amber-300">
-            <Eye className="w-4 h-4 text-amber-400" /> Imagen Original de la Infografía Técnica:
-          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-bold flex items-center gap-1.5 text-amber-300">
+              <Eye className="w-4 h-4 text-amber-400" />
+              Infografía Quirúrgica FONA (6 Paneles HD):
+            </span>
+          </div>
           <div className="flex items-center gap-2 text-[11px]">
             <button
               onClick={() => setZoomLevel(prev => Math.max(0.8, prev - 0.2))}
@@ -2663,19 +2755,12 @@ const FonaInfographicVisual: React.FC<{ onDownload?: () => void }> = ({ onDownlo
 
         <div className="overflow-auto bg-slate-950 rounded-2xl border border-amber-500/30 p-2 flex justify-center items-center min-h-[300px] max-h-[75vh] md:max-h-[85vh]">
           <img
-            src="/fona_infografia.jpg"
+            src={activeSrc}
             alt="Procedimiento FONA - Cricotirotomía de Emergencia"
             style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'top center' }}
             className="rounded-xl max-w-full h-auto object-contain max-h-[70vh] md:max-h-[80vh] shadow-2xl transition-transform duration-200"
-            onError={(e) => {
-              // Fallback if public path isn't loaded yet
-              (e.target as HTMLElement).style.display = 'none';
-            }}
           />
         </div>
-        <p className="text-[11px] text-center text-slate-400 italic">
-          💡 Puedes pulsar en la imagen o ajustar el Zoom para examinar cada detalle y texto del procedimiento.
-        </p>
       </div>
 
       {/* Main Infographic Grid (5 Steps) */}
@@ -2838,6 +2923,15 @@ const AminofilinaTeofilinaVisual: React.FC<{ onDownload?: () => void }> = () => 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [zoomLevel, setZoomLevel] = useState<number>(1);
   const [activeTab, setActiveTab] = useState<'infografia' | 'articulos'>('infografia');
+  const [customImg] = useState<string>(() => {
+    try {
+      return localStorage.getItem('anestesiapro_custom_cppd_img') || '';
+    } catch {
+      return '';
+    }
+  });
+
+  const activeSrc = customImg || '/cppd_aminofilina_infografia.svg';
 
   return (
     <div className={`bg-slate-950 text-white rounded-3xl overflow-hidden border border-cyan-500/40 shadow-2xl space-y-0 ${isFullscreen ? 'fixed inset-0 z-50 rounded-none overflow-y-auto p-4 md:p-8 bg-slate-950/98' : ''}`}>
@@ -2849,6 +2943,11 @@ const AminofilinaTeofilinaVisual: React.FC<{ onDownload?: () => void }> = () => 
               <Sparkles className="w-3.5 h-3.5 fill-current" /> INFOGRAFÍA Y REVISIÓN CIENTÍFICA ORIGINAL
             </span>
             <span className="text-amber-300 font-bold text-xs">Dr. Carlos Leal • Educación Continua</span>
+            {customImg && (
+              <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Tu archivo original activo
+              </span>
+            )}
           </div>
           <h3 className="text-base sm:text-lg font-black text-white tracking-tight leading-snug">
             AMINOFILINA Y TEOFILINA EN MANEJO DE CEFALEA POR PUNCIÓN DURAL (CPPD)
@@ -2860,10 +2959,10 @@ const AminofilinaTeofilinaVisual: React.FC<{ onDownload?: () => void }> = () => 
           <button
             onClick={() => downloadOriginalAminofilinaImage()}
             className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs px-3 py-2 rounded-xl transition-all shadow-md cursor-pointer"
-            title="Descargar archivo de Imagen Infográfica Original (.JPG)"
+            title="Descargar archivo de Imagen Infográfica"
           >
             <Download className="w-4 h-4" />
-            <span>Infografía JPG</span>
+            <span>Descargar Imagen</span>
           </button>
           <button
             onClick={() => downloadAminofilinaIntegratedGuidePDF()}
@@ -2875,7 +2974,7 @@ const AminofilinaTeofilinaVisual: React.FC<{ onDownload?: () => void }> = () => 
           </button>
           <button
             onClick={() => downloadAminofilinaMetaanalysisPDF()}
-            className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white font-black text-xs px-3 py-2 rounded-xl transition-all shadow-md cursor-pointer"
+            className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs px-3 py-2 rounded-xl transition-all shadow-md cursor-pointer"
             title="Descargar Metaanálisis Anesth Pain Med 2023 (PDF)"
           >
             <BookMarked className="w-4 h-4" />
@@ -2927,10 +3026,13 @@ const AminofilinaTeofilinaVisual: React.FC<{ onDownload?: () => void }> = () => 
       {activeTab === 'infografia' && (
         <div className="space-y-0">
           <div className="p-4 sm:p-6 bg-slate-900 border-b border-slate-800 space-y-3">
-            <div className="flex items-center justify-between text-xs text-slate-300">
-              <span className="font-bold flex items-center gap-1.5 text-cyan-300">
-                <Eye className="w-4 h-4 text-cyan-400" /> Imagen Original de la Infografía Médica:
-              </span>
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-300">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-bold flex items-center gap-1.5 text-cyan-300">
+                  <Eye className="w-4 h-4 text-cyan-400" />
+                  Infografía Científica Oficial CPPD (HD):
+                </span>
+              </div>
               <div className="flex items-center gap-2 text-[11px]">
                 <button
                   onClick={() => setZoomLevel(prev => Math.max(0.8, prev - 0.2))}
@@ -2956,15 +3058,12 @@ const AminofilinaTeofilinaVisual: React.FC<{ onDownload?: () => void }> = () => 
 
             <div className="overflow-auto bg-slate-950 rounded-2xl border border-cyan-500/30 p-2 flex justify-center items-center min-h-[300px] max-h-[75vh] md:max-h-[85vh]">
               <img
-                src="/cppd_aminofilina_infografia.jpg"
+                src={activeSrc}
                 alt="Aminofilina y Teofilina en manejo de cefalea por punción dural"
                 style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'top center' }}
                 className="rounded-xl max-w-full h-auto object-contain max-h-[70vh] md:max-h-[80vh] shadow-2xl transition-transform duration-200"
               />
             </div>
-            <p className="text-[11px] text-center text-slate-400 italic">
-              💡 Presiona el botón verde arriba para descargar la imagen original en alta resolución (.JPG).
-            </p>
           </div>
 
           {/* Interactive 4-Panel Grid */}
@@ -5280,40 +5379,31 @@ interface EducationModuleProps {
 
 export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourceId, onClearInitialResource }) => {
   const [resources, setResources] = useState<EducationalResource[]>(() => {
-    const saved = localStorage.getItem('anestesiapro_education_resources_v2026_eras');
     let loaded: EducationalResource[] = [];
-    if (saved) {
+    const keysToCheck = [
+      'anestesiapro_education_resources_v2026_stable',
+      'anestesiapro_education_resources_v2026_eras',
+      'anestesiapro_education_resources_v16',
+      'anestesiapro_education_resources_v15'
+    ];
+
+    for (const key of keysToCheck) {
       try {
-        loaded = JSON.parse(saved);
-      } catch (e) {
-        console.error('Error parsing saved resources', e);
-      }
-    } else {
-      // Fallback check previous storage keys
-      const oldSaved = localStorage.getItem('anestesiapro_education_resources_v16') || localStorage.getItem('anestesiapro_education_resources_v15');
-      if (oldSaved) {
-        try {
-          loaded = JSON.parse(oldSaved);
-        } catch (e) {
-          console.error(e);
+        const saved = localStorage.getItem(key);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            loaded = parsed;
+            break;
+          }
         }
+      } catch (e) {
+        console.warn('Storage read warning:', e);
       }
     }
 
-    // Always merge INITIAL_RESOURCES and ensure definitions are updated
-    INITIAL_RESOURCES.forEach(init => {
-      const existingIdx = loaded.findIndex(r => r.id === init.id);
-      if (existingIdx === -1) {
-        loaded.push(init);
-      } else {
-        // Update content if changed, preserving current data
-        loaded[existingIdx] = { ...init, ...loaded[existingIdx], date: init.date || loaded[existingIdx].date, isDraft: init.isDraft };
-      }
-    });
-
-    // Strictly sort all resources from NEWEST to OLDEST by date/time (E-MOTIVE #1, Vortex #2, etc.)
-    const baseList = loaded.length > 0 ? loaded : INITIAL_RESOURCES;
-    return sortResourcesNewestToOldest(baseList);
+    const merged = mergeResources(INITIAL_RESOURCES, loaded, []);
+    return sortResourcesNewestToOldest(merged);
   });
 
   const [activeCategory, setActiveCategory] = useState<string>('todos');
@@ -5347,6 +5437,26 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
   const [inputPin, setInputPin] = useState<string>('');
   const [pinError, setPinError] = useState<boolean>(false);
 
+  // Queued files for multi-file upload
+  const [queuedFiles, setQueuedFiles] = useState<Array<{
+    id: string;
+    file?: File;
+    name: string;
+    size: string;
+    extension: string;
+    type: string;
+    dataUrl?: string;
+    title: string;
+    category: EducationalResource['category'];
+    description?: string;
+  }>>([]);
+  const [isBatchUploading, setIsBatchUploading] = useState<boolean>(false);
+  const [uploadMode, setUploadMode] = useState<'carousel' | 'separate'>('carousel');
+  const [isSyncingWithServer, setIsSyncingWithServer] = useState<boolean>(false);
+  const [syncBanner, setSyncBanner] = useState<{ type: 'info' | 'success' | 'warning'; message: string } | null>(null);
+  const [latestUploadNotification, setLatestUploadNotification] = useState<AppNotification | null>(null);
+  const [highlightedResourceId, setHighlightedResourceId] = useState<string | null>(null);
+
   // Form state for uploading new item
   const [newTitle, setNewTitle] = useState('');
   const [newCategory, setNewCategory] = useState<EducationalResource['category']>('pdf');
@@ -5357,6 +5467,7 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
   const [fileData, setFileData] = useState<{ name: string; size: string; dataUrl: string; extension: string; type: string } | null>(null);
 
   const [isCompressingImage, setIsCompressingImage] = useState<boolean>(false);
+  const [compressingProgress, setCompressingProgress] = useState<string>('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Private Statistics & Analytics Tracking
@@ -5510,38 +5621,31 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
   };
 
   useEffect(() => {
-    try {
-      localStorage.setItem('anestesiapro_education_resources_v16', JSON.stringify(resources));
-    } catch (err) {
-      console.warn('LocalStorage quota limit reached, trimming very large data URLs for persistent cache.', err);
-      try {
-        const lightweight = resources.map(r => {
-          if (r.fileDataUrl && r.fileDataUrl.length > 2500000) {
-            return { ...r, fileDataUrl: undefined };
-          }
-          return r;
-        });
-        localStorage.setItem('anestesiapro_education_resources_v16', JSON.stringify(lightweight));
-      } catch (e2) {
-        console.error('Failed saving resources to localStorage', e2);
-      }
-    }
+    persistResources(resources);
   }, [resources]);
 
   useEffect(() => {
-    localStorage.setItem('anestesiapro_admin_mode', isAdmin ? 'true' : 'false');
+    if (isAdmin) {
+      localStorage.setItem('anestesiapro_admin_mode', 'true');
+      localStorage.setItem('anestesiapro_is_author_admin', 'true');
+    } else {
+      localStorage.removeItem('anestesiapro_admin_mode');
+      localStorage.removeItem('anestesiapro_is_author_admin');
+    }
   }, [isAdmin]);
 
   const handleAdminAuth = (e: React.FormEvent) => {
     e.preventDefault();
-    // Valid PINs: '2534' (default), '1234', 'ANESTESIAPRO', 'ADMIN', 'CARLOS'
+    // Valid Author PINs: '2534' (default), 'ANESTESIAPRO', 'ADMIN', 'CARLOS', 'CARLOSLEAL'
     const cleanPin = inputPin.trim().toUpperCase();
-    if (cleanPin === '2534' || cleanPin === '1234' || cleanPin === 'ANESTESIAPRO' || cleanPin === 'ADMIN' || cleanPin === 'CARLOS') {
+    if (cleanPin === '2534' || cleanPin === '1234' || cleanPin === 'ANESTESIAPRO' || cleanPin === 'ADMIN' || cleanPin === 'CARLOS' || cleanPin === 'CARLOSLEAL') {
       setIsAdmin(true);
       setShowPinModal(false);
       setInputPin('');
       setPinError(false);
       setIsModalOpen(true); // Open upload modal immediately
+      setToastMessage('Sesión de Autor iniciada como Dr. Carlos Leal.');
+      setTimeout(() => setToastMessage(null), 4000);
     } else {
       setPinError(true);
     }
@@ -5549,6 +5653,10 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
 
   const handleLogoutAdmin = () => {
     setIsAdmin(false);
+    localStorage.removeItem('anestesiapro_admin_mode');
+    localStorage.removeItem('anestesiapro_is_author_admin');
+    setToastMessage('Modo autor cerrado.');
+    setTimeout(() => setToastMessage(null), 3000);
   };
 
   // Helper function to download a sample PDF using jsPDF
@@ -5629,182 +5737,685 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
     });
   };
 
-  const processSelectedFile = (file: File) => {
-    const ext = file.name.split('.').pop()?.toLowerCase() || 'file';
-    const isImage = file.type.startsWith('image/') || ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'svg', 'heic', 'heif', 'avif', 'tiff', 'tif'].includes(ext);
+  // Process a single file (compressing images HD, reading data, autodetecting category)
+  const processSingleFile = (file: File): Promise<{
+    id: string;
+    file?: File;
+    name: string;
+    size: string;
+    extension: string;
+    type: string;
+    dataUrl?: string;
+    title: string;
+    category: EducationalResource['category'];
+    description?: string;
+  }> => {
+    return new Promise((resolve) => {
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'file';
+      const isImage = file.type.startsWith('image/') || ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'svg', 'heic', 'heif', 'avif', 'tiff', 'tif'].includes(ext);
 
-    if (['mp4', 'mov', 'webm', 'avi', 'm4v'].includes(ext)) {
-      setNewCategory('reel');
-    } else if (isImage) {
-      setNewCategory('infografia');
-    } else if (['pdf'].includes(ext)) {
-      setNewCategory('pdf');
-    } else if (['ppt', 'pptx', 'key'].includes(ext)) {
-      setNewCategory('presentacion');
-    } else if (['doc', 'docx', 'txt', 'rtf'].includes(ext)) {
-      setNewCategory('pauta');
-    } else if (['zip', 'rar', '7z', 'tar'].includes(ext)) {
-      setNewCategory('archivo');
-    }
+      let category: EducationalResource['category'] = 'pdf';
+      if (['mp4', 'mov', 'webm', 'avi', 'm4v'].includes(ext)) {
+        category = 'reel';
+      } else if (isImage) {
+        category = 'infografia';
+      } else if (['pdf'].includes(ext)) {
+        category = 'pdf';
+      } else if (['ppt', 'pptx', 'key'].includes(ext)) {
+        category = 'presentacion';
+      } else if (['doc', 'docx', 'txt', 'rtf'].includes(ext)) {
+        category = 'pauta';
+      } else if (['zip', 'rar', '7z', 'tar'].includes(ext)) {
+        category = 'archivo';
+      }
 
-    if (!newTitle) {
-      const cleanName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
-      setNewTitle(cleanName.replace(/[-_]/g, ' '));
-    }
+      const rawBaseName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+      const cleanTitle = rawBaseName.replace(/[-_]/g, ' ').replace(/\s+/g, ' ').trim();
 
-    if (isImage && !file.type.includes('svg')) {
-      setIsCompressingImage(true);
-      const img = new Image();
-      const objectUrl = URL.createObjectURL(file);
-      img.onload = () => {
-        URL.revokeObjectURL(objectUrl);
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
-        const maxDim = 1600; // max dimension for ultra crisp mobile & desktop viewing
-
-        if (width > maxDim || height > maxDim) {
-          if (width > height) {
-            height = Math.round((height * maxDim) / width);
-            width = maxDim;
-          } else {
-            width = Math.round((width * maxDim) / height);
-            height = maxDim;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, width, height);
-          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.82);
-          const sizeKb = Math.round((compressedDataUrl.length * 3) / 4 / 1024);
-          setFileData({
-            name: file.name,
-            size: `${sizeKb} KB (Foto HD optimizada)`,
-            dataUrl: compressedDataUrl,
-            extension: ext === 'png' ? 'png' : 'jpg',
-            type: 'image/jpeg'
-          });
-        } else {
-          const reader = new FileReader();
-          reader.onload = (ev) => {
-            setFileData({
-              name: file.name,
-              size: `${Math.round(file.size / 1024)} KB`,
-              dataUrl: ev.target?.result as string,
-              extension: ext,
-              type: file.type
-            });
-          };
-          reader.readAsDataURL(file);
-        }
-        setIsCompressingImage(false);
-      };
-      img.onerror = () => {
-        URL.revokeObjectURL(objectUrl);
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-          setFileData({
-            name: file.name,
-            size: `${Math.round(file.size / 1024)} KB`,
-            dataUrl: ev.target?.result as string,
-            extension: ext,
-            type: file.type
-          });
-          setIsCompressingImage(false);
-        };
-        reader.readAsDataURL(file);
-      };
-      img.src = objectUrl;
-    } else {
       const sizeMb = file.size > 1024 * 1024 
         ? `${(file.size / (1024 * 1024)).toFixed(1)} MB` 
         : `${Math.round(file.size / 1024)} KB`;
 
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const result = event.target?.result as string;
-        setFileData({
-          name: file.name,
-          size: sizeMb,
-          dataUrl: result,
-          extension: ext,
-          type: file.type
-        });
-      };
-      reader.readAsDataURL(file);
+      if (isImage && !file.type.includes('svg')) {
+        const img = new Image();
+        const objectUrl = URL.createObjectURL(file);
+        img.onload = () => {
+          URL.revokeObjectURL(objectUrl);
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          const maxDim = 1280; // High definition, crystal sharp on retina & mobile, lightweight (~80-110KB)
+
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, width, height);
+            ctx.drawImage(img, 0, 0, width, height);
+            const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.78);
+            const sizeKb = Math.round((compressedDataUrl.length * 3) / 4 / 1024);
+            resolve({
+              id: `qfile-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+              name: file.name,
+              size: `${sizeKb} KB (Foto HD optimizada)`,
+              dataUrl: compressedDataUrl,
+              extension: 'jpg',
+              type: 'image/jpeg',
+              title: cleanTitle,
+              category: 'infografia'
+            });
+          } else {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+              resolve({
+                id: `qfile-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+                name: file.name,
+                size: `${Math.round(file.size / 1024)} KB`,
+                dataUrl: ev.target?.result as string,
+                extension: ext,
+                type: file.type,
+                title: cleanTitle,
+                category
+              });
+            };
+            reader.readAsDataURL(file);
+          }
+        };
+        img.onerror = () => {
+          URL.revokeObjectURL(objectUrl);
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            resolve({
+              id: `qfile-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+              name: file.name,
+              size: sizeMb,
+              dataUrl: ev.target?.result as string,
+              extension: ext,
+              type: file.type,
+              title: cleanTitle,
+              category
+            });
+          };
+          reader.readAsDataURL(file);
+        };
+        img.src = objectUrl;
+      } else {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const result = event.target?.result as string;
+          resolve({
+            id: `qfile-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+            name: file.name,
+            size: sizeMb,
+            dataUrl: result,
+            extension: ext,
+            type: file.type,
+            title: cleanTitle,
+            category
+          });
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  };
+
+  // Multiple files selection handler (sequential compression to avoid mobile browser canvas memory crashes)
+  const handleFilesSelected = async (incomingFiles: FileList | File[]) => {
+    const filesArray = Array.from(incomingFiles);
+    if (!filesArray.length) return;
+
+    setIsCompressingImage(true);
+    try {
+      const processedList: Array<{
+        id: string;
+        file?: File;
+        name: string;
+        size: string;
+        extension: string;
+        type: string;
+        dataUrl?: string;
+        title: string;
+        category: EducationalResource['category'];
+        description?: string;
+      }> = [];
+      for (let i = 0; i < filesArray.length; i++) {
+        setCompressingProgress(`Optimizando lámina ${i + 1} de ${filesArray.length}...`);
+        const item = await processSingleFile(filesArray[i]);
+        processedList.push(item);
+      }
+
+      setQueuedFiles(prev => {
+        const combined = [...prev, ...processedList];
+        const imageCount = combined.filter(q => q.type.startsWith('image/') || ['jpg', 'jpeg', 'png', 'webp'].includes(q.extension)).length;
+        if (imageCount >= 2) {
+          setUploadMode('carousel');
+        }
+        return combined;
+      });
+
+      // If form had no title yet, populate with first file clean name
+      if (!newTitle && processedList.length > 0) {
+        setNewTitle(processedList[0].title);
+      }
+      if (processedList.length === 1) {
+        setNewCategory(processedList[0].category);
+      }
+    } catch (err) {
+      console.error('Error processing files:', err);
+    } finally {
+      setIsCompressingImage(false);
+      setCompressingProgress('');
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      processSelectedFile(file);
-    }
+  const handleRemoveQueuedFile = (id: string) => {
+    setQueuedFiles(prev => prev.filter(f => f.id !== id));
   };
 
-  const handleAddResource = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTitle.trim() || !newDescription.trim()) return;
+  const handleMoveQueuedFile = (index: number, direction: 'up' | 'down') => {
+    setQueuedFiles(prev => {
+      const targetIndex = direction === 'up' ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= prev.length) return prev;
+      const copy = [...prev];
+      const temp = copy[index];
+      copy[index] = copy[targetIndex];
+      copy[targetIndex] = temp;
+      return copy;
+    });
+  };
 
-    const parsedTags = newTags
-      .split(',')
-      .map(t => t.trim())
-      .filter(t => t.length > 0)
-      .map(t => t.startsWith('#') ? t : `#${t}`);
+  const handleUpdateQueuedTitle = (id: string, newTitleVal: string) => {
+    setQueuedFiles(prev => prev.map(f => f.id === id ? { ...f, title: newTitleVal } : f));
+  };
 
-    const ext = fileData?.extension || (
-      newCategory === 'pdf' ? 'pdf' :
-      newCategory === 'infografia' ? 'jpg' :
-      newCategory === 'reel' ? 'mp4' :
-      newCategory === 'presentacion' ? 'pptx' :
-      newCategory === 'archivo' ? 'zip' : 'pdf'
-    );
+  const handleUpdateQueuedCategory = (id: string, newCatVal: EducationalResource['category']) => {
+    setQueuedFiles(prev => prev.map(f => f.id === id ? { ...f, category: newCatVal } : f));
+  };
 
-    const newRes: EducationalResource = {
-      id: `res-${Date.now()}`,
-      title: newTitle.trim(),
-      category: newCategory,
-      description: newDescription.trim(),
-      date: new Date().toISOString().split('T')[0],
-      author: newAuthor.trim() || 'Dr. Carlos Leal • AnestesiaPro',
-      instagramUrl: newCategory === 'reel' ? (newUrl || 'https://instagram.com') : undefined,
-      url: newUrl || undefined,
-      tags: parsedTags.length > 0 ? parsedTags : ['#EducaciónContinua', '#AnestesiaPro', '#FotografiaClinica'],
-      fileName: fileData ? fileData.name : `${newTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.${ext}`,
-      fileSize: fileData ? fileData.size : 'Foto Optimizada',
-      fileDataUrl: fileData ? fileData.dataUrl : undefined,
-      fileExtension: ext,
-      downloadable: true
-    };
-
-    setResources(sortResourcesNewestToOldest([newRes, ...resources]));
-    setIsModalOpen(false);
-
-    // Auto publish notification alert to all devices
-    publishNewNotification({
-      title: `¡NUEVO RECURSO: ${newTitle.trim()}!`,
-      message: newDescription.trim() || 'Se ha publicado un nuevo documento/infografía médica en AnestesiaPro.',
-      badge: newCategory.toUpperCase(),
-      resourceId: newRes.id,
-      author: newAuthor.trim() || 'Dr. Carlos Leal',
-      pin: '2534'
+  // Automatic Server Sync: Pushes custom resources to server so all users can see them
+  const syncLocalResourcesToServer = async (customItemsToSync: EducationalResource[]) => {
+    if (!customItemsToSync.length) return;
+    setIsSyncingWithServer(true);
+    setSyncBanner({
+      type: 'info',
+      message: `Sincronizando ${customItemsToSync.length} ${customItemsToSync.length === 1 ? 'recurso' : 'recursos'} con el servidor público para que todos los usuarios puedan verlos...`
     });
 
-    // Show toast message
-    setToastMessage(`¡"${newTitle.trim()}" subida e integrada con alerta a los usuarios!`);
-    setTimeout(() => setToastMessage(null), 4000);
+    try {
+      const res = await fetch('/api/education/resources', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-author-pin': '2534'
+        },
+        body: JSON.stringify({ 
+          resources: customItemsToSync,
+          authorPin: '2534'
+        })
+      });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.allResources)) {
+        const serverItems = data.allResources as EducationalResource[];
+        setResources(prev => {
+          const merged = mergeResources(INITIAL_RESOURCES, prev, serverItems);
+          const sorted = sortResourcesNewestToOldest(merged);
+          persistResources(sorted);
+          return sorted;
+        });
 
-    // Reset Form
-    setNewTitle('');
-    setNewCategory('pdf');
-    setNewDescription('');
-    setNewAuthor('Dr. Carlos Leal • AnestesiaPro');
-    setNewTags('');
-    setNewUrl('');
-    setFileData(null);
+        setSyncBanner({
+          type: 'success',
+          message: `¡Sincronización exitosa! ${customItemsToSync.length} ${customItemsToSync.length === 1 ? 'recurso' : 'recursos'} publicados en el servidor y visibles para todos los médicos.`
+        });
+        setTimeout(() => setSyncBanner(null), 8000);
+      }
+    } catch (e) {
+      console.warn('Error syncing local resources to server:', e);
+      setSyncBanner({
+        type: 'warning',
+        message: 'No se pudo sincronizar automáticamente con el servidor. Se conservan en tu dispositivo.'
+      });
+      setTimeout(() => setSyncBanner(null), 5000);
+    } finally {
+      setIsSyncingWithServer(false);
+    }
+  };
+
+  // Manual trigger for admin synchronization
+  const handleManualSync = async () => {
+    setIsSyncingWithServer(true);
+    setSyncBanner({
+      type: 'info',
+      message: 'Comprobando sincronización con el servidor público...'
+    });
+
+    try {
+      // 1. Fetch from server
+      const serverRes = await fetch('/api/education/resources');
+      const srvData = await serverRes.json();
+      const serverList: EducationalResource[] = (srvData.success && Array.isArray(srvData.resources)) ? srvData.resources : [];
+
+      // 2. Identify all local custom resources across IndexedDB and all storage keys
+      const locallyPersisted = await loadStoredResources();
+      const localCustoms = locallyPersisted.filter(
+        loc => !INITIAL_RESOURCES.some(init => init.id === loc.id)
+      );
+
+      // 3. Find items not yet on the server
+      const notOnServer = localCustoms.filter(loc => !serverList.some(srv => srv.id === loc.id));
+
+      if (notOnServer.length > 0) {
+        await syncLocalResourcesToServer(notOnServer);
+      } else {
+        // Merge any server items into local view and persist
+        const merged = mergeResources(INITIAL_RESOURCES, locallyPersisted, serverList);
+        const sorted = sortResourcesNewestToOldest(merged);
+        setResources(sorted);
+        await persistResources(sorted);
+
+        setSyncBanner({
+          type: 'success',
+          message: `Todos tus recursos están 100% respaldados en el servidor y visibles para todos los dispositivos.`
+        });
+        setTimeout(() => setSyncBanner(null), 6000);
+      }
+    } catch (err) {
+      console.error('Error during manual sync:', err);
+      setSyncBanner({
+        type: 'warning',
+        message: 'Error al conectar con el servidor. Revisa tu conexión a internet.'
+      });
+      setTimeout(() => setSyncBanner(null), 5000);
+    } finally {
+      setIsSyncingWithServer(false);
+    }
+  };
+
+  // Delete resource from server & local state
+  const handleDeleteResource = async (resourceId: string, resourceTitle: string) => {
+    if (!window.confirm(`¿Estás seguro de que deseas eliminar "${resourceTitle}" del servidor público? Todos los usuarios dejarán de verlo.`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/education/resources/${encodeURIComponent(resourceId)}`, {
+        method: 'DELETE',
+        headers: {
+          'x-author-pin': '2534'
+        }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setResources(prev => prev.filter(r => r.id !== resourceId));
+        setToastMessage(`"${resourceTitle}" eliminada del servidor público.`);
+        setTimeout(() => setToastMessage(null), 4000);
+        if (selectedResource?.id === resourceId) {
+          setSelectedResource(null);
+        }
+      } else {
+        alert(data.error || 'No se pudo eliminar el recurso.');
+      }
+    } catch (err) {
+      console.error('Error deleting resource:', err);
+      // Fallback local removal
+      setResources(prev => prev.filter(r => r.id !== resourceId));
+    }
+  };
+
+  // Initialize and Sync on mount with IndexedDB and Server
+  useEffect(() => {
+    const initServerAndSync = async () => {
+      try {
+        // 1. Asynchronously load persistent resources from IndexedDB / Storage Engine
+        const locallyPersisted = await loadStoredResources();
+
+        // 2. Fetch shared resources from Server
+        let serverList: EducationalResource[] = [];
+        try {
+          const serverRes = await fetch('/api/education/resources');
+          const srvData = await serverRes.json();
+          if (srvData.success && Array.isArray(srvData.resources)) {
+            serverList = srvData.resources;
+          }
+        } catch (srvErr) {
+          console.warn('[AnestesiaPro] Server fetch warning:', srvErr);
+        }
+
+        // 3. Merge built-in INITIAL_RESOURCES, locally stored, and server resources
+        const merged = mergeResources(INITIAL_RESOURCES, locallyPersisted, serverList);
+        const sorted = sortResourcesNewestToOldest(merged);
+        setResources(sorted);
+        persistResources(sorted);
+
+        // 4. Identify if any local items should be backed up to server
+        const notOnServer = locallyPersisted.filter(loc => 
+          !INITIAL_RESOURCES.some(init => init.id === loc.id) &&
+          !serverList.some(srv => srv.id === loc.id)
+        );
+
+        if (notOnServer.length > 0) {
+          console.log(`[AnestesiaPro] Auto-syncing ${notOnServer.length} local custom resources from device to server...`);
+          await syncLocalResourcesToServer(notOnServer);
+        }
+      } catch (err) {
+        console.warn('Initial server sync warning:', err);
+      }
+    };
+
+    initServerAndSync();
+  }, []);
+
+  // Verificar si hay notificaciones recientes de nuevo material educativo para mostrar la alerta
+  const checkLatestEducationNotification = async () => {
+    try {
+      const list = await getNotifications();
+      if (!Array.isArray(list) || list.length === 0) {
+        setLatestUploadNotification(null);
+        return;
+      }
+
+      // Buscar la notificación más reciente (o la primera no descartada que tenga resourceId o mencione material)
+      const unreadItem = list.find((notif) => {
+        const isDismissed = localStorage.getItem(`anestesiapro_dismissed_notif_${notif.id}`) === 'true';
+        return !isDismissed;
+      });
+
+      if (unreadItem) {
+        setLatestUploadNotification(unreadItem);
+      } else {
+        setLatestUploadNotification(null);
+      }
+    } catch (e) {
+      console.warn('Error checking education notifications:', e);
+    }
+  };
+
+  useEffect(() => {
+    checkLatestEducationNotification();
+
+    // Escuchar evento personalizado por si se crea una notificación en esta misma pestaña o sesión
+    const handleNotifUpdate = () => {
+      checkLatestEducationNotification();
+    };
+    window.addEventListener('anestesiapro-notifications-updated', handleNotifUpdate);
+    window.addEventListener('storage', handleNotifUpdate);
+    return () => {
+      window.removeEventListener('anestesiapro-notifications-updated', handleNotifUpdate);
+      window.removeEventListener('storage', handleNotifUpdate);
+    };
+  }, []);
+
+  const handleDismissEducationBanner = (notifId: string) => {
+    localStorage.setItem(`anestesiapro_dismissed_notif_${notifId}`, 'true');
+    localStorage.setItem('anestesiapro_last_notif_dismiss_time', Date.now().toString());
+    setLatestUploadNotification(null);
+  };
+
+  const handleViewNotifiedResource = (notif: AppNotification) => {
+    // 1. Descartar la alerta/banner para que no vuelva a molestar
+    handleDismissEducationBanner(notif.id);
+
+    // 2. Si tiene un resourceId específico, abrir o desplazarse al recurso
+    if (notif.resourceId) {
+      const matched = resources.find(r => r.id === notif.resourceId);
+      setHighlightedResourceId(notif.resourceId);
+      setTimeout(() => {
+        const el = document.getElementById(`resource-${notif.resourceId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+      if (matched) {
+        setSelectedResource(matched);
+      }
+      setTimeout(() => {
+        setHighlightedResourceId(null);
+      }, 4000);
+    } else {
+      // Si no tiene resourceId específico, desplazarse a la lista
+      const listEl = document.getElementById('educational-resources-grid');
+      if (listEl) {
+        listEl.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  };
+
+  // Batch or Single Resource Publishing to Server
+  const handleBatchUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (queuedFiles.length === 0 && !newTitle.trim()) {
+      alert('Por favor selecciona al menos un archivo o ingresa un título.');
+      return;
+    }
+
+    setIsBatchUploading(true);
+    try {
+      const parsedTags = newTags
+        .split(',')
+        .map(t => t.trim())
+        .filter(t => t.length > 0)
+        .map(t => t.startsWith('#') ? t : `#${t}`);
+
+      const defaultTags = parsedTags.length > 0 
+        ? parsedTags 
+        : ['#EducaciónContinua', '#AnestesiaPro', '#PublicacionOficial'];
+
+      let itemsToUpload: EducationalResource[] = [];
+
+      const isCarouselMode = uploadMode === 'carousel' && queuedFiles.length > 1;
+
+      if (isCarouselMode) {
+        // Group all image files into a single Instagram-style carousel resource!
+        const imageFiles = queuedFiles.filter(qf => qf.type.startsWith('image/') || ['jpg', 'jpeg', 'png', 'webp'].includes(qf.extension));
+        const nonImageFiles = queuedFiles.filter(qf => !qf.type.startsWith('image/') && !['jpg', 'jpeg', 'png', 'webp'].includes(qf.extension));
+
+        if (imageFiles.length > 0) {
+          const carouselImages = imageFiles.map(img => img.dataUrl || '').filter(Boolean);
+          const carouselCaptions = imageFiles.map((img, idx) => img.title.trim() || `Lámina ${idx + 1}`);
+          const coverImage = imageFiles[0];
+
+          const carouselTitle = newTitle.trim() || coverImage.title.trim() || 'Álbum Clínico Interactivo';
+          const carouselDesc = newDescription.trim() || 
+            `Carrusel clínico de ${imageFiles.length} diapositivas publicado por ${newAuthor.trim() || 'Dr. Carlos Leal'}. Desliza para explorar cada lámina.`;
+
+          const carouselResource: EducationalResource = {
+            id: `res-carousel-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+            title: carouselTitle,
+            category: 'infografia',
+            description: carouselDesc,
+            date: new Date().toISOString().split('T')[0],
+            author: newAuthor.trim() || 'Dr. Carlos Leal • AnestesiaPro',
+            url: newUrl || carouselImages[0],
+            fileDataUrl: undefined, // Avoid doubling base64 memory: already in images array
+            fileName: `${carouselTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.jpg`,
+            fileSize: `${imageFiles.length} láminas HD`,
+            fileExtension: 'jpg',
+            tags: defaultTags,
+            downloadable: true,
+            isCommunity: true,
+            isCustom: true,
+            images: carouselImages,
+            isCarousel: true,
+            imageCaptions: carouselCaptions
+          };
+
+          itemsToUpload.push(carouselResource);
+        }
+
+        // Any non-image files get uploaded individually
+        nonImageFiles.forEach(qf => {
+          itemsToUpload.push({
+            id: `res-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+            title: qf.title.trim() || qf.name,
+            category: qf.category || newCategory,
+            description: (qf.description || newDescription).trim() || `Material de formación (${qf.name}) publicado por ${newAuthor.trim() || 'Dr. Carlos Leal'}.`,
+            date: new Date().toISOString().split('T')[0],
+            author: newAuthor.trim() || 'Dr. Carlos Leal • AnestesiaPro',
+            url: newUrl || undefined,
+            tags: defaultTags,
+            fileName: qf.name,
+            fileSize: qf.size,
+            fileDataUrl: qf.dataUrl,
+            fileExtension: qf.extension,
+            downloadable: true,
+            isCommunity: true,
+            isCustom: true
+          });
+        });
+      } else if (queuedFiles.length > 0) {
+        itemsToUpload = queuedFiles.map((qf) => {
+          const finalTitle = qf.title.trim() || qf.name;
+          const finalCategory = qf.category || newCategory;
+          const finalDesc = (qf.description || newDescription).trim() || 
+            `Material de formación clínica y protocolo (${qf.name}) publicado por ${newAuthor.trim() || 'Dr. Carlos Leal'}.`;
+
+          return {
+            id: `res-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+            title: finalTitle,
+            category: finalCategory,
+            description: finalDesc,
+            date: new Date().toISOString().split('T')[0],
+            author: newAuthor.trim() || 'Dr. Carlos Leal • AnestesiaPro',
+            instagramUrl: finalCategory === 'reel' ? (newUrl || 'https://instagram.com') : undefined,
+            url: newUrl || undefined,
+            tags: defaultTags,
+            fileName: qf.name,
+            fileSize: qf.size,
+            fileDataUrl: qf.dataUrl,
+            fileExtension: qf.extension,
+            downloadable: true,
+            isCommunity: true,
+            isCustom: true
+          };
+        });
+      } else if (newTitle.trim()) {
+        const ext = newCategory === 'pdf' ? 'pdf' :
+                    newCategory === 'infografia' ? 'jpg' :
+                    newCategory === 'reel' ? 'mp4' :
+                    newCategory === 'presentacion' ? 'pptx' :
+                    newCategory === 'archivo' ? 'zip' : 'pdf';
+
+        itemsToUpload.push({
+          id: `res-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          title: newTitle.trim(),
+          category: newCategory,
+          description: newDescription.trim() || `Material clínico publicado por ${newAuthor.trim() || 'Dr. Carlos Leal'}.`,
+          date: new Date().toISOString().split('T')[0],
+          author: newAuthor.trim() || 'Dr. Carlos Leal • AnestesiaPro',
+          url: newUrl || undefined,
+          tags: defaultTags,
+          fileName: `${newTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.${ext}`,
+          fileSize: 'Documento Clínico',
+          fileExtension: ext,
+          downloadable: true,
+          isCommunity: true,
+          isCustom: true
+        });
+      }
+
+      if (!itemsToUpload.length) {
+        setIsBatchUploading(false);
+        return;
+      }
+
+      // 1. GUARANTEED IMMEDIATE OFFLINE PERSISTENCE:
+      // Save directly to device IndexedDB first so content is NEVER lost on reload or disconnect
+      const locallyPersistedNow = await loadStoredResources();
+      const updatedLocalFirst = sortResourcesNewestToOldest([...itemsToUpload, ...locallyPersistedNow]);
+      setResources(updatedLocalFirst);
+      await persistResources(updatedLocalFirst);
+
+      // 2. TRANSMIT TO CENTRAL SERVER:
+      try {
+        const res = await fetch('/api/education/resources', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'x-author-pin': '2534'
+          },
+          body: JSON.stringify({ 
+            resources: itemsToUpload,
+            authorPin: '2534'
+          })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && Array.isArray(data.allResources)) {
+            const serverItems = data.allResources as EducationalResource[];
+            const merged = mergeResources(INITIAL_RESOURCES, updatedLocalFirst, serverItems);
+            const finalSorted = sortResourcesNewestToOldest(merged);
+            setResources(finalSorted);
+            await persistResources(finalSorted);
+          }
+        } else {
+          console.warn('[AnestesiaPro] Server responded with status:', res.status);
+        }
+      } catch (fetchErr) {
+        console.warn('[AnestesiaPro] Offline or server timeout, preserved safely on device:', fetchErr);
+      }
+
+      // Auto publish notification alert to all devices
+      const isCarouselUpload = isCarouselMode && itemsToUpload.some(it => it.isCarousel);
+      const primaryTitle = isCarouselUpload
+        ? `📸 Carrusel: ${itemsToUpload[0].title}`
+        : itemsToUpload.length === 1 
+          ? itemsToUpload[0].title 
+          : `${itemsToUpload.length} Nuevos Recursos`;
+
+      publishNewNotification({
+        title: `¡NUEVO MATERIAL PUBLICADO: ${primaryTitle}!`,
+        message: isCarouselUpload
+          ? `El Dr. Carlos Leal ha publicado un nuevo álbum interactivo estilo Instagram con diapositivas deslizables: "${itemsToUpload[0].title}".`
+          : itemsToUpload.length === 1
+            ? (itemsToUpload[0].description || 'Se ha publicado un nuevo documento médico en el servidor.')
+            : `El Dr. Carlos Leal ha publicado ${itemsToUpload.length} nuevos recursos en la Biblioteca de Educación Continua.`,
+        badge: isCarouselUpload ? 'CARRUSEL' : itemsToUpload[0].category.toUpperCase(),
+        resourceId: itemsToUpload[0].id,
+        author: newAuthor.trim() || 'Dr. Carlos Leal',
+        pin: '2534'
+      });
+
+      // Show toast message
+      setToastMessage(
+        isCarouselUpload
+          ? `¡Carrusel estilo Instagram publicado con éxito! 1 álbum interactivo con fotos listo para deslizar.`
+          : `¡${itemsToUpload.length} ${itemsToUpload.length === 1 ? 'recurso publicado' : 'recursos publicados'} con éxito en el servidor! Ahora todos los usuarios pueden verlos.`
+      );
+      setTimeout(() => setToastMessage(null), 5000);
+
+      // Actualizar alerta de material nuevo en esta pantalla
+      checkLatestEducationNotification();
+      window.dispatchEvent(new CustomEvent('anestesiapro_new_resource_published'));
+
+      // Reset Form and close modal
+      setIsModalOpen(false);
+      setQueuedFiles([]);
+      setNewTitle('');
+      setNewCategory('pdf');
+      setNewDescription('');
+      setNewAuthor('Dr. Carlos Leal • AnestesiaPro');
+      setNewTags('');
+      setNewUrl('');
+      setFileData(null);
+    } catch (err) {
+      console.error('Error in handleBatchUpload:', err);
+      setToastMessage('Error al conectar con el servidor. Revisa tu conexión.');
+      setTimeout(() => setToastMessage(null), 4000);
+    } finally {
+      setIsBatchUploading(false);
+    }
   };
 
   const filteredResources = sortResourcesNewestToOldest(resources.filter(res => {
@@ -5843,6 +6454,34 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
         downloadAminofilinaClinicalStudyPDF();
       } else if (res.id === 'res-caso-elaine-bromiley') {
         downloadElaineBromileyFullPDF();
+      } else if (res.isCarousel && res.images && res.images.length > 0) {
+        // Multi-page PDF booklet for all slides in the carousel
+        const doc = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4'
+        });
+        for (let i = 0; i < res.images.length; i++) {
+          if (i > 0) doc.addPage();
+          doc.setFillColor(15, 23, 42);
+          doc.rect(0, 0, 210, 297, 'F');
+          
+          doc.setTextColor(255, 255, 255);
+          doc.setFontSize(13);
+          doc.text(res.title, 14, 15);
+          
+          doc.setFontSize(9);
+          doc.setTextColor(148, 163, 184);
+          const caption = res.imageCaptions?.[i] || `Lámina ${i + 1} de ${res.images.length}`;
+          doc.text(`${caption} • AnestesiaPro Educación Continua`, 14, 21);
+
+          try {
+            doc.addImage(res.images[i], 'JPEG', 14, 25, 182, 255, undefined, 'FAST');
+          } catch (e) {
+            console.warn('Could not add image to carousel PDF page', i, e);
+          }
+        }
+        doc.save(`${res.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_Album_Carrusel.pdf`);
       } else if (res.fileDataUrl) {
         const ext = res.fileExtension || (res.category === 'infografia' || res.category === 'foto' ? 'jpg' : 'pdf');
         const fileName = res.fileName || `AnestesiaPro_${res.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.${ext}`;
@@ -5876,6 +6515,8 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
 
   const getCategoryBadge = (category: EducationalResource['category']) => {
     switch (category) {
+      case 'carrusel':
+        return { label: 'Álbum / Carrusel', icon: Layers, color: 'bg-rose-500/10 text-rose-600 border-rose-200' };
       case 'reel':
         return { label: 'Video Reel MP4', icon: Video, color: 'bg-rose-500/10 text-rose-600 border-rose-200' };
       case 'pdf':
@@ -5917,7 +6558,7 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
                   window.dispatchEvent(new CustomEvent('anestesiapro_open_stats_modal'));
                 }}
                 className="bg-gradient-to-r from-cyan-950 via-slate-900 to-blue-950 hover:from-cyan-900 hover:to-blue-900 text-cyan-300 border border-cyan-400/50 text-[11px] font-black px-3.5 py-1.5 rounded-full flex items-center gap-2 shadow-lg shadow-cyan-500/10 transition-all cursor-pointer ring-1 ring-cyan-500/30"
-                title="Ver Contador Privado de Visitas y Descargas (Clave PIN: 2534)"
+                title="Comunidad AnestesiaPro • Consultas y Descargas Oficiales"
               >
                 <Eye className="w-3.5 h-3.5 text-cyan-400" />
                 <span>Contador Privado:</span>
@@ -5956,38 +6597,150 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
               })}
             </div>
 
-            {/* PROMINENT PUBLISH CONTENT / SUBIR ARCHIVO BUTTON */}
-            <div className="pt-3 flex flex-wrap items-center gap-3">
+            {/* PROMINENT PUBLISH CONTENT / SUBIR ARCHIVO BUTTON (Author Only) */}
+            <div className="pt-3 flex flex-wrap items-center justify-between gap-3">
               {isAdmin ? (
-                <button
-                  onClick={() => setIsModalOpen(true)}
-                  className="bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-black text-xs px-5 py-2.5 rounded-2xl shadow-xl shadow-blue-500/30 flex items-center gap-2 cursor-pointer transition-all active:scale-95 border border-cyan-400/40"
-                >
-                  <FileUp className="w-4 h-4 text-cyan-200" />
-                  <span>+ Publicar Nuevo Recurso (PDF, MP4, PPTX, Fotos)</span>
-                </button>
-              ) : (
-                <button
-                  onClick={() => setShowPinModal(true)}
-                  className="bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-black text-xs px-5 py-2.5 rounded-2xl shadow-xl shadow-blue-500/30 flex items-center gap-2 cursor-pointer transition-all active:scale-95 border border-cyan-400/40"
-                >
-                  <KeyRound className="w-4 h-4 text-cyan-200" />
-                  <span>Publicar Recurso / Subir Archivo (Clave: 2534)</span>
-                </button>
-              )}
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/20 text-emerald-300 text-xs font-black border border-emerald-500/40">
+                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                    <span>Autor: Dr. Carlos Leal</span>
+                  </div>
 
-              {isAdmin && (
-                <button
-                  onClick={handleLogoutAdmin}
-                  className="bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-700 font-bold text-xs px-3.5 py-2.5 rounded-2xl cursor-pointer"
-                >
-                  Cerrar Sesión Autor
-                </button>
+                  <button
+                    onClick={() => setIsModalOpen(true)}
+                    className="bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-black text-xs px-5 py-2.5 rounded-2xl shadow-xl shadow-blue-500/30 flex items-center gap-2 cursor-pointer transition-all active:scale-95 border border-cyan-400/40"
+                  >
+                    <FileUp className="w-4 h-4 text-cyan-200" />
+                    <span>+ Subir Archivos (Fotos, PDF, Video)</span>
+                  </button>
+
+                  <button
+                    onClick={handleManualSync}
+                    disabled={isSyncingWithServer}
+                    className="bg-slate-900/90 hover:bg-slate-800 text-cyan-300 border border-cyan-500/40 font-bold text-xs px-4 py-2.5 rounded-2xl cursor-pointer flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+                    title="Verificar y respaldar archivos del dispositivo en el servidor público"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isSyncingWithServer ? 'animate-spin text-cyan-400' : 'text-cyan-400'}`} />
+                    <span>{isSyncingWithServer ? 'Sincronizando...' : 'Sincronizar Servidor'}</span>
+                  </button>
+
+                  <button
+                    onClick={handleLogoutAdmin}
+                    className="bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-700 font-bold text-xs px-3.5 py-2.5 rounded-2xl cursor-pointer transition-colors"
+                  >
+                    Cerrar Sesión
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between w-full">
+                  <div className="text-[11px] text-slate-400 font-medium flex items-center gap-1.5">
+                    <BookOpen className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>Material médico y farmacológico oficial revisado por especialistas</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setInputPin('');
+                      setPinError(false);
+                      setShowPinModal(true);
+                    }}
+                    title="Acceso de Autor (Dr. Carlos Leal)"
+                    aria-label="Acceso Autor"
+                    className="opacity-40 hover:opacity-100 p-2 text-slate-400 hover:text-cyan-300 hover:bg-slate-800/60 rounded-xl transition-all cursor-pointer border border-transparent hover:border-slate-700"
+                  >
+                    <Lock className="w-4 h-4" />
+                  </button>
+                </div>
               )}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Sync Status Banner */}
+      {syncBanner && (
+        <div className={`p-4 rounded-2xl border flex items-center justify-between gap-3 text-xs font-semibold ${
+          syncBanner.type === 'success' 
+            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-800' 
+            : syncBanner.type === 'warning'
+            ? 'bg-amber-500/10 border-amber-500/30 text-amber-800'
+            : 'bg-blue-500/10 border-blue-500/30 text-blue-800'
+        }`}>
+          <div className="flex items-center gap-2.5">
+            {syncBanner.type === 'success' ? (
+              <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+            ) : syncBanner.type === 'warning' ? (
+              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+            ) : (
+              <RefreshCw className="w-4 h-4 text-blue-600 animate-spin shrink-0" />
+            )}
+            <span>{syncBanner.message}</span>
+          </div>
+          <button 
+            onClick={() => setSyncBanner(null)} 
+            className="text-slate-400 hover:text-slate-600 font-bold text-xs px-2 py-1 rounded"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* BANNER / ALERTA DE NUEVO MATERIAL SUBIDO POR EL ADMINISTRADOR */}
+      {latestUploadNotification && (
+        <div 
+          id="banner-nuevo-material-educacion"
+          className="relative overflow-hidden bg-gradient-to-r from-amber-500/15 via-blue-600/15 to-cyan-500/15 border-2 border-amber-400/60 rounded-3xl p-4 sm:p-5 shadow-xl shadow-amber-500/10 backdrop-blur-md animate-in fade-in slide-in-from-top-4 duration-300 transition-all"
+        >
+          {/* Luz decorativa de fondo */}
+          <div className="absolute -top-10 -right-10 w-40 h-40 bg-amber-400/20 rounded-full blur-2xl pointer-events-none" />
+          
+          <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5 max-w-3xl">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-400 text-slate-950 flex items-center justify-center shrink-0 shadow-md shadow-amber-500/30 mt-0.5 animate-bounce">
+                <Bell className="w-5 h-5 fill-current" />
+              </div>
+              <div className="space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="bg-amber-400 text-slate-950 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full shadow-sm tracking-wider">
+                    {latestUploadNotification.badge || 'NUEVO CONTENIDO'}
+                  </span>
+                  <span className="text-[11px] font-bold text-amber-300/90 flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-amber-400" />
+                    Subido por {latestUploadNotification.author || 'Dr. Carlos Leal'}
+                  </span>
+                </div>
+                <h3 className="text-sm sm:text-base font-black text-white leading-snug">
+                  {latestUploadNotification.title}
+                </h3>
+                <p className="text-xs text-slate-300 leading-relaxed line-clamp-2">
+                  {latestUploadNotification.message}
+                </p>
+              </div>
+            </div>
+
+            {/* Acciones: Ver / Revisar y Eliminar Alerta */}
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-end shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-white/10">
+              <button
+                id="btn-ver-nuevo-material"
+                onClick={() => handleViewNotifiedResource(latestUploadNotification)}
+                className="flex-1 sm:flex-initial bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 border border-cyan-400/40"
+              >
+                <span>Ver y Revisar Ahora</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+
+              <button
+                id="btn-descartar-nuevo-material"
+                onClick={() => handleDismissEducationBanner(latestUploadNotification.id)}
+                className="bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/80 hover:border-slate-600 font-bold text-xs px-3 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
+                title="Descartar y eliminar esta alerta"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Descartar</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* BANNER PARA COMPARTIR POR WHATSAPP Y REDES */}
       <WhatsAppShareBanner
@@ -6077,25 +6830,28 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
                 <FileUp className="w-4 h-4 text-cyan-200" /> Subir Mi Primer Archivo o Video
               </button>
             ) : (
-              <button
-                onClick={() => setShowPinModal(true)}
-                className="inline-flex items-center gap-2 text-xs font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 px-5 py-3 rounded-2xl transition-all cursor-pointer shadow-sm"
-              >
-                <KeyRound className="w-4 h-4 text-cyan-600" /> Acceso Administrador para Subir Archivos/Videos
-              </button>
+              <p className="text-xs text-slate-400">
+                Selecciona otra categoría o borra los términos de búsqueda para ver más recursos.
+              </p>
             )}
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div id="educational-resources-grid" className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {filteredResources.map((res) => {
             const badge = getCategoryBadge(res.category);
             const BadgeIcon = badge.icon;
+            const isHighlighted = highlightedResourceId === res.id;
 
             return (
               <div
                 key={res.id}
-                className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4 hover:border-blue-300 group"
+                id={`resource-${res.id}`}
+                className={`bg-white border rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4 group ${
+                  isHighlighted 
+                    ? 'border-amber-400 ring-4 ring-amber-400/30 shadow-amber-500/20' 
+                    : 'border-slate-200 hover:border-blue-300'
+                }`}
               >
                 <div className="space-y-3">
                   {/* Category Badge & Extension */}
@@ -6153,6 +6909,52 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
                           <Play className="w-6 h-6 ml-0.5 fill-current" />
                         </div>
                         <p className="text-xs font-black text-white">Reproducir / Ver Video</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Ciprofol (HSK3486) Official Album Graphical Preview Thumbnail */}
+                  {res.id === 'res-ciprofol-hsk3486-hipnotico-gabaa-2026' && (
+                    <div 
+                      onClick={() => setSelectedResource(res)}
+                      className="bg-slate-950 rounded-2xl p-3.5 border border-purple-500/50 cursor-pointer group/cipro shadow-lg hover:border-purple-400 transition-all space-y-2.5"
+                    >
+                      <div className="flex items-center justify-between text-[11px] font-black text-purple-300">
+                        <span className="flex items-center gap-1.5">
+                          <Layers className="w-3.5 h-3.5 text-purple-400" /> ÁLBUM OFICIAL HD • 6 LÁMINAS & CALCULADORA
+                        </span>
+                        <span className="bg-purple-500/20 text-purple-200 text-[10px] px-2 py-0.5 rounded border border-purple-500/30 uppercase font-black">
+                          NOVEDAD 2026
+                        </span>
+                      </div>
+
+                      <div className="relative overflow-hidden bg-gradient-to-r from-slate-900 via-purple-950/70 to-slate-900 rounded-xl p-3 border border-purple-500/30 text-center space-y-2">
+                        <div className="flex items-center justify-between gap-2 px-1">
+                          <div className="flex items-center gap-2">
+                            <div className="w-9 h-9 rounded-lg bg-purple-950 border border-purple-500/50 flex items-center justify-center text-purple-400 shadow-inner">
+                              <Brain className="w-5 h-5 text-purple-400" />
+                            </div>
+                            <div className="text-left">
+                              <div className="text-[11px] font-black text-white leading-none">Ciprofol (HSK3486): Modulador GABAA</div>
+                              <div className="text-[9px] text-purple-300 font-bold mt-0.5">4-5x Potencia vs Propofol • 0% Dolor Inyección</div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1 bg-slate-950/90 border border-purple-500/40 px-2 py-1 rounded-lg">
+                            <span className="text-[9px] font-black text-purple-300 font-mono">0.4 - 0.5 mg/kg</span>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-1 text-[8px] font-bold text-slate-300">
+                          <div className="bg-slate-900/90 border border-slate-700/80 rounded py-1 px-0.5 truncate text-purple-300">📸 6 Láminas HD</div>
+                          <div className="bg-slate-900/90 border border-slate-700/80 rounded py-1 px-0.5 truncate text-cyan-300">⚡ Dosis en Vivo</div>
+                          <div className="bg-slate-900/90 border border-slate-700/80 rounded py-1 px-0.5 truncate text-emerald-300">📄 PDF Oficial</div>
+                        </div>
+
+                        <div className="flex items-center justify-center gap-1.5 text-xs font-black text-purple-300 pt-0.5 group-hover/cipro:scale-105 transition-transform">
+                          <Eye className="w-3.5 h-3.5 text-purple-400" />
+                          <span>Abrir Álbum HD Deslizable, Calculadora y Descargar PDF</span>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -6272,9 +7074,9 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
 
                       <div className="flex items-center gap-3 bg-gradient-to-r from-slate-900 via-rose-950/70 to-slate-900 rounded-xl p-2.5 border border-rose-500/30">
                         <img 
-                          src="/images/gemini_trofoblasto_arterias_espirales.jpg" 
-                          alt="Atlas Preeclampsia HD" 
-                          className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover border border-rose-400/40 shadow shrink-0 group-hover/preeclampsia:scale-105 transition-transform"
+                          src="/images/preeclampsia_placenta_maternal_connection.svg" 
+                          alt="Atlas Preeclampsia: Placenta & Cascada Patogénica" 
+                          className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg object-cover border border-rose-400/40 shadow shrink-0 group-hover/preeclampsia:scale-105 transition-transform"
                         />
                         <div className="space-y-1 min-w-0 flex-1">
                           <h4 className="text-xs sm:text-sm font-black text-white truncate">
@@ -6526,15 +7328,66 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
                     </div>
                   )}
 
-                  {/* Image Preview Thumbnail if Image */}
-                  {res.fileDataUrl && (res.category === 'infografia' || res.category === 'foto') && (
+                  {/* Carousel / Multi-Photo Preview Thumbnail (Instagram Style) */}
+                  {(res.isCarousel || (res.images && res.images.length > 1)) ? (
+                    <div 
+                      className="rounded-2xl overflow-hidden border border-rose-400/30 bg-slate-950 max-h-56 relative group/carousel cursor-pointer shadow-md hover:border-rose-400 transition-all space-y-0"
+                      onClick={() => setSelectedResource(res)}
+                    >
+                      {/* Main Cover Image */}
+                      <div className="relative h-44 w-full overflow-hidden bg-slate-900">
+                        <img 
+                          src={(res.images && res.images[0]) || res.fileDataUrl || res.url} 
+                          alt={res.title} 
+                          className="w-full h-full object-cover group-hover/carousel:scale-105 transition-transform duration-500" 
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-black/40" />
+
+                        {/* Top-Right Instagram Multi-Photos Badge */}
+                        <div className="absolute top-2.5 right-2.5 bg-slate-950/90 backdrop-blur-md text-white text-[10px] font-black px-2.5 py-1 rounded-full border border-white/20 shadow-lg flex items-center gap-1.5">
+                          <Layers className="w-3.5 h-3.5 text-rose-400" />
+                          <span>1 / {res.images?.length || 2}</span>
+                        </div>
+
+                        {/* Top-Left Category Badge */}
+                        <div className="absolute top-2.5 left-2.5 bg-gradient-to-r from-pink-600 to-rose-600 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded shadow">
+                          Carrusel Instagram
+                        </div>
+
+                        {/* Hover Overlay */}
+                        <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover/carousel:opacity-100 transition-opacity flex items-center justify-center text-white font-bold text-xs gap-1.5">
+                          <Eye className="w-4 h-4 text-rose-300" /> Deslizar {res.images?.length || 5} fotos
+                        </div>
+                      </div>
+
+                      {/* Mini bottom slide strip */}
+                      {res.images && res.images.length > 1 && (
+                        <div className="p-2 bg-slate-900/90 border-t border-slate-800 flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5 overflow-hidden">
+                            {res.images.slice(0, 5).map((imgUrl, i) => (
+                              <div key={i} className="w-6 h-6 rounded-md overflow-hidden border border-slate-700 shrink-0">
+                                <img src={imgUrl} alt={`Thumb ${i+1}`} className="w-full h-full object-cover" />
+                              </div>
+                            ))}
+                            {res.images.length > 5 && (
+                              <span className="text-[9px] text-slate-400 font-bold">+{res.images.length - 5}</span>
+                            )}
+                          </div>
+                          <span className="text-[10px] font-bold text-cyan-400 shrink-0 flex items-center gap-1">
+                            <span>Ver Álbum</span>
+                            <ArrowRight className="w-3 h-3" />
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (res.fileDataUrl || (res.url && (res.category === 'infografia' || res.category === 'foto' || res.url.match(/\.(jpg|jpeg|png|webp|gif)$/i)))) ? (
                     <div className="rounded-xl overflow-hidden border border-slate-200 max-h-44 relative group/img cursor-pointer" onClick={() => setSelectedResource(res)}>
-                      <img src={res.fileDataUrl} alt={res.title} className="w-full h-44 object-cover" />
+                      <img src={res.fileDataUrl || res.url} alt={res.title} className="w-full h-44 object-cover" />
                       <div className="absolute inset-0 bg-slate-900/50 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center text-white font-bold text-xs gap-1.5">
                         <Eye className="w-4 h-4" /> Ver imagen completa
                       </div>
                     </div>
-                  )}
+                  ) : null}
 
                   {/* Description Box */}
                   <div className="bg-slate-50/90 border border-slate-100 rounded-xl p-3 text-xs text-slate-700 leading-relaxed whitespace-pre-line line-clamp-3 font-medium">
@@ -6556,15 +7409,41 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
                   )}
                 </div>
 
+                {/* Quick Share Banner on Each Resource */}
+                <div className="pt-2">
+                  <ResourceShareStrip
+                    id={res.id}
+                    title={res.title}
+                    category={res.category}
+                    summary={res.description}
+                  />
+                </div>
+
                 {/* Bottom Action Footer */}
                 <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
-                  <button
-                    onClick={() => setSelectedResource(res)}
-                    className="text-xs font-bold text-slate-700 hover:text-blue-600 flex items-center gap-1 transition-colors cursor-pointer"
-                  >
-                    <Eye className="w-4 h-4 text-blue-500" />
-                    <span>Ver detalle</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setSelectedResource(res)}
+                      className="text-xs font-bold text-slate-700 hover:text-blue-600 flex items-center gap-1 transition-colors cursor-pointer"
+                    >
+                      <Eye className="w-4 h-4 text-blue-500" />
+                      <span>Ver detalle</span>
+                    </button>
+
+                    {isAdmin && (res.isCustom || res.isCommunity || res.url?.startsWith('/uploads/') || !INITIAL_RESOURCES.some(i => i.id === res.id)) && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteResource(res.id, res.title);
+                        }}
+                        className="text-[11px] font-bold text-rose-600 hover:text-rose-800 hover:bg-rose-50 border border-rose-200/80 px-2 py-1 rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
+                        title="Eliminar este recurso del servidor público"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                        <span>Eliminar</span>
+                      </button>
+                    )}
+                  </div>
 
                   <div className="flex flex-wrap items-center gap-1.5 justify-end">
                     {res.id === 'res-aminofilina-teofilina-cppd' ? (
@@ -6715,13 +7594,13 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
             </div>
 
             <p className="text-xs text-slate-600 leading-relaxed">
-              Ingresa la clave <strong className="text-cyan-700 bg-cyan-50 px-1.5 py-0.5 rounded border border-cyan-200">2534</strong> o presiona el botón libre para subir fotos y archivos de inmediato.
+              Panel reservado para el <strong>Dr. Carlos Leal</strong>. Ingresa tu PIN de autorización para gestionar y publicar contenidos oficiales.
             </p>
 
             <form onSubmit={handleAdminAuth} className="space-y-3">
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                  Clave / PIN de Autor
+                  PIN Confidencial de Autor
                 </label>
                 <input
                   type="password"
@@ -6729,35 +7608,24 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
                   autoFocus
                   value={inputPin}
                   onChange={(e) => setInputPin(e.target.value)}
-                  placeholder="Escribe 2534 para desbloquear"
+                  placeholder="Introduce tu PIN de acceso"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-500"
                 />
                 {pinError && (
-                  <p className="text-[11px] text-rose-600 font-bold mt-1">
-                    PIN incorrecto. Ingresa <strong className="underline">2534</strong> para acceder.
+                  <p className="text-[11px] text-rose-600 font-bold mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3 text-rose-500" />
+                    <span>PIN de autorización no reconocido.</span>
                   </p>
                 )}
               </div>
 
-              <div className="pt-2 flex flex-col gap-2">
+              <div className="pt-2">
                 <button
                   type="submit"
-                  className="w-full bg-slate-900 hover:bg-slate-800 text-cyan-300 font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                  className="w-full bg-slate-900 hover:bg-slate-800 text-cyan-300 font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-md transition-colors"
                 >
                   <Lock className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>Ingresar con PIN (2534)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsAdmin(true);
-                    setShowPinModal(false);
-                    setIsModalOpen(true);
-                  }}
-                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
-                  <span>🔓 Desbloquear Subida Directa de Fotos</span>
+                  <span>Verificar y Acceder</span>
                 </button>
               </div>
             </form>
@@ -6885,7 +7753,15 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
               )}
 
               {/* SPECIAL INTERACTIVE VISUALIZERS */}
-              {selectedResource.id === 'res-preeclampsia-eclampsia-enfoque-anestesiologico' ? (
+              {selectedResource.id === 'res-ciprofol-hsk3486-hipnotico-gabaa-2026' ? (
+                <div className="space-y-4">
+                  <CiprofolVisualizer onDownload={() => handleDownload(selectedResource)} />
+                </div>
+              ) : (selectedResource.isCarousel || (selectedResource.images && selectedResource.images.length > 1)) ? (
+                <div className="space-y-4">
+                  <InstagramCarouselViewer resource={selectedResource} onDownload={handleDownload} />
+                </div>
+              ) : selectedResource.id === 'res-preeclampsia-eclampsia-enfoque-anestesiologico' ? (
                 <div className="space-y-4">
                   <PreeclampsiaProtocolVisualizer onDownload={() => handleDownload(selectedResource)} />
                 </div>
@@ -7018,15 +7894,15 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
                 </div>
               ) : null}
 
-              {/* Image Preview */}
-              {selectedResource.fileDataUrl && (selectedResource.category === 'infografia' || selectedResource.category === 'foto') && (
+              {/* Image Preview (for single images) */}
+              {!selectedResource.isCarousel && !(selectedResource.images && selectedResource.images.length > 1) && selectedResource.fileDataUrl && (selectedResource.category === 'infografia' || selectedResource.category === 'foto') && (
                 <div className="rounded-2xl overflow-hidden border border-slate-800 shadow-2xl bg-slate-900 flex items-center justify-center p-2">
                   <img src={selectedResource.fileDataUrl} alt={selectedResource.title} className="max-h-[700px] object-contain w-full rounded-xl" />
                 </div>
               )}
 
               {/* Description Box (for non-carousel/non-pdf standard views) */}
-              {selectedResource.id !== 'res-guia-eras-cesarea-2025' && selectedResource.id !== 'res-fona-cricotiroidotomia' && selectedResource.id !== 'res-aminofilina-teofilina-cppd' && (
+              {!selectedResource.isCarousel && !(selectedResource.images && selectedResource.images.length > 1) && selectedResource.id !== 'res-guia-eras-cesarea-2025' && selectedResource.id !== 'res-fona-cricotiroidotomia' && selectedResource.id !== 'res-aminofilina-teofilina-cppd' && (
                 <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 space-y-3">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-cyan-400">
                     Resumen Técnico y Notas Clínicas
@@ -7151,101 +8027,97 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
         </div>
       )}
 
-      {/* Upload File Modal (Admin Only) */}
+      {/* Upload File Modal (Admin Only - Multi-File & Server Persistent) */}
       {isModalOpen && isAdmin && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-xl w-full max-h-[92vh] overflow-y-auto shadow-2xl border border-slate-200 animate-scaleUp">
+          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[92vh] overflow-y-auto shadow-2xl border border-slate-200 animate-scaleUp">
             <div className="p-6 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white/95 backdrop-blur-md z-10">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-2xl shadow-md">
-                  <FileUp className="w-5 h-5" />
+                  <CloudUpload className="w-5 h-5" />
                 </div>
                 <div>
                   <h3 className="text-lg font-extrabold text-slate-900">
-                    Publicar en Educación Continua
+                    Publicar Archivos en el Servidor Público
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Modo Administrador: Sube contenido (PDF, MP4, PNG, JPG, PPTX, ZIP)
+                    Sube 1 o varios archivos a la vez. Serán visibles para todos los médicos y usuarios.
                   </p>
                 </div>
               </div>
 
               <button
-                onClick={() => setIsModalOpen(false)}
-                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                onClick={() => {
+                  if (!isBatchUploading) {
+                    setIsModalOpen(false);
+                    setQueuedFiles([]);
+                  }
+                }}
+                disabled={isBatchUploading}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer disabled:opacity-50"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleAddResource} className="p-6 space-y-4">
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Título del Archivo / Publicación *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder="Ej: Guía Clínica en PDF o Video Instructivo de Quirófano"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 font-medium"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Categoría *
-                  </label>
-                  <select
-                    value={newCategory}
-                    onChange={(e) => setNewCategory(e.target.value as any)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
-                  >
-                    <option value="pdf">📄 Guía Clínica / PDF</option>
-                    <option value="reel">🎬 Video MP4 / Demostración</option>
-                    <option value="infografia">📸 Infografía / Guía Técnica</option>
-                    <option value="presentacion">📊 Presentación PPTX</option>
-                    <option value="pauta">📌 Protocolo / Pauta</option>
-                    <option value="archivo">📦 Paquete ZIP / Archivo</option>
-                  </select>
+            <form onSubmit={handleBatchUpload} className="p-6 space-y-4">
+              {/* Server Visibility Guarantee Banner */}
+              <div className="bg-gradient-to-r from-emerald-500/10 via-cyan-500/10 to-blue-500/10 border border-emerald-500/30 rounded-2xl p-3.5 flex items-start gap-3">
+                <div className="p-1.5 bg-emerald-500 text-slate-950 rounded-lg shrink-0 mt-0.5 font-bold">
+                  <CloudUpload className="w-4 h-4" />
                 </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Autor / Editor
-                  </label>
-                  <input
-                    type="text"
-                    value={newAuthor}
-                    onChange={(e) => setNewAuthor(e.target.value)}
-                    placeholder="Ej: Dr. Carlos Leal"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 font-medium"
-                  />
+                <div className="text-xs space-y-1">
+                  <p className="font-extrabold text-emerald-950">
+                    Sincronización Centralizada en el Servidor
+                  </p>
+                  <p className="text-slate-600 leading-relaxed font-medium">
+                    Los archivos que subas aquí ya no se quedan guardados sólo en tu teléfono: se transmiten al <strong>servidor de AnestesiaPro</strong> y se comparten automáticamente con todos los usuarios en cualquier dispositivo.
+                  </p>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Descripción Técnica / Resumen *
-                </label>
-                <textarea
-                  required
-                  rows={3}
-                  value={newDescription}
-                  onChange={(e) => setNewDescription(e.target.value)}
-                  placeholder="Detalla el contenido, indicaciones o puntos clave de este documento o video..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 font-medium"
-                />
+              {/* Quick Template Preset for Dr. Carlos Leal */}
+              <div className="bg-gradient-to-r from-purple-500/10 via-indigo-500/10 to-blue-500/10 border border-purple-300/80 rounded-2xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-purple-600 text-white rounded-xl shadow-sm shrink-0">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-black text-purple-950">
+                      Plantilla Rápida: Carrusel de Ciprofol (HSK3486)
+                    </p>
+                    <p className="text-[11px] text-purple-700 font-medium">
+                      Auto-rellena el título oficial, descripción farmacológica y etiquetas de Ciprofol
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewTitle('Ciprofol (HSK3486): Álbum Clínico y Láminas Prácticas • Dr. Carlos Leal');
+                    setNewCategory('infografia');
+                    setNewAuthor('Dr. Carlos Leal • AnestesiaPro');
+                    setNewDescription('Álbum clínico interactivo de láminas HD sobre Ciprofol (HSK3486): nuevo agente hipnótico sedante modulador alostérico positivo del receptor GABA-A. Comparativa con propofol, farmacocinética, dosificación clínica y ausencia de dolor a la inyección.');
+                    setNewTags('#Ciprofol, #HSK3486, #Farmacologia, #TIVA, #AnestesiaPro, #DrCarlosLeal');
+                    setUploadMode('carousel');
+                    setToastMessage('✨ Plantilla de Ciprofol activada. Ahora toca abajo para seleccionar tus 5 fotos.');
+                    setTimeout(() => setToastMessage(null), 4000);
+                  }}
+                  className="bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-black px-3.5 py-1.5 rounded-xl shadow-xs transition-all cursor-pointer shrink-0 active:scale-95 flex items-center gap-1.5"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-purple-200" />
+                  <span>Usar Plantilla Ciprofol</span>
+                </button>
               </div>
 
-              {/* Upload Drop Zone */}
+              {/* Upload Drop Zone (Multiple files allowed) */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Seleccionar Foto o Archivo de tu Dispositivo (JPG, PNG, PDF, MP4, PPTX, ZIP)
+                <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+                  <span>Seleccionar o Arrastrar Archivos (Puedes elegir varios al mismo tiempo) *</span>
+                  <span className="text-[11px] text-blue-600 font-extrabold">JPG, PNG, PDF, MP4, PPTX, ZIP</span>
                 </label>
+
                 <div 
                   onDragOver={(e) => {
                     e.preventDefault();
@@ -7254,51 +8126,43 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
                   onDrop={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    const file = e.dataTransfer.files?.[0];
-                    if (file) {
-                      processSelectedFile(file);
+                    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                      handleFilesSelected(e.dataTransfer.files);
                     }
                   }}
-                  className="border-2 border-dashed border-blue-200 hover:border-blue-500 rounded-2xl p-5 text-center bg-blue-50/30 hover:bg-blue-50/60 transition-all cursor-pointer relative"
+                  className="border-2 border-dashed border-blue-200 hover:border-blue-500 rounded-2xl p-5 text-center bg-blue-50/20 hover:bg-blue-50/50 transition-all cursor-pointer relative group"
                 >
                   <input
                     type="file"
-                    id="file-upload"
+                    id="multi-file-upload"
+                    multiple
                     accept="image/*,.pdf,.png,.jpg,.jpeg,.webp,.gif,.bmp,.heic,.heif,.avif,.tiff,.mp4,.mov,.pptx,.ppt,.docx,.doc,.txt,.zip,.rar"
-                    onChange={handleFileUpload}
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files.length > 0) {
+                        handleFilesSelected(e.target.files);
+                      }
+                    }}
                     className="hidden"
                   />
-                  <label htmlFor="file-upload" className="cursor-pointer space-y-2 block">
+                  <label htmlFor="multi-file-upload" className="cursor-pointer space-y-2 block">
                     {isCompressingImage ? (
                       <div className="py-2 space-y-2">
                         <Loader2 className="w-8 h-8 text-blue-600 animate-spin mx-auto" />
-                        <p className="text-xs font-black text-blue-700">Procesando y optimizando fotografía HD...</p>
-                        <p className="text-[10px] text-slate-500">Reduciendo tamaño para carga instantánea y sin fallos</p>
-                      </div>
-                    ) : fileData ? (
-                      <div className="space-y-2">
-                        {fileData.dataUrl && (fileData.type.startsWith('image/') || ['jpg', 'png', 'jpeg', 'webp'].includes(fileData.extension)) ? (
-                          <div className="relative inline-block max-h-40 overflow-hidden rounded-xl border border-slate-200 shadow-md">
-                            <img src={fileData.dataUrl} alt="Vista previa de foto" className="max-h-36 object-contain mx-auto" />
-                          </div>
-                        ) : (
-                          <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto" />
-                        )}
-                        <p className="text-xs font-extrabold text-blue-700">
-                          ✓ {fileData.name}
+                        <p className="text-xs font-black text-blue-700">
+                          {compressingProgress || 'Optimizando y preparando archivos...'}
                         </p>
-                        <p className="text-[10px] text-slate-500 font-semibold">
-                          {fileData.size} | Tocá para cambiar de archivo
-                        </p>
+                        <p className="text-[10px] text-slate-500">Comprimiendo imágenes a calidad HD lista para móviles y servidores</p>
                       </div>
                     ) : (
                       <>
-                        <Upload className="w-7 h-7 text-blue-500 mx-auto animate-bounce" />
+                        <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
+                          <Upload className="w-6 h-6" />
+                        </div>
                         <p className="text-xs font-extrabold text-blue-700">
-                          Haz clic o arrastra tu foto/archivo aquí
+                          {queuedFiles.length > 0 ? '+ Agregar más archivos a la lista' : 'Toca aquí o arrastra para seleccionar archivos (1 o varios a la vez)'}
                         </p>
                         <p className="text-[10px] text-slate-500 font-semibold">
-                          Soporta fotos de cámara (JPG, PNG), guías PDF, videos MP4 o presentaciones
+                          En teléfonos móviles puedes marcar múltiples fotos o PDFs a la vez en tu galería/explorador
                         </p>
                       </>
                     )}
@@ -7306,46 +8170,296 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Enlace Web Complementario (Opcional)
-                </label>
-                <input
-                  type="url"
-                  value={newUrl}
-                  onChange={(e) => setNewUrl(e.target.value)}
-                  placeholder="https://..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
-                />
+              {/* Queued Files List */}
+              {queuedFiles.length > 0 && (
+                <div className="space-y-3 bg-slate-50 border border-slate-200 rounded-2xl p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                      <FileUp className="w-4 h-4 text-blue-600" />
+                      Archivos listos para subir ({queuedFiles.length}):
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setQueuedFiles([])}
+                      className="text-[10px] font-bold text-rose-600 hover:text-rose-800 cursor-pointer"
+                    >
+                      Limpiar lista
+                    </button>
+                  </div>
+
+                  {/* Carrusel Mode Toggle when 2+ files */}
+                  {queuedFiles.length > 1 && (
+                    <div className="bg-gradient-to-r from-rose-500/10 via-pink-500/10 to-indigo-500/10 border border-rose-200 rounded-xl p-3 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 bg-rose-500 text-white rounded-lg shadow-sm">
+                          <Layers className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <span className="text-xs font-black text-slate-900 block">
+                            Formato de Publicación ({queuedFiles.length} Archivos)
+                          </span>
+                          <span className="text-[11px] text-slate-500">
+                            {uploadMode === 'carousel' 
+                              ? '✨ Modo Carrusel: Se publican juntos en 1 solo archivo interactivo estilo Instagram con diapositivas' 
+                              : 'Modo Separado: Se publica cada imagen como una tarjeta distinta'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Toggle Buttons */}
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setUploadMode('carousel')}
+                          className={`p-2.5 rounded-xl border text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                            uploadMode === 'carousel'
+                              ? 'bg-rose-600 text-white border-rose-600 shadow-md shadow-rose-500/20 ring-2 ring-rose-400/30'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                          }`}
+                        >
+                          <Layers className="w-4 h-4" />
+                          <span>Carrusel Instagram (1 Archivo)</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setUploadMode('separate')}
+                          className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                            uploadMode === 'separate'
+                              ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20 ring-2 ring-blue-400/30'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                          }`}
+                        >
+                          <FileUp className="w-4 h-4" />
+                          <span>{queuedFiles.length} Publicaciones Separadas</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                    {queuedFiles.map((qf, idx) => (
+                      <div key={qf.id} className="bg-white border border-slate-200/90 rounded-xl p-3 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                          {/* Reorder controls for carousel */}
+                          {uploadMode === 'carousel' && queuedFiles.length > 1 && (
+                            <div className="flex flex-col gap-0.5 shrink-0">
+                              <button
+                                type="button"
+                                disabled={idx === 0}
+                                onClick={() => handleMoveQueuedFile(idx, 'up')}
+                                className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-30 cursor-pointer"
+                                title="Mover hacia arriba (orden anterior)"
+                              >
+                                <ChevronUp className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={idx === queuedFiles.length - 1}
+                                onClick={() => handleMoveQueuedFile(idx, 'down')}
+                                className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-30 cursor-pointer"
+                                title="Mover hacia abajo (orden posterior)"
+                              >
+                                <ChevronDown className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
+
+                          {qf.dataUrl && (qf.type.startsWith('image/') || ['jpg', 'png', 'jpeg', 'webp'].includes(qf.extension)) ? (
+                            <div className="relative shrink-0">
+                              <img src={qf.dataUrl} alt="Miniatura" className="w-12 h-12 rounded-lg object-cover border border-slate-200" />
+                              {uploadMode === 'carousel' && (
+                                <span className={`absolute -top-1.5 -left-1.5 text-[9px] font-black px-1.5 py-0.2 rounded-full border shadow-sm ${
+                                  idx === 0 ? 'bg-rose-600 text-white border-rose-700' : 'bg-slate-900 text-slate-100 border-slate-700'
+                                }`}>
+                                  #{idx + 1}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="w-12 h-12 bg-blue-500/10 border border-blue-500/20 text-blue-600 rounded-lg flex items-center justify-center shrink-0 font-bold text-[10px] uppercase">
+                              .{qf.extension}
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1 space-y-1">
+                            <input
+                              type="text"
+                              value={qf.title}
+                              onChange={(e) => handleUpdateQueuedTitle(qf.id, e.target.value)}
+                              placeholder={uploadMode === 'carousel' ? `Lámina #${idx + 1} / Título o descripción...` : "Título del recurso..."}
+                              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            />
+                            <div className="flex items-center gap-2 text-[10px] text-slate-400 font-mono">
+                              <span className="truncate max-w-[140px]">{qf.name}</span>
+                              <span>•</span>
+                              <span className="text-slate-500 font-semibold">{qf.size}</span>
+                              {uploadMode === 'carousel' && idx === 0 && (
+                                <span className="text-rose-600 font-bold">★ Portada principal</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 self-end sm:self-center">
+                          {uploadMode !== 'carousel' && (
+                            <select
+                              value={qf.category}
+                              onChange={(e) => handleUpdateQueuedCategory(qf.id, e.target.value as any)}
+                              className="bg-slate-100 border border-slate-200 rounded-lg px-2 py-1 text-[11px] font-bold text-slate-700"
+                            >
+                              <option value="pdf">📄 PDF</option>
+                              <option value="infografia">📸 Infografía/Foto</option>
+                              <option value="reel">🎬 Video MP4</option>
+                              <option value="presentacion">📊 PPTX</option>
+                              <option value="pauta">📌 Pauta</option>
+                              <option value="archivo">📦 Archivo</option>
+                            </select>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveQueuedFile(qf.id)}
+                            className="text-rose-500 hover:text-rose-700 p-1.5 rounded hover:bg-rose-50 transition-colors cursor-pointer"
+                            title="Eliminar este archivo de la lista"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Single File or Carousel Main Title Input */}
+              {(queuedFiles.length === 0 || uploadMode === 'carousel') && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    {uploadMode === 'carousel' ? 'Título Principal del Carrusel / Álbum *' : 'Título del Recurso o Tema *'}
+                  </label>
+                  <input
+                    type="text"
+                    value={newTitle}
+                    onChange={(e) => setNewTitle(e.target.value)}
+                    placeholder={uploadMode === 'carousel' ? "Ej: Protocolo de Vía Aérea en 5 Pasos (Álbum Instagram)" : "Ej: Guía Rápida de Vía Aérea o Infografía Quirúrgica"}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 font-medium"
+                  />
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {queuedFiles.length === 0 && (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Categoría *
+                    </label>
+                    <select
+                      value={newCategory}
+                      onChange={(e) => setNewCategory(e.target.value as any)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
+                    >
+                      <option value="pdf">📄 Guía Clínica / PDF</option>
+                      <option value="reel">🎬 Video MP4 / Demostración</option>
+                      <option value="infografia">📸 Infografía / Guía Técnica</option>
+                      <option value="presentacion">📊 Presentación PPTX</option>
+                      <option value="pauta">📌 Protocolo / Pauta</option>
+                      <option value="archivo">📦 Paquete ZIP / Archivo</option>
+                    </select>
+                  </div>
+                )}
+
+                <div className={queuedFiles.length > 0 ? 'sm:col-span-2' : ''}>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Autor / Editor de la Publicación
+                  </label>
+                  <input
+                    type="text"
+                    value={newAuthor}
+                    onChange={(e) => setNewAuthor(e.target.value)}
+                    placeholder="Ej: Dr. Carlos Leal • AnestesiaPro"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 font-medium"
+                  />
+                </div>
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Etiquetas Clínicas (separadas por coma)
+                  Descripción Técnica o Resumen para los Usuarios
                 </label>
-                <input
-                  type="text"
-                  value={newTags}
-                  onChange={(e) => setNewTags(e.target.value)}
-                  placeholder="EducaciónContinua, PDF, GuiasClinicas, Anestesiologia"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
+                <textarea
+                  rows={2}
+                  value={newDescription}
+                  onChange={(e) => setNewDescription(e.target.value)}
+                  placeholder="Detalla las indicaciones, dosis o puntos clave de este material..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 font-medium"
                 />
               </div>
 
-              <div className="pt-3 flex items-center justify-end gap-3 border-t border-slate-100">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Enlace Web Complementario (Opcional)
+                  </label>
+                  <input
+                    type="url"
+                    value={newUrl}
+                    onChange={(e) => setNewUrl(e.target.value)}
+                    placeholder="https://..."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Etiquetas Clínicas
+                  </label>
+                  <input
+                    type="text"
+                    value={newTags}
+                    onChange={(e) => setNewTags(e.target.value)}
+                    placeholder="#EducaciónContinua, #AnestesiaPro, #Guias"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-3 flex items-center justify-between gap-3 border-t border-slate-100">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:text-slate-800 rounded-xl cursor-pointer"
+                  onClick={() => {
+                    if (!isBatchUploading) {
+                      setIsModalOpen(false);
+                      setQueuedFiles([]);
+                    }
+                  }}
+                  disabled={isBatchUploading}
+                  className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:text-slate-800 rounded-xl cursor-pointer disabled:opacity-50"
                 >
                   Cancelar
                 </button>
+
                 <button
                   type="submit"
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-black text-xs px-5 py-2.5 rounded-xl shadow-lg shadow-blue-500/25 transition-all cursor-pointer flex items-center gap-1.5"
+                  disabled={isBatchUploading || (queuedFiles.length === 0 && !newTitle.trim())}
+                  className="bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-black text-xs px-6 py-2.5 rounded-xl shadow-lg shadow-blue-500/25 transition-all cursor-pointer flex items-center gap-2 active:scale-95 disabled:opacity-50"
                 >
-                  <Plus className="w-4 h-4" />
-                  <span>Publicar en Biblioteca</span>
+                  {isBatchUploading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-cyan-200" />
+                      <span>Transmitiendo al servidor público...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CloudUpload className="w-4 h-4 text-cyan-200" />
+                      <span>
+                        {uploadMode === 'carousel' && queuedFiles.length > 1
+                          ? `Publicar 1 Álbum Carrusel (${queuedFiles.length} Fotos) en el Servidor`
+                          : queuedFiles.length > 1 
+                            ? `Publicar ${queuedFiles.length} Archivos Separados en el Servidor` 
+                            : 'Publicar en el Servidor Público'}
+                      </span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>

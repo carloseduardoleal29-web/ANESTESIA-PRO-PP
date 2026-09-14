@@ -19,6 +19,7 @@ import {
   Camera
 } from 'lucide-react';
 
+
 // Dedicated high-precision clinical illustrations
 import imgVdrape from '../../assets/images/emotive_vdrape_1788182029024.jpg';
 import imgBimanual from '../../assets/images/bimanual_massage_1788182044077.jpg';
@@ -27,7 +28,6 @@ import imgTxa from '../../assets/images/tranexamic_acid_1788182072707.jpg';
 import imgResuscitation from '../../assets/images/resuscitation_iv_1788182086492.jpg';
 import imgSpeculum from '../../assets/images/speculum_exam_1788182099928.jpg';
 import imgBakri from '../../assets/images/bakri_balloon_1788182116563.jpg';
-
 /**
  * 1. [E] EARLY DETECTION: V-Drape Calibrated Blood Collector
  */
@@ -51,6 +51,7 @@ export const GraphicEarlyDetection: React.FC<{ className?: string }> = ({ classN
             src={imgVdrape} 
             alt="Bolsa colectora subpélvica calibrada V-Drape para cuantificación objetiva de hemorragia posparto"
             referrerPolicy="no-referrer"
+            onError={(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&w=800&q=80'; }}
             className="w-full h-48 object-cover object-center group-hover:scale-105 transition-transform duration-500"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-transparent" />
@@ -127,6 +128,7 @@ export const GraphicUterineMassage: React.FC<{ className?: string }> = ({ classN
             src={imgBimanual} 
             alt="Esquema anatómico de compresión uterina bimanual activa para control de hemorragia"
             referrerPolicy="no-referrer"
+            onError={(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1584516150909-c43483ee7932?auto=format&fit=crop&w=800&q=80'; }}
             className="w-full h-48 object-cover object-center group-hover:scale-105 transition-transform duration-500"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-transparent" />
@@ -191,6 +193,7 @@ export const GraphicOxytocicDrugs: React.FC<{ className?: string }> = ({ classNa
             src={imgUterotonics} 
             alt="Fármacos uterotónicos Oxitocina y Carbetocina con receptor miometrial y contracción muscular"
             referrerPolicy="no-referrer"
+            onError={(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&w=800&q=80'; }}
             className="w-full h-48 object-cover object-center group-hover:scale-105 transition-transform duration-500"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-transparent" />
@@ -261,6 +264,7 @@ export const GraphicTranexamicAcid: React.FC<{ className?: string }> = ({ classN
             src={imgTxa} 
             alt="Mecanismo de acción del Ácido Tranexámico protegiendo la red de fibrina contra la plasmina"
             referrerPolicy="no-referrer"
+            onError={(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=800&q=80'; }}
             className="w-full h-48 object-cover object-center group-hover:scale-105 transition-transform duration-500"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-transparent" />
@@ -327,6 +331,7 @@ export const GraphicIVFluids: React.FC<{ className?: string }> = ({ className = 
             src={imgResuscitation} 
             alt="Sistema de infusión y calentador de fluidos a 37 grados para reanimación anestésica"
             referrerPolicy="no-referrer"
+            onError={(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1631217868264-e8b6005014d7?auto=format&fit=crop&w=800&q=80'; }}
             className="w-full h-48 object-cover object-center group-hover:scale-105 transition-transform duration-500"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-transparent" />
@@ -388,6 +393,7 @@ export const GraphicVaginalExam4Ts: React.FC<{ className?: string }> = ({ classN
             src={imgSpeculum} 
             alt="Examen sistemático del tracto genital con valvas quirúrgicas e iluminación directa"
             referrerPolicy="no-referrer"
+            onError={(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&w=800&q=80'; }}
             className="w-full h-48 object-cover object-center group-hover:scale-105 transition-transform duration-500"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-transparent" />
@@ -454,6 +460,7 @@ export const GraphicEscalateBakri: React.FC<{ className?: string }> = ({ classNa
             src={imgBakri} 
             alt="Balón de taponamiento intrauterino de Bakri inflado con solución salina para control de hemorragia"
             referrerPolicy="no-referrer"
+            onError={(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1584516150909-c43483ee7932?auto=format&fit=crop&w=800&q=80'; }}
             className="w-full h-48 object-cover object-center group-hover:scale-105 transition-transform duration-500"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-transparent" />

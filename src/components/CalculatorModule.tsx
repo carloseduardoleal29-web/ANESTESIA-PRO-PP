@@ -21,7 +21,10 @@ export const CalculatorModule: React.FC = () => {
   // Selected custom doses
   const [dosePropofol, setDosePropofol] = useState<number>(2);
   const [doseKetamina, setDoseKetamina] = useState<number>(2);
+  const [doseTiopental, setDoseTiopental] = useState<number>(4);
   const [doseFentanilo, setDoseFentanilo] = useState<number>(2);
+  const [doseSufentanil, setDoseSufentanil] = useState<number>(1);
+  const [doseAlfentanil, setDoseAlfentanil] = useState<number>(15);
   const [doseRocuronio, setDoseRocuronio] = useState<number>(0.6);
   const [doseSuccinil, setDoseSuccinil] = useState<number>(1.0);
   const [doseVecuronio, setDoseVecuronio] = useState<number>(0.1);
@@ -176,6 +179,23 @@ export const CalculatorModule: React.FC = () => {
                   </select>
                 </div>
               )}
+
+              {hipnotico === 'tiopental' && (
+                <div className="mt-2 p-3 bg-slate-900 rounded-xl border border-slate-800">
+                  <label className="text-xs font-bold text-indigo-300 block mb-1">
+                    Dosis Tiopental Sódico (3-5 mg/kg):
+                  </label>
+                  <select
+                    value={doseTiopental}
+                    onChange={(e) => setDoseTiopental(Number(e.target.value))}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-xs text-white"
+                  >
+                    <option value={3}>Baja / Ancianos (3 mg/kg)</option>
+                    <option value={4}>Estándar Adulto (4 mg/kg)</option>
+                    <option value={5}>Plena / Joven (5 mg/kg)</option>
+                  </select>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -229,6 +249,42 @@ export const CalculatorModule: React.FC = () => {
                     <option value={4}>Alta (4 mcg/kg)</option>
                     <option value={5}>Intensa (5 mcg/kg)</option>
                     <option value={1}>Sedación / Mantenimiento (1 mcg/kg)</option>
+                  </select>
+                </div>
+              )}
+
+              {opioide === 'sufentanil' && (
+                <div className="mt-2 p-3 bg-slate-900 rounded-xl border border-slate-800">
+                  <label className="text-xs font-bold text-indigo-300 block mb-1">
+                    Dosis Sufentanil (Rango 0.2 - 1.0 mcg/kg):
+                  </label>
+                  <select
+                    value={doseSufentanil}
+                    onChange={(e) => setDoseSufentanil(Number(e.target.value))}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-xs text-white"
+                  >
+                    <option value={0.2}>Baja / Sedación / Ambulatoria (0.2 mcg/kg)</option>
+                    <option value={0.5}>Estándar Inducción (0.5 mcg/kg)</option>
+                    <option value={0.75}>Intermedia (0.75 mcg/kg)</option>
+                    <option value={1.0}>Cirugía Mayor / Cardiovascular (1.0 mcg/kg)</option>
+                  </select>
+                </div>
+              )}
+
+              {opioide === 'alfentanil' && (
+                <div className="mt-2 p-3 bg-slate-900 rounded-xl border border-slate-800">
+                  <label className="text-xs font-bold text-indigo-300 block mb-1">
+                    Dosis Alfentanil (Rango 10 - 30 mcg/kg):
+                  </label>
+                  <select
+                    value={doseAlfentanil}
+                    onChange={(e) => setDoseAlfentanil(Number(e.target.value))}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-xs text-white"
+                  >
+                    <option value={10}>Procedimiento Corto (10 mcg/kg)</option>
+                    <option value={15}>Estándar Inducción (15 mcg/kg)</option>
+                    <option value={20}>Media / Laringoscopía (20 mcg/kg)</option>
+                    <option value={30}>Procedimiento Mayor / Intenso (30 mcg/kg)</option>
                   </select>
                 </div>
               )}
@@ -611,11 +667,14 @@ export const CalculatorModule: React.FC = () => {
           {hipnotico === 'tiopental' && (
             <div className="p-3 bg-slate-900/90 rounded-xl border border-indigo-800/50 flex justify-between items-center">
               <div>
-                <strong className="text-cyan-300 block">🔹 Tiopental (4 mg/kg):</strong>
-                <span className="text-xs text-slate-400">Frasco ampolla 1g (Reconstituido 2.5%)</span>
+                <strong className="text-cyan-300 block">🔹 Tiopental ({doseTiopental} mg/kg):</strong>
+                <span className="text-xs text-slate-400">Frasco ampolla 1g (Reconstituido al 2.5% = 25 mg/mL)</span>
               </div>
               <div className="text-right">
-                <span className="text-base font-black text-white">{(safePeso * 4).toFixed(0)} mg</span>
+                <span className="text-base font-black text-white">{(safePeso * doseTiopental).toFixed(0)} mg</span>
+                <span className="text-xs text-cyan-400 font-bold block">
+                  ({((safePeso * doseTiopental) / 25).toFixed(1)} mL al 2.5%)
+                </span>
               </div>
             </div>
           )}
@@ -639,13 +698,13 @@ export const CalculatorModule: React.FC = () => {
           {opioide === 'sufentanil' && (
             <div className="p-3 bg-slate-900/90 rounded-xl border border-indigo-800/50 flex justify-between items-center">
               <div>
-                <strong className="text-indigo-300 block">🔹 Sufentanil (1 mcg/kg):</strong>
-                <span className="text-xs text-slate-400">Ampolla 50 mcg/mL</span>
+                <strong className="text-indigo-300 block">🔹 Sufentanil ({doseSufentanil} mcg/kg):</strong>
+                <span className="text-xs text-slate-400">Ampolla 50 mcg/mL (o dilución 5 mcg/mL)</span>
               </div>
               <div className="text-right">
-                <span className="text-base font-black text-white">{(safePeso * 1).toFixed(0)} mcg</span>
+                <span className="text-base font-black text-white">{(safePeso * doseSufentanil).toFixed(1)} mcg</span>
                 <span className="text-xs text-indigo-400 font-bold block">
-                  ({((safePeso * 1) / 50).toFixed(1)} mL)
+                  ({((safePeso * doseSufentanil) / 50).toFixed(2)} mL pura | {((safePeso * doseSufentanil) / 5).toFixed(1)} mL dil. 5 mcg/mL)
                 </span>
               </div>
             </div>
@@ -654,13 +713,13 @@ export const CalculatorModule: React.FC = () => {
           {opioide === 'alfentanil' && (
             <div className="p-3 bg-slate-900/90 rounded-xl border border-indigo-800/50 flex justify-between items-center">
               <div>
-                <strong className="text-indigo-300 block">🔹 Alfentanil (15 mcg/kg):</strong>
-                <span className="text-xs text-slate-400">Ampolla 500 mcg/mL</span>
+                <strong className="text-indigo-300 block">🔹 Alfentanil ({doseAlfentanil} mcg/kg):</strong>
+                <span className="text-xs text-slate-400">Ampolla 500 mcg/mL (0.5 mg/mL)</span>
               </div>
               <div className="text-right">
-                <span className="text-base font-black text-white">{(safePeso * 15).toFixed(0)} mcg</span>
+                <span className="text-base font-black text-white">{(safePeso * doseAlfentanil).toFixed(0)} mcg</span>
                 <span className="text-xs text-indigo-400 font-bold block">
-                  ({((safePeso * 15) / 500).toFixed(1)} mL)
+                  ({((safePeso * doseAlfentanil) / 500).toFixed(1)} mL)
                 </span>
               </div>
             </div>

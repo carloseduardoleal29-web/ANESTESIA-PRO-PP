@@ -149,7 +149,7 @@ export const PreeclampsiaAnatomicalInfographic: React.FC<Props> = ({ onNavigateT
 
   // Imagenes médicas
   const anesthesiaImgSrc = '/images/infografia_anestesiologia_preeclampsia.svg';
-  const trophoblastImgSrc = '/images/mala_conexion_trofoblastica.svg';
+  const trophoblastImgSrc = '/images/preeclampsia_placenta_maternal_connection.svg';
   const arteryImgSrc = '/images/fisiopatologia_arteriopatia.svg';
 
 
@@ -392,7 +392,7 @@ export const PreeclampsiaAnatomicalInfographic: React.FC<Props> = ({ onNavigateT
 
             <a
               href={trophoblastImgSrc}
-              download="mala_conexion_trofoblastica.svg"
+              download="preeclampsia_placenta_maternal_connection.svg"
               className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 transition-all"
               title="Descargar imagen SVG"
             >
