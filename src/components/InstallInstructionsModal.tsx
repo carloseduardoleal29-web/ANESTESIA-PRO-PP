@@ -286,6 +286,7 @@ export const InstallInstructionsModal: React.FC<InstallInstructionsModalProps> =
               });
               try {
                 localStorage.setItem('anestesiapro_pwa_standalone_recorded', 'true');
+                localStorage.setItem('anestesiapro_install_synced_to_server', 'true');
               } catch (e) {}
               setInstallConfirmed(true);
               setTimeout(() => setInstallConfirmed(false), 4000);

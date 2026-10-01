@@ -21,13 +21,7 @@ export const WhatsAppShareBanner: React.FC<WhatsAppShareBannerProps> = ({
 
   const fullUrl = tabParam ? `${SHORT_APP_URL}?tab=${tabParam}` : SHORT_APP_URL;
   const messageToShare = `${shareText || `🩺 Te recomiendo revisar ${title} en AnestesiaPro:`}\n\n${description}\n\n🔗 ${fullUrl}`;
-
-  const handleWhatsAppShare = () => {
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    const encoded = encodeURIComponent(messageToShare);
-    const url = isMobile ? `whatsapp://send?text=${encoded}` : `https://api.whatsapp.com/send?text=${encoded}`;
-    window.open(url, '_blank');
-  };
+  const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(messageToShare)}`;
 
   const handleCopyLink = () => {
     if (navigator.clipboard) {
@@ -59,13 +53,15 @@ export const WhatsAppShareBanner: React.FC<WhatsAppShareBannerProps> = ({
       </div>
 
       <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
-        <button
-          onClick={handleWhatsAppShare}
+        <a
+          href={whatsappUrl}
+          target="_blank"
+          rel="noopener noreferrer"
           className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-slate-950 text-xs font-black transition-all cursor-pointer shadow-md active:scale-95"
         >
-          <Share2 className="w-3.5 h-3.5" />
+          <Share2 className="w-3.5 h-3.5 text-slate-950" />
           <span>WhatsApp</span>
-        </button>
+        </a>
 
         <button
           onClick={handleCopyLink}

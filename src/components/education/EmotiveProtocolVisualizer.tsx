@@ -45,14 +45,148 @@ import {
 
 interface EmotiveVisualProps {
   onDownload?: () => void;
+  isAdmin?: boolean;
 }
 
-export const EmotiveProtocolVisualizer: React.FC<EmotiveVisualProps> = ({ onDownload }) => {
+export const EmotiveProtocolVisualizer: React.FC<EmotiveVisualProps> = ({ onDownload, isAdmin }) => {
   const [activeTab, setActiveTab] = useState<'acronimo' | 'simulador' | 'farmacos_dosis' | 'ptm_111' | 'atlas_visual' | 'evidencia'>('acronimo');
   const [selectedLetter, setSelectedLetter] = useState<'E1' | 'M' | 'O' | 'T' | 'I' | 'V' | 'E2'>('E1');
   const [timelineStep, setTimelineStep] = useState<number>(1);
   const [calcBloodLoss, setCalcBloodLoss] = useState<number>(650);
   const [showShareModal, setShowShareModal] = useState(false);
+
+  const isAuthorAdmin = Boolean(
+    isAdmin || (typeof window !== 'undefined' && (
+      localStorage.getItem('anestesiapro_admin_mode') === 'true' ||
+      localStorage.getItem('anestesiapro_is_author_admin') === 'true' ||
+      sessionStorage.getItem('anestesiapro_author_session') === 'true'
+    ))
+  );
+
+  const [customImages, setCustomImages] = useState<Record<string, string>>(() => {
+    try {
+      const cached = localStorage.getItem('anestesiapro_emotive_images');
+      return cached ? JSON.parse(cached) : {};
+    } catch (e) {
+      return {};
+    }
+  });
+  const [uploadingKey, setUploadingKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    let localCache: Record<string, string> = {};
+    try {
+      const cached = localStorage.getItem('anestesiapro_emotive_images');
+      if (cached) localCache = JSON.parse(cached);
+    } catch (e) {
+      console.warn('Error reading local emotive images:', e);
+    }
+
+    fetch('/api/emotive/images')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.images && typeof data.images === 'object') {
+          const serverImages = data.images as Record<string, string>;
+          // Never erase local images if server has fewer keys or empty object!
+          const merged: Record<string, string> = { ...localCache };
+
+          for (const [k, v] of Object.entries(serverImages)) {
+            if (v && typeof v === 'string') {
+              merged[k] = v;
+            }
+          }
+
+          setCustomImages(merged);
+          localStorage.setItem('anestesiapro_emotive_images', JSON.stringify(merged));
+
+          // If local cache had images that the server is missing, push them to server now
+          const missingOnServer = Object.keys(localCache).some(k => localCache[k] && !serverImages[k]);
+          if (missingOnServer) {
+            console.log('[AnestesiaPro] Syncing local E-MOTIVE photos to central server...');
+            fetch('/api/emotive/images', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ syncAll: localCache })
+            }).catch(e => console.warn('Error syncing images to server:', e));
+          }
+        }
+      })
+      .catch((err) => {
+        console.warn('Error fetching emotive images from server:', err);
+      });
+  }, []);
+
+  const handleUploadImage = async (letterKey: string, file: File) => {
+    try {
+      setUploadingKey(letterKey);
+
+      // 1. Read base64 immediately for zero-lag instant display and indestructible local persistence
+      const base64Promise = new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => resolve('');
+        reader.readAsDataURL(file);
+      });
+
+      const base64Url = await base64Promise;
+
+      if (base64Url) {
+        setCustomImages(prev => {
+          const next = { ...prev, [letterKey]: base64Url };
+          localStorage.setItem('anestesiapro_emotive_images', JSON.stringify(next));
+          return next;
+        });
+      }
+
+      // 2. Upload file to server storage
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('title', `E-MOTIVE Paso ${letterKey}`);
+      formData.append('category', 'emotive');
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      const finalUrl = (data.success && data.url) ? data.url : base64Url;
+
+      // 3. Register image key with server
+      await fetch('/api/emotive/images', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: letterKey, url: finalUrl })
+      });
+
+      setCustomImages(prev => {
+        const next = { ...prev, [letterKey]: finalUrl };
+        localStorage.setItem('anestesiapro_emotive_images', JSON.stringify(next));
+        return next;
+      });
+    } catch (err) {
+      console.error('Error uploading acronym image:', err);
+    } finally {
+      setUploadingKey(null);
+    }
+  };
+
+  const handleResetImage = async (letterKey: string) => {
+    try {
+      await fetch('/api/emotive/images', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: letterKey, url: '' })
+      });
+      setCustomImages(prev => {
+        const next = { ...prev };
+        delete next[letterKey];
+        localStorage.setItem('anestesiapro_emotive_images', JSON.stringify(next));
+        return next;
+      });
+    } catch (err) {
+      console.error('Error resetting image:', err);
+    }
+  };
 
   useEffect(() => {
     logAdminActivity(
@@ -555,13 +689,69 @@ export const EmotiveProtocolVisualizer: React.FC<EmotiveVisualProps> = ({ onDown
 
             {/* Educational Interactive Graphic Illustration */}
             <div className="w-full">
-              {selectedLetter === 'E1' && <GraphicEarlyDetection />}
-              {selectedLetter === 'M' && <GraphicUterineMassage />}
-              {selectedLetter === 'O' && <GraphicOxytocicDrugs />}
-              {selectedLetter === 'T' && <GraphicTranexamicAcid />}
-              {selectedLetter === 'I' && <GraphicIVFluids />}
-              {selectedLetter === 'V' && <GraphicVaginalExam4Ts />}
-              {selectedLetter === 'E2' && <GraphicEscalateBakri />}
+              {selectedLetter === 'E1' && (
+                <GraphicEarlyDetection 
+                  customImage={customImages['E1']}
+                  isAdmin={isAuthorAdmin}
+                  onUploadImage={(f) => handleUploadImage('E1', f)}
+                  onResetImage={() => handleResetImage('E1')}
+                  isUploading={uploadingKey === 'E1'}
+                />
+              )}
+              {selectedLetter === 'M' && (
+                <GraphicUterineMassage 
+                  customImage={customImages['M']}
+                  isAdmin={isAuthorAdmin}
+                  onUploadImage={(f) => handleUploadImage('M', f)}
+                  onResetImage={() => handleResetImage('M')}
+                  isUploading={uploadingKey === 'M'}
+                />
+              )}
+              {selectedLetter === 'O' && (
+                <GraphicOxytocicDrugs 
+                  customImage={customImages['O']}
+                  isAdmin={isAuthorAdmin}
+                  onUploadImage={(f) => handleUploadImage('O', f)}
+                  onResetImage={() => handleResetImage('O')}
+                  isUploading={uploadingKey === 'O'}
+                />
+              )}
+              {selectedLetter === 'T' && (
+                <GraphicTranexamicAcid 
+                  customImage={customImages['T']}
+                  isAdmin={isAuthorAdmin}
+                  onUploadImage={(f) => handleUploadImage('T', f)}
+                  onResetImage={() => handleResetImage('T')}
+                  isUploading={uploadingKey === 'T'}
+                />
+              )}
+              {selectedLetter === 'I' && (
+                <GraphicIVFluids 
+                  customImage={customImages['I']}
+                  isAdmin={isAuthorAdmin}
+                  onUploadImage={(f) => handleUploadImage('I', f)}
+                  onResetImage={() => handleResetImage('I')}
+                  isUploading={uploadingKey === 'I'}
+                />
+              )}
+              {selectedLetter === 'V' && (
+                <GraphicVaginalExam4Ts 
+                  customImage={customImages['V']}
+                  isAdmin={isAuthorAdmin}
+                  onUploadImage={(f) => handleUploadImage('V', f)}
+                  onResetImage={() => handleResetImage('V')}
+                  isUploading={uploadingKey === 'V'}
+                />
+              )}
+              {selectedLetter === 'E2' && (
+                <GraphicEscalateBakri 
+                  customImage={customImages['E2']}
+                  isAdmin={isAuthorAdmin}
+                  onUploadImage={(f) => handleUploadImage('E2', f)}
+                  onResetImage={() => handleResetImage('E2')}
+                  isUploading={uploadingKey === 'E2'}
+                />
+              )}
             </div>
 
             {/* Objective & Actions Grid */}

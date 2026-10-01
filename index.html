@@ -14,18 +14,49 @@
         };
       })();
     </script>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, shrink-to-fit=no, interactive-widget=resizes-content" />
+    <!-- Auto-Framing & Mobile Viewport Engine: Guarantees 100% pixel-perfect framing without requiring desktop-mode toggle -->
+    <script>
+      (function() {
+        function autoFrameDevice() {
+          var viewportMeta = document.querySelector('meta[name="viewport"]');
+          var targetConfig = 'width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, shrink-to-fit=no, interactive-widget=resizes-content';
+          if (viewportMeta && viewportMeta.getAttribute('content') !== targetConfig) {
+            viewportMeta.setAttribute('content', targetConfig);
+          }
+          if (document.documentElement) {
+            document.documentElement.style.overflowX = 'hidden';
+            document.documentElement.style.width = '100%';
+            document.documentElement.style.maxWidth = '100%';
+          }
+          if (document.body) {
+            document.body.style.overflowX = 'hidden';
+            document.body.style.width = '100%';
+            document.body.style.maxWidth = '100%';
+          }
+        }
+        autoFrameDevice();
+        window.addEventListener('resize', autoFrameDevice, { passive: true });
+        window.addEventListener('orientationchange', function() {
+          setTimeout(function() {
+            autoFrameDevice();
+            window.scrollTo(0, 0);
+          }, 150);
+        }, { passive: true });
+        document.addEventListener('DOMContentLoaded', autoFrameDevice);
+      })();
+    </script>
     <meta name="theme-color" content="#0f172a" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="description" content="AnestesiaPro: Suite clínica de anestesiología con evaluación preanestésica digital con informe PDF, vía aérea difícil (VORTEX), calculadoras de inducción por peso, vademécum y protocolos actualizados. 100% gratuita y funcional sin internet." />
-    <link rel="icon" type="image/svg+xml" href="/app_logo.svg" />
-    <link rel="icon" type="image/x-icon" href="/favicon.ico?v=6" />
-    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png?v=6" />
-    <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png?v=6" />
-    <link rel="icon" type="image/jpeg" href="/app_logo.jpg?v=6" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=6" />
-    <link rel="apple-touch-icon" href="/app_logo.jpg?v=6" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/pwa-192x192.png?v=2026" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/pwa-512x512.png?v=2026" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico?v=2026" />
+    <link rel="icon" type="image/jpeg" href="/app_logo.jpg?v=2026" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=2026" />
+    <link rel="manifest" href="/manifest.json?v=2026" />
     
     <!-- Open Graph / Facebook / WhatsApp Preview Meta Tags -->
     <meta property="og:type" content="website" />
@@ -46,7 +77,6 @@
     <meta name="twitter:description" content="Aplicación clínica para anestesiólogos y residentes: evaluación preanestésica, calculadoras de dosis, vía aérea y protocolos 100% offline." />
     <meta name="twitter:image" content="https://anestesiapro.ai.studio/og_banner.jpg?v=6" />
 
-    <link rel="manifest" href="/manifest.json?v=6" />
     <title>AnestesiaPro - Suite Anestésica Clínica</title>
   </head>
   <body class="bg-slate-950 text-slate-100 antialiased selection:bg-cyan-500 selection:text-slate-950">

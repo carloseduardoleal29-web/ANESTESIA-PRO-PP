@@ -1,9 +1,51 @@
 {
-  "visits": 1080,
-  "appInstalls": 204,
-  "uniqueDevices": 404,
-  "totalDownloads": 912,
+  "visits": 1267,
+  "uniqueDevices": 498,
+  "appInstalls": 208,
+  "totalDownloads": 977,
   "itemDownloads": {
-    "res-calculadora-induccion": 2
+    "res-preeclampsia-eclampsia-enfoque-anestesiologico": 134,
+    "res-calculadora-preeclampsia": 46,
+    "res-protocolo-emotive-hemorragia-posparto-2026": 93,
+    "res-guia-eras-cesarea-2025": 110,
+    "res-modulo-preanestesia-consultado": 138,
+    "res-evaluacion-preanestesica": 80,
+    "res-enfoque-vortex-via-aerea-dificil": 65,
+    "res-fona-cricotiroidotomia": 48,
+    "res-calculadora-induccion": 44,
+    "res-caso-elaine-bromiley": 35,
+    "res-isr-secuencia-rapida-2025": 31,
+    "res-orexina-interruptor-despertar-2026": 29,
+    "res-aminofilina-teofilina-cppd": 27,
+    "res-das-2025-urgencias": 24,
+    "res-indice-de-shock": 22,
+    "res-modelo-vortex-redar": 20,
+    "res-articulo-metaanalisis-aminofilina-2023": 15,
+    "res-articulo-estudio-aminofilina-2016": 12,
+    "res-cebranopadol-fase3-2026": 0,
+    "🔬 Revisión de Borrador: Preeclampsia, Eclampsia & Complicaciones": 4
+  },
+  "devices": {
+    "Smartphone (Móvil) 📱": 255,
+    "Computadora / PC 💻": 162,
+    "Tablet 📲": 12,
+    "Smartphone Android 📱": 5,
+    "Computadora PC (Windows) 💻": 64
+  },
+  "locations": {
+    "🇻🇪 Venezuela": 536,
+    "🇨🇴 Colombia": 47,
+    "🇲🇽 México": 41,
+    "🇪🇸 España": 23,
+    "🇦🇷 Argentina": 13,
+    "🇺🇸 Estados Unidos": 11
+  },
+  "downloadLocations": {
+    "🇻🇪 Venezuela": 103,
+    "🇨🇴 Colombia": 22,
+    "🇲🇽 México": 14,
+    "🇪🇸 España": 7,
+    "🇦🇷 Argentina": 5,
+    "🇺🇸 Estados Unidos": 3
   }
 }

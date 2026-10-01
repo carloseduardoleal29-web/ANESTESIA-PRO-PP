@@ -8,6 +8,8 @@ export interface EducationalResource {
   date: string;
   author?: string;
   url?: string;
+  externalUrl?: string;
+  photoDeleted?: boolean;
   fileDataUrl?: string;
   fileName?: string;
   fileSize?: string;
@@ -22,8 +24,10 @@ export interface EducationalResource {
   isCustom?: boolean;
   isCommunity?: boolean;
   images?: string[];
+  imagesData?: string[];
   isCarousel?: boolean;
   imageCaptions?: string[];
+  updatedAt?: string;
 }
 
 export interface PreanesthesiaData {
@@ -37,6 +41,7 @@ export interface PreanesthesiaData {
   hora: string;
   servicio: string; // Servicio Quirúrgico / Tratante
   diag: string;
+  diagnostico?: string; // Para compatibilidad
   cirugia: string;
 
   // 2. Antecedentes
@@ -45,9 +50,15 @@ export interface PreanesthesiaData {
   alergias: string;
   alcohol: string;
   cirugiasPrev: string;
+  antecedentes?: string; // Para compatibilidad
+  familiares?: string;   // Para compatibilidad
+  quirurgicos?: string;  // Para compatibilidad
+  habitos?: string;      // Para compatibilidad
 
   // 3. Examen Físico e Índice Vía Aérea (El-Ganzouri - EGRI)
   peso: string;
+  talla?: string;
+  imc?: string;
   fc: string;
   fr: string;
   ta: string;
@@ -74,10 +85,13 @@ export interface PreanesthesiaData {
 
   cabeza: string;
   cardio: string;
+  cardiovascular?: string; // Para compatibilidad
   resp: string;
+  pulmonar?: string;       // Para compatibilidad
   abdomen: string;
   extremidades: string;
   neuro: string;
+  neurologico?: string;    // Para compatibilidad
 
   // 4. Paraclínicos y Riesgo
   hg: string;
@@ -99,16 +113,44 @@ export interface PreanesthesiaData {
   evaluacionCardio: string;  // Valoración Cardiovascular
   evaluacionNeumo: string;   // Evaluación por Neumonología
   otrosLaboratorios: string; // Otros laboratorios
+  otrasValoraciones?: string; // Otras valoraciones especializadas (Med. Interna, Endocrino, Nefrología, etc.)
 
   goldman: string;
   asa: string;
   apto: string;
 
+  // Escala de Caprini (Riesgo Tromboembólico Venoso - TEV)
+  capriniScore?: number;
+  capriniCategory?: string;
+  capriniProfilaxis?: string;
+  capriniSelectedItems?: string[];
+
   // 5. Cierre
   recomendaciones: string;
   anestesio: string;
   cedula: string;
+  matricula?: string; // Matrícula Profesional / Registro Médico
   telefono: string;
+
+  // 6. Membrete & Logos del Hospital
+  hospitalName?: string;
+  hospitalDepartment?: string;
+  hospitalInstitutionType?: string;
+  hospitalAddress?: string;
+  hospitalCityCountry?: string;
+  hospitalPhone?: string;
+  hospitalEmail?: string;
+  hospitalLogoBase64?: string | null;
+  specialistLogoBase64?: string | null;
+  themeColor?: 'navy' | 'emerald' | 'cyan' | 'burgundy' | 'indigo' | 'slate';
+
+  // 7. Firmas Digitales Manuscritas
+  doctorSignatureDataUrl?: string | null;
+  doctorSignedAt?: string | null;
+  patientSignatureDataUrl?: string | null;
+  patientSignedAt?: string | null;
+  patientSignerName?: string;
+  patientSignerRelation?: 'Paciente' | 'Madre' | 'Padre' | 'Cónyuge' | 'Tutor Legal' | string;
 }
 
 export interface DrugDosingRegimen {

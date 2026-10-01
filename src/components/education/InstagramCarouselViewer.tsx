@@ -28,31 +28,56 @@ export const InstagramCarouselViewer: React.FC<InstagramCarouselViewerProps> = (
   resource,
   onDownload
 }) => {
-  // Extract all images for the carousel
+  // Extract all images for the carousel with resilient pairing
   const images: string[] = React.useMemo(() => {
-    if (Array.isArray(resource.images) && resource.images.length > 0) {
-      return resource.images.filter(img => typeof img === 'string' && img.trim().length > 0);
+    const count = Math.max(
+      Array.isArray(resource.images) ? resource.images.length : 0,
+      Array.isArray(resource.imagesData) ? resource.imagesData.length : 0
+    );
+    if (count > 0) {
+      const list: string[] = [];
+      for (let i = 0; i < count; i++) {
+        const dataUrl = resource.imagesData?.[i];
+        const normalUrl = resource.images?.[i];
+        const item = (dataUrl && dataUrl.startsWith('data:')) ? dataUrl : (normalUrl || dataUrl);
+        if (item && typeof item === 'string' && item.trim().length > 0) {
+          list.push(item);
+        }
+      }
+      if (list.length > 0) return list;
     }
-    if (resource.fileDataUrl) {
+    if (resource.fileDataUrl && !resource.fileDataUrl.startsWith('data:application/pdf')) {
       return [resource.fileDataUrl];
     }
-    if (resource.url && (resource.category === 'infografia' || resource.category === 'foto' || resource.category === 'carrusel' || resource.url.match(/\.(jpg|jpeg|png|webp|gif)$/i))) {
+    if (resource.url && (
+      resource.category === 'infografia' || 
+      resource.category === 'foto' || 
+      resource.category === 'carrusel' || 
+      resource.url.startsWith('/uploads/') ||
+      resource.url.match(/\.(jpg|jpeg|png|webp|gif|svg)$/i)
+    )) {
       return [resource.url];
     }
     return [];
-  }, [resource]);
+  }, [resource.id, resource.updatedAt, resource.url, resource.fileDataUrl, resource.images?.length, resource.imagesData?.length]);
 
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState<boolean>(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState<boolean>(false);
   const [copiedNotification, setCopiedNotification] = useState<boolean>(false);
   const [failedImages, setFailedImages] = useState<Record<number, boolean>>({});
-  const [isImageLoading, setIsImageLoading] = useState<boolean>(true);
+  const [isImageLoading, setIsImageLoading] = useState<boolean>(false);
 
   // Preload neighboring images for smooth, instantaneous mobile swiping
   useEffect(() => {
     if (!images || images.length === 0) return;
-    setIsImageLoading(true);
+    const currentSrc = images[currentIndex];
+    if (currentSrc && !currentSrc.startsWith('data:')) {
+      // Only show spinner for uncached remote images
+      setIsImageLoading(false);
+    } else {
+      setIsImageLoading(false);
+    }
     
     // Preload next and previous
     const toPreload = [currentIndex, currentIndex + 1, currentIndex - 1].filter(
@@ -397,10 +422,18 @@ export const InstagramCarouselViewer: React.FC<InstagramCarouselViewerProps> = (
               key={currentIndex}
               src={images[currentIndex]}
               alt={`Diapositiva ${currentIndex + 1} - ${resource.title}`}
-              className="w-full h-full object-contain transition-all duration-300 animate-fadeIn"
+              className="w-full h-full object-contain transition-transform duration-300"
               loading="eager"
+              referrerPolicy="no-referrer"
               onLoad={() => setIsImageLoading(false)}
-              onError={() => {
+              onError={(e) => {
+                const dataFb = (resource.imagesData && resource.imagesData[currentIndex] && resource.imagesData[currentIndex].startsWith('data:'))
+                  ? resource.imagesData[currentIndex]
+                  : ((resource.fileDataUrl && resource.fileDataUrl.startsWith('data:')) ? resource.fileDataUrl : null);
+                if (dataFb && e.currentTarget.src !== dataFb) {
+                  e.currentTarget.src = dataFb;
+                  return;
+                }
                 setIsImageLoading(false);
                 setFailedImages(prev => ({ ...prev, [currentIndex]: true }));
               }}
@@ -604,6 +637,7 @@ export const InstagramCarouselViewer: React.FC<InstagramCarouselViewerProps> = (
                 src={images[currentIndex]}
                 alt={`Lámina ${currentIndex + 1}`}
                 className="max-w-full max-h-[82vh] object-contain rounded-xl shadow-2xl"
+                referrerPolicy="no-referrer"
                 onError={() => setFailedImages(prev => ({ ...prev, [currentIndex]: true }))}
               />
             )}

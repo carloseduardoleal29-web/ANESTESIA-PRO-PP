@@ -15,11 +15,25 @@ export function registerSW() {
   }
 
   try {
+    let refreshing = false;
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!refreshing) {
+          refreshing = true;
+          console.log('[AnestesiaPro SW] Nuevo Service Worker activado. Recargando para actualizar recursos...');
+          window.location.reload();
+        }
+      });
+    }
+
     const updateSW = pwaRegister({
       immediate: true,
       onNeedRefresh() {
-        console.log('[AnestesiaPro SW] Nueva versión disponible en el servidor.');
+        console.log('[AnestesiaPro SW] Nueva versión disponible en el servidor. Activando actualización automática...');
         window.dispatchEvent(new CustomEvent('anestesiapro-update-available'));
+        try {
+          updateSW(true);
+        } catch (e) {}
       },
       onOfflineReady() {
         console.log('[AnestesiaPro SW] Aplicación 100% disponible offline (Quirófano / Sin internet).');

@@ -1,8 +1,16 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+
+// Prevent stale or invalid globalThis.__dirname from breaking vite-plugin-pwa in ESM
+if (typeof (globalThis as any).__dirname !== 'undefined') {
+  delete (globalThis as any).__dirname;
+}
+
+const rootDir = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig(() => {
   return {
@@ -16,11 +24,13 @@ export default defineConfig(() => {
           'apple-touch-icon.png',
           'app_logo.svg',
           'app_logo.jpg',
+          'ce_leal_studio_logo.svg',
+          'ce_leal_studio_header.svg',
+          'ce_leal_studio_icon.svg',
           'pwa-192x192.png',
           'pwa-512x512.png',
           'icon-192.png',
-          'icon-512.png',
-          'education_resources.json'
+          'icon-512.png'
         ],
         manifest: {
           id: '/',
@@ -31,7 +41,7 @@ export default defineConfig(() => {
           background_color: '#0f172a',
           display: 'standalone',
           orientation: 'portrait',
-          start_url: '/',
+          start_url: '/?source=pwa',
           scope: '/',
           categories: ['medical', 'health', 'education'],
           icons: [
@@ -54,16 +64,32 @@ export default defineConfig(() => {
               purpose: 'maskable',
             },
             {
-              src: '/app_logo.svg',
-              sizes: '192x192 512x512',
-              type: 'image/svg+xml',
+              src: '/icon-192.png',
+              sizes: '192x192',
+              type: 'image/png',
+              purpose: 'any',
+            },
+            {
+              src: '/icon-512.png',
+              sizes: '512x512',
+              type: 'image/png',
               purpose: 'any',
             },
           ],
         },
         workbox: {
           maximumFileSizeToCacheInBytes: 6 * 1024 * 1024, // 6 MB to allow the rich clinical bundle
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,jpeg,webp,woff,woff2,json}'],
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,jpeg,webp,woff,woff2}'],
+          globIgnores: [
+            '**/education_resources*.json',
+            '**/app_stats*.json',
+            '**/admin_events*.json',
+            '**/notifications*.json',
+            '**/deleted_resource_ids*.json',
+            'uploads/**'
+          ],
+          skipWaiting: true,
+          clientsClaim: true,
           navigateFallback: '/index.html',
           navigateFallbackDenylist: [/^\/api/],
           runtimeCaching: [
@@ -77,14 +103,18 @@ export default defineConfig(() => {
               },
             },
             {
-              urlPattern: /\/api\/education\/resources.*/i,
+              urlPattern: /^\/api\/.*/i,
+              handler: 'NetworkOnly'
+            },
+            {
+              urlPattern: /^\/uploads\/.*/i,
               handler: 'StaleWhileRevalidate',
               options: {
-                cacheName: 'api-education-cache',
+                cacheName: 'uploads-cache',
                 cacheableResponse: { statuses: [0, 200] },
                 expiration: {
-                  maxEntries: 50,
-                  maxAgeSeconds: 60 * 24 * 60 * 60, // 60 days
+                  maxEntries: 100,
+                  maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
                 },
               },
             },
@@ -109,7 +139,7 @@ export default defineConfig(() => {
     ],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': path.resolve(rootDir, '.'),
       },
     },
     server: {

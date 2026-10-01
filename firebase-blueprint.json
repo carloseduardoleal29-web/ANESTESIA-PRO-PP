@@ -1,0 +1,87 @@
+{
+  "entities": {
+    "EducationalResource": {
+      "title": "EducationalResource",
+      "description": "Recurso educativo médico de formación médica continua en AnestesiaPro",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "description": { "type": "string" },
+        "date": { "type": "string" },
+        "author": { "type": "string" },
+        "url": { "type": "string" },
+        "fileName": { "type": "string" },
+        "fileSize": { "type": "string" },
+        "fileExtension": { "type": "string" },
+        "tags": { "type": "string" },
+        "instagramUrl": { "type": "string" },
+        "videoUrl": { "type": "string" },
+        "downloadable": { "type": "boolean" },
+        "isCommunity": { "type": "boolean" },
+        "isCustom": { "type": "boolean" },
+        "isCarousel": { "type": "boolean" },
+        "photoDeleted": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "title", "category"]
+    },
+    "ResourceMediaChunk": {
+      "title": "ResourceMediaChunk",
+      "description": "Fragmento de datos de imagen de alta resolución o archivo para almacenamiento sin límites de tamaño",
+      "type": "object",
+      "properties": {
+        "resourceId": { "type": "string" },
+        "chunkIndex": { "type": "number" },
+        "totalChunks": { "type": "number" },
+        "data": { "type": "string" },
+        "mediaType": { "type": "string" }
+      },
+      "required": ["resourceId", "chunkIndex", "data"]
+    },
+    "AppNotification": {
+      "title": "AppNotification",
+      "description": "Notificación y alerta clínica global para todos los dispositivos",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "date": { "type": "string" },
+        "badge": { "type": "string" },
+        "resourceId": { "type": "string" },
+        "author": { "type": "string" }
+      },
+      "required": ["id", "title", "message"]
+    },
+    "AppMeta": {
+      "title": "AppMeta",
+      "description": "Metadatos globales de la aplicación y lista de IDs eliminados (tombstones)",
+      "type": "object",
+      "properties": {
+        "ids": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "/education_resources/{resourceId}": {
+      "schema": "EducationalResource",
+      "description": "Colección de recursos educativos compartidos globalmente"
+    },
+    "/education_resources/{resourceId}/media_chunks/{chunkId}": {
+      "schema": "ResourceMediaChunk",
+      "description": "Fragmentos binarios y base64 de alta resolución asociados a un recurso educativo"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "AppNotification",
+      "description": "Notificaciones globales de novedades clínicas"
+    },
+    "/app_meta/{metaId}": {
+      "schema": "AppMeta",
+      "description": "Metadatos y tombstones de eliminación"
+    }
+  }
+}

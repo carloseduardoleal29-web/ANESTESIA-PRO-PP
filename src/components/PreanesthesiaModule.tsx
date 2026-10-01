@@ -4,11 +4,29 @@ import {
   FileText, Download, UserCheck, Stethoscope, AlertTriangle, CheckCircle2, 
   RotateCcw, Sparkles, Eye, Share2, ExternalLink, X, BarChart2, KeyRound,
   HeartPulse, Activity, Thermometer, Pill, Clock, Droplets, ShieldCheck, 
-  PlusCircle, Check, Trash2, Zap, Printer
+  PlusCircle, Check, Trash2, Zap, Printer, ShieldAlert, FileDown,
+  Save, Building2, Copy, ChevronDown, ChevronUp, Search, ListChecks
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { recordGlobalDownload, recordPreanesthesiaUsage, getGlobalStats, AppStats } from '../lib/statsService';
 import { WhatsAppShareBanner } from './WhatsAppShareBanner';
+import { CapriniRiskModal } from './CapriniRiskModal';
+import { 
+  ANTECEDENTS_DROPDOWN_OPTIONS, 
+  evaluateCapriniScore, 
+  generateWhatsAppFullPreanesthesiaMessage,
+  CapriniAssessmentResult,
+  groupAntecedentsByCategory,
+  PLAN_ANESTHESIA_SUGGESTIONS
+} from '../data/preanesthesiaCatalog';
+import { generatePreanesthesiaPdfDocument } from '../utils/preanesthesiaPdfGenerator';
+import { 
+  getActiveLetterhead, 
+  getSavedDoctorCredentials, 
+  saveDoctorCredentials,
+  isLetterheadConfigured
+} from '../lib/preanesthesiaStorage';
+import { LOGO_SHIELD_BASE64 } from '../lib/logoData';
 
 const getCurrentTimeString = () => {
   const now = new Date();
@@ -87,27 +105,81 @@ const initialFormData: PreanesthesiaData = {
   asa: 'ASA I',
   apto: 'SÍ (Apto)',
 
+  // Escala de Caprini (Riesgo Tromboembólico TEV)
+  capriniScore: 2,
+  capriniCategory: 'Riesgo Bajo (1 - 2 pts)',
+  capriniProfilaxis: 'Tromboprofilaxis mecánica: Medias de compresión elástica graduada (MECG) o CNI intra y postoperatoria.',
+  capriniSelectedItems: ['age_41_60', 'minor_surg'],
+
   recomendaciones: '',
   anestesio: '',
   cedula: '',
+  matricula: '',
   telefono: ''
 };
 
 export const PreanesthesiaModule: React.FC = () => {
-  const [formData, setFormData] = useState<PreanesthesiaData>(initialFormData);
+  const [formData, setFormData] = useState<PreanesthesiaData>(() => {
+    const creds = typeof window !== 'undefined' ? getSavedDoctorCredentials() : { doctorName: '', doctorCedula: '', doctorLicense: '', doctorPhone: '' };
+    const letterhead = typeof window !== 'undefined' ? getActiveLetterhead() : null;
+    return {
+      ...initialFormData,
+      anestesio: creds.doctorName || '',
+      cedula: creds.doctorCedula || '',
+      matricula: creds.doctorLicense || '',
+      telefono: creds.doctorPhone || '',
+      ...(letterhead ? {
+        hospitalName: letterhead.hospitalName,
+        hospitalDepartment: letterhead.department,
+        hospitalAddress: letterhead.address,
+        hospitalCityCountry: letterhead.cityCountry,
+        hospitalPhone: letterhead.phone,
+        hospitalLogoBase64: letterhead.hospitalLogoBase64,
+        specialistLogoBase64: letterhead.specialistLogoBase64,
+        themeColor: letterhead.themeColor
+      } : {})
+    };
+  });
   const [riskScore, setRiskScore] = useState<number>(0);
   const [riskCategory, setRiskCategory] = useState<string>('Vía Aérea Fácil');
   const [riskLevel, setRiskLevel] = useState<'low' | 'moderate' | 'high'>('low');
+  const [isCapriniModalOpen, setIsCapriniModalOpen] = useState<boolean>(false);
+  const [doctorSavedNotice, setDoctorSavedNotice] = useState<boolean>(false);
 
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pdfBlobData, setPdfBlobData] = useState<Blob | null>(null);
   const [showPdfModal, setShowPdfModal] = useState<boolean>(false);
   const [pdfFileName, setPdfFileName] = useState<string>('');
   const [stats, setStats] = useState<AppStats | null>(null);
-  const [isSharing, setIsSharing] = useState<boolean>(false);
   const [isDownloading, setIsDownloading] = useState<boolean>(false);
   const [downloadSuccessMsg, setDownloadSuccessMsg] = useState<string | null>(null);
+  const [copiedSummary, setCopiedSummary] = useState<boolean>(false);
+  const [planCategoryFilter, setPlanCategoryFilter] = useState<string>('all');
+  const [isPlanDropdownOpen, setIsPlanDropdownOpen] = useState<boolean>(true);
+  const [planSearchQuery, setPlanSearchQuery] = useState<string>('');
   const currentDocRef = useRef<jsPDF | null>(null);
+
+  // Sync letterhead and saved doctor credentials on mount
+  useEffect(() => {
+    const creds = getSavedDoctorCredentials();
+    const letterhead = getActiveLetterhead();
+    const isCustom = isLetterheadConfigured();
+    setFormData(prev => ({
+      ...prev,
+      anestesio: prev.anestesio || creds.doctorName || 'Dr. Carlos Leal',
+      cedula: prev.cedula || creds.doctorCedula || '',
+      matricula: prev.matricula || creds.doctorLicense || 'MP-84920 / CM-4521',
+      telefono: prev.telefono || creds.doctorPhone || '04243291438',
+      hospitalName: isCustom ? letterhead.hospitalName : 'FORMATO DE EVALUACIÓN PREANESTÉSICA',
+      hospitalDepartment: isCustom ? letterhead.department : 'ANESTESIA PRO',
+      hospitalAddress: isCustom ? letterhead.address : 'Fundador Dr. Carlos Leal',
+      hospitalCityCountry: isCustom ? letterhead.cityCountry : 'Documento Médico Legal Confidencial',
+      hospitalPhone: isCustom ? letterhead.phone : '04243291438',
+      hospitalLogoBase64: isCustom ? letterhead.hospitalLogoBase64 : (LOGO_SHIELD_BASE64 || null),
+      specialistLogoBase64: letterhead.specialistLogoBase64 || (LOGO_SHIELD_BASE64 || null),
+      themeColor: letterhead.themeColor || 'navy'
+    }));
+  }, []);
 
   // Track module usage on mount and listen for real-time stats
   useEffect(() => {
@@ -271,37 +343,121 @@ export const PreanesthesiaModule: React.FC = () => {
     setFormData(prev => ({ ...prev, hora: getCurrentTimeString() }));
   };
 
-  // Add recommendation bullet point with smart deduplication
-  const addRecommendationItem = (itemText: string) => {
-    setFormData(prev => {
-      const current = prev.recomendaciones?.trim() || '';
-      const cleanItem = itemText.trim();
-      if (!current) {
-        return { ...prev, recomendaciones: cleanItem };
-      }
-      if (current.includes(cleanItem)) {
-        return prev;
-      }
-      return { ...prev, recomendaciones: `${current}\n${cleanItem}` };
+  // Helper de normalización para comparar y detectar acápites del plan anestésico
+  const normalizeSnippet = (str: string) => 
+    str.replace(/^•\s*/, '')
+       .replace(/[.,;:()\-_]/g, ' ')
+       .toLowerCase()
+       .replace(/\s+/g, ' ')
+       .trim();
+
+  // Verifica si un acápite está actualmente seleccionado en el plan
+  const isRecommendationSelected = (itemText: string): boolean => {
+    if (!formData.recomendaciones) return false;
+    const currentLines = formData.recomendaciones.split('\n');
+    const targetNorm = normalizeSnippet(itemText);
+    const targetPrefix = targetNorm.slice(0, 24);
+
+    return currentLines.some(line => {
+      const lineNorm = normalizeSnippet(line);
+      if (!lineNorm) return false;
+      return lineNorm === targetNorm || 
+             lineNorm.includes(targetNorm) || 
+             targetNorm.includes(lineNorm) ||
+             (targetPrefix.length >= 10 && lineNorm.includes(targetPrefix));
     });
+  };
+
+  // Alterna (agrega si no está, o elimina limpiamente si ya estaba seleccionado) a dedo del médico
+  const toggleRecommendationItem = (itemText: string) => {
+    setFormData(prev => {
+      const current = prev.recomendaciones || '';
+      const cleanItem = itemText.trim();
+      const targetNorm = normalizeSnippet(cleanItem);
+      const targetPrefix = targetNorm.slice(0, 24);
+
+      const lines = current.split('\n');
+      const existingIndex = lines.findIndex(line => {
+        const lineNorm = normalizeSnippet(line);
+        if (!lineNorm) return false;
+        return lineNorm === targetNorm || 
+               lineNorm.includes(targetNorm) || 
+               targetNorm.includes(lineNorm) ||
+               (targetPrefix.length >= 10 && lineNorm.includes(targetPrefix));
+      });
+
+      if (existingIndex >= 0) {
+        // Deseleccionar: borrar la línea exacta del plan
+        const updatedLines = lines.filter((_, idx) => idx !== existingIndex);
+        return {
+          ...prev,
+          recomendaciones: updatedLines.join('\n').replace(/\n{3,}/g, '\n\n').trim()
+        };
+      } else {
+        // Seleccionar: agregar al plan con viñeta
+        const bullet = cleanItem.startsWith('•') ? cleanItem : `• ${cleanItem}`;
+        const newText = current.trim() ? `${current.trim()}\n${bullet}` : bullet;
+        return {
+          ...prev,
+          recomendaciones: newText
+        };
+      }
+    });
+  };
+
+  // Mantener compatibilidad con llamadas existentes delegando en toggle
+  const addRecommendationItem = (itemText: string) => {
+    toggleRecommendationItem(itemText);
   };
 
   const fillStandardRecommendations = () => {
     setFormData(prev => ({
       ...prev,
-      recomendaciones: `• Ayuno preoperatorio mínimo de 8 horas para sólidos y 2 horas para líquidos claros.
-• Confort térmico activo trans y postoperatorio (manta térmica activa).
-• Analgesia multimodal preventiva y manejo oportuno del dolor postoperatorio.
-• Administrar profilaxis antibiótica oportuna 30 a 60 minutos previos a la incisión quirúrgica.
-• Monitorización estándar básica ASA continua (ECG continuo, PANI, SpO2, Capnografía, Temperatura).
-• Reserva y pruebas cruzadas de hemoderivados en Banco de Sangre si amerita el procedimiento.
-• Consentimiento informado debidamente explicado y firmado por el paciente o representante legal.`
+      recomendaciones: `• Ayuno de 8h para sólidos y 2h para líquidos claros.
+• Monitorización continua básica ASA (ECG, PANI, SpO2, Capnografía, Temp).
+• Normotermia activa: Manta térmica trans y postoperatoria.
+• Analgesia multimodal preventiva y control oportuno del dolor.
+• Profilaxis antibiótica 30 a 60 min previos a incisión quirúrgica.
+• Pruebas cruzadas y reserva validadas en Banco de Sangre.
+• Consentimiento informado preanestésico firmado y asentado.`
     }));
   };
 
   const clearRecommendations = () => {
     setFormData(prev => ({ ...prev, recomendaciones: '' }));
   };
+
+  // Cantidad total de pautas del catálogo seleccionadas en el plan
+  const selectedPlanCount = PLAN_ANESTHESIA_SUGGESTIONS.reduce(
+    (acc, cat) => acc + cat.options.filter(opt => isRecommendationSelected(opt.text)).length,
+    0
+  );
+
+  // Filtrado reactivo de sugerencias de plan por categoría y búsqueda
+  const filteredPlanSuggestions = PLAN_ANESTHESIA_SUGGESTIONS.filter(cat => {
+    if (planCategoryFilter !== 'all' && cat.category !== planCategoryFilter) {
+      return false;
+    }
+    if (!planSearchQuery.trim()) return true;
+    const q = planSearchQuery.toLowerCase();
+    const catMatches = cat.category.toLowerCase().includes(q);
+    const optMatches = cat.options.some(opt =>
+      opt.label.toLowerCase().includes(q) ||
+      (opt.shortDesc && opt.shortDesc.toLowerCase().includes(q)) ||
+      opt.text.toLowerCase().includes(q)
+    );
+    return catMatches || optMatches;
+  }).map(cat => {
+    if (!planSearchQuery.trim()) return cat;
+    const q = planSearchQuery.toLowerCase();
+    const matchingOpts = cat.options.filter(opt =>
+      opt.label.toLowerCase().includes(q) ||
+      (opt.shortDesc && opt.shortDesc.toLowerCase().includes(q)) ||
+      opt.text.toLowerCase().includes(q) ||
+      cat.category.toLowerCase().includes(q)
+    );
+    return { ...cat, options: matchingOpts };
+  }).filter(cat => cat.options.length > 0);
 
   const loadSampleData = () => {
     setFormData({
@@ -373,17 +529,54 @@ export const PreanesthesiaModule: React.FC = () => {
       asa: 'ASA I',
       apto: 'SÍ',
 
-      recomendaciones: `• Ayuno de 8 horas para sólidos y 2 horas para líquidos claros.
-• Premedicación con Midazolam 2 mg IV en área de pabellón.
-• Monitorización estándar básica ASA continua.
+      recomendaciones: `• Ayuno de 8h para sólidos y 2h para líquidos claros.
+• Premedicación ansiolítica: Midazolam 1-2 mg IV en preanestesia.
+• Protección gástrica: Omeprazol 40 mg IV (o Ranitidina 50 mg IV).
+• Monitorización continua básica ASA (ECG, PANI, SpO2, Capnografía, Temp).
 • Reservar 02 unidades de Concentrado Globular (CG).
-• Confort térmico trans y postoperatorio (manta térmica).
-• Analgesia multimodal preventiva y manejo oportuno del dolor.
-• Protector gástrico con Omeprazol 40 mg IV previo a inducción.`,
+• Normotermia activa: Manta térmica trans y postoperatoria.
+• Analgesia multimodal preventiva y control oportuno del dolor.`,
       anestesio: 'Carlos Leal',
       cedula: '15489288',
+      matricula: 'MP-84920 / CM-4521',
       telefono: '04243291438'
     });
+  };
+
+  const handleAntecedentSelect = (field: keyof PreanesthesiaData, optionValue: string) => {
+    if (!optionValue) return;
+    setFormData(prev => {
+      const current = ((prev[field] as string) || '').trim();
+      const isDefaultPlaceholder = 
+        !current || 
+        current === 'Negativas' || 
+        current.toLowerCase().startsWith('niega') || 
+        current === 'Ninguna' || 
+        current === 'No refiere patologías crónicas';
+
+      if (isDefaultPlaceholder) {
+        return { ...prev, [field]: optionValue };
+      }
+      if (current.includes(optionValue)) {
+        return prev; // Avoid duplicate
+      }
+      return { ...prev, [field]: `${current}, ${optionValue}` };
+    });
+  };
+
+  const applyCapriniAssessment = (score: number, result: CapriniAssessmentResult, selectedIds: string[]) => {
+    setFormData(prev => ({
+      ...prev,
+      capriniScore: score,
+      capriniCategory: result.categoryTitle,
+      capriniProfilaxis: result.profilaxisText,
+      capriniSelectedItems: selectedIds
+    }));
+  };
+
+  const addCapriniToRecommendations = () => {
+    const profText = `• Tromboprofilaxis Caprini (${formData.capriniScore || 0} pts - ${formData.capriniCategory || 'Riesgo Evaluado'}): ${formData.capriniProfilaxis || 'Medias antitrombóticas / CNI'}`;
+    addRecommendationItem(profText);
   };
 
   const handleClear = () => {
@@ -447,9 +640,14 @@ export const PreanesthesiaModule: React.FC = () => {
       goldman: 'Clase I (0-5 pts) - Riesgo Cardíaco Muy Bajo (1%)',
       asa: 'ASA I',
       apto: 'SÍ (Apto)',
+      capriniScore: 0,
+      capriniCategory: 'Riesgo Muy Bajo (0 pts)',
+      capriniProfilaxis: 'Deambulación temprana y frecuente.',
+      capriniSelectedItems: [],
       recomendaciones: '',
       anestesio: '',
       cedula: '',
+      matricula: '',
       telefono: ''
     });
   };
@@ -458,289 +656,24 @@ export const PreanesthesiaModule: React.FC = () => {
 
   const generatePDF = async () => {
     try {
-      const doc = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
-      // Clean and safe patient name for filename
-      const rawName = (formData.nombre || '').trim();
-      const cleanName = rawName
-        ? rawName
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .replace(/[^a-zA-Z0-9_\-\s]/g, '')
-            .trim()
-            .replace(/\s+/g, '_')
-        : 'Paciente';
-      
-      const fileName = `Preanestesia_${cleanName}.pdf`;
+      const result = generatePreanesthesiaPdfDocument(formData, riskScore, riskCategory);
+      currentDocRef.current = result.doc;
 
-      // Header Banner (Top bar across A4)
-      doc.setFillColor(15, 23, 42); // slate-900
-      doc.rect(0, 0, 210, 16.5, 'F');
-
-      doc.setTextColor(255, 255, 255);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(11.5);
-      const patientTitle = rawName ? ` - ${rawName.toUpperCase()}` : '';
-      doc.text(`ANESTESIAPRO - EVALUACIÓN PREANESTÉSICA${patientTitle}`, 10, 7.5);
-      
-      doc.setFontSize(8.0);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(203, 213, 225); // slate-300
-      const evaluadorStr = formData.anestesio ? ` • Evaluador: Dr(a). ${formData.anestesio}` : '';
-      doc.text(`Servicio de Anestesiología y Reanimación${evaluadorStr}`, 10, 13.0);
-
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(147, 197, 253);
-      doc.text(`Fecha: ${formData.fecha || '---'} | Hora: ${formData.hora || '---'}`, 200, 10, { align: 'right' });
-
-      // Robust bounded field renderer (Prevents ANY overlap between adjacent columns)
-      const renderCell = (
-        label: string, 
-        value: string | number, 
-        x: number, 
-        yPos: number, 
-        cellWidth: number, 
-        isBold: boolean = false, 
-        fontSize: number = 8.5
-      ) => {
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(fontSize);
-        doc.setTextColor(30, 41, 59);
-        
-        const labelStr = label ? `${label}: ` : '';
-        const labelW = labelStr ? doc.getTextWidth(labelStr) : 0;
-        if (labelStr) {
-          doc.text(labelStr, x, yPos);
-        }
-
-        doc.setFont('helvetica', isBold ? 'bold' : 'normal');
-        doc.setTextColor(51, 65, 85);
-        
-        const availWidth = Math.max(10, cellWidth - labelW - 1.5);
-        const valStr = (value || '---').toString();
-        const splitVal = doc.splitTextToSize(valStr, availWidth);
-        const lineToPrint = splitVal[0] || '---';
-        doc.text(lineToPrint, x + labelW, yPos);
-      };
-
-      const addSectionHeader = (title: string, yPos: number) => {
-        doc.setFillColor(241, 245, 249);
-        doc.setDrawColor(203, 213, 225);
-        doc.rect(10, yPos - 4.0, 190, 5.6, 'FD');
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(8.9);
-        doc.setTextColor(30, 58, 138); // blue-900
-        doc.text(title, 12, yPos);
-      };
-
-      // 1. IDENTIFICACIÓN Y DATOS QUIRÚRGICOS
-      let y = 22.5;
-      addSectionHeader('1. DATOS DE IDENTIFICACIÓN Y QUIRÚRGICOS', y);
-      y += 6.2;
-      renderCell('Paciente', formData.nombre, 10, y, 78, true, 8.8);
-      renderCell('Cédula / ID', formData.cedulaPaciente || '---', 90, y, 44, true, 8.8);
-      // Clean display text for Apto to never overflow or get cut
-      const displayApto = formData.apto?.includes('DIFERIDO') 
-        ? 'DIFERIDO' 
-        : (formData.apto?.includes('NO') ? 'NO APTO' : 'SÍ (APTO)');
-      renderCell('Apto para Cirugía', displayApto, 136, y, 64, true, 8.8);
-
-      y += 5.6;
-      renderCell('Edad', formData.edad, 10, y, 36, false, 8.4);
-      renderCell('Sexo', formData.sexo, 48, y, 36, false, 8.4);
-      renderCell('Servicio', formData.servicio || 'Cirugía General', 86, y, 56, true, 8.4);
-      renderCell('Dirección', formData.direccion || '---', 145, y, 55, false, 8.4);
-
-      y += 5.6;
-      renderCell('Diagnóstico Preoperatorio', formData.diag || '---', 10, y, 190, false, 8.4);
-
-      y += 5.6;
-      renderCell('Cirugía Programada', formData.cirugia || '---', 10, y, 190, true, 8.4);
-
-      // 2. ANTECEDENTES Y HÁBITOS
-      y += 7.8;
-      addSectionHeader('2. ANTECEDENTES MÉDICOS Y HÁBITOS', y);
-      y += 6.2;
-      renderCell('Patológicos Personales', formData.antPers || 'No refiere patologías crónicas', 10, y, 92, false, 8.4);
-      renderCell('Patológicos Familiares', formData.antFam || 'No refiere', 105, y, 95, false, 8.4);
-
-      y += 5.6;
-      renderCell('Cirugías Previas', formData.cirugiasPrev || 'Ninguna referida', 10, y, 92, false, 8.4);
-      renderCell('Hábitos / Tóxicos', formData.alcohol || 'Niega hábitos psicotóxicos', 105, y, 95, false, 8.4);
-
-      y += 5.6;
-      const isAllergy = formData.alergias && formData.alergias.toLowerCase() !== 'negativas' && formData.alergias.trim() !== '';
-      renderCell('Alergias Conocidas', formData.alergias || 'Negativas', 10, y, 190, isAllergy, 8.4);
-
-      // 3. EXAMEN FÍSICO Y VÍA AÉREA (EGRI)
-      y += 7.8;
-      addSectionHeader('3. EXAMEN FÍSICO E ÍNDICE DE VÍA AÉREA (EL-GANZOURI EGRI)', y);
-      y += 6.2;
-      renderCell('Signos Vitales', `Peso: ${formData.peso || '--'} kg | FC: ${formData.fc || '--'} lpm | FR: ${formData.fr || '--'} rpm | TA: ${formData.ta || '--'} mmHg`, 10, y, 120, false, 8.4);
-      renderCell('Escala Chien (Neuroaxial)', formData.escalaChien || formData.escalaHien || 'Grado I - Fácil', 132, y, 68, true, 8.4);
-
-      y += 5.6;
-      renderCell('1. Apertura Bucal', formData.egriApertura || '> 4 cm (0 pts)', 10, y, 60, false, 8.4);
-      renderCell('2. DTM', formData.egriDtm || '> 6.5 cm (0 pts)', 73, y, 60, false, 8.4);
-      renderCell('3. Mallampati', formData.egriMallampati || 'Clase I (0 pts)', 136, y, 64, false, 8.4);
-
-      y += 5.6;
-      renderCell('4. Mov. Cervical', formData.egriCervical || '> 90° (0 pts)', 10, y, 60, false, 8.4);
-      renderCell('5. Subluxación Mand.', formData.egriSubluxacion || 'Incisivos inf. delante (0)', 73, y, 60, false, 8.4);
-      renderCell('6. Peso Corporal', formData.egriPeso || '< 90 kg (0 pts)', 136, y, 64, false, 8.4);
-
-      y += 5.6;
-      renderCell('7. Historia VAD', formData.egriHistoriaVad || 'Ausente / Negativa (0 pts)', 10, y, 75, false, 8.4);
-      
-      // Airway Score Summary Box
-      doc.setFillColor(248, 250, 252);
-      doc.setDrawColor(203, 213, 225);
-      doc.rect(88, y - 3.5, 112, 5.4, 'FD');
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(8.4);
-      if (riskCategory === 'Alto Riesgo (Vía Aérea Difícil)') {
-        doc.setTextColor(185, 28, 28);
-      } else if (riskCategory === 'Riesgo Moderado') {
-        doc.setTextColor(180, 83, 9);
-      } else {
-        doc.setTextColor(21, 128, 61);
-      }
-      doc.text(`ÍNDICE EGRI: ${riskScore}/14 pts | RIESGO: ${riskCategory.toUpperCase()}`, 90, y + 0.4);
-
-      y += 6.0;
-      renderCell('Cabeza / Cuello', formData.cabeza || 'Normal, móvil, sin masas', 10, y, 92, false, 8.2);
-      renderCell('Cardiovascular', formData.cardio || 'R1-R2 rítmicos, no soplos', 105, y, 95, false, 8.2);
-
-      y += 5.4;
-      renderCell('Respiratorio', formData.resp || 'Murmullo vesicular presente, sin ruidos agregados', 10, y, 92, false, 8.2);
-      renderCell('Abdomen / Extr.', `${formData.abdomen || 'Blando, depresible'} | ${formData.extremidades || 'Sin edemas'}`, 105, y, 95, false, 8.2);
-
-      // 4. PARACLÍNICOS Y VALORACIÓN DE RIESGO
-      y += 7.8;
-      addSectionHeader('4. PARACLÍNICOS Y VALORACIÓN DE RIESGO QUIRÚRGICO', y);
-      y += 6.2;
-      renderCell('Hb / Hematocrito', `${formData.hg || '---'} / ${formData.hto || '---'}`, 10, y, 62, false, 8.4);
-      renderCell('Leucos / Plaquetas', `${formData.leuco || '---'} / ${formData.plaquetas || '---'}`, 75, y, 62, false, 8.4);
-      renderCell('Grupo y Factor Rh', formData.grupoFactor || '---', 140, y, 60, true, 8.4);
-
-      y += 5.6;
-      renderCell('Glicemia', formData.glicemia || '---', 10, y, 62, false, 8.4);
-      renderCell('Creatinina / Urea', `${formData.creatinina || '---'} / ${formData.urea || '---'}`, 75, y, 62, false, 8.4);
-      renderCell('Serologías', `HIV: ${formData.hiv || '---'} | VDRL: ${formData.vdrl || '---'}`, 140, y, 60, false, 8.4);
-
-      y += 5.6;
-      renderCell('PT (Protrombina)', formData.pt || formData.pt_ptt || '---', 10, y, 62, false, 8.4);
-      renderCell('INR', formData.inr || '1.0', 75, y, 28, false, 8.4);
-      renderCell('PTT / TTPA', formData.ptt || '---', 105, y, 42, false, 8.4);
-      renderCell('EKG / RX', `${formData.ekg || 'Normal'} | ${formData.rx || 'Normal'}`, 150, y, 50, false, 8.2);
-
-      y += 5.6;
-      const cvVal = formData.evaluacionCardio || 'Sin contraindicación cardiovascular';
-      const neumVal = formData.evaluacionNeumo || 'Sin contraindicación neumonológica';
-      renderCell('Val. Cardiovascular', cvVal, 10, y, 92, false, 8.2);
-      renderCell('Eval. Neumonología', neumVal, 105, y, 95, false, 8.2);
-
-      if (formData.otrosLaboratorios) {
-        y += 5.4;
-        renderCell('Otros Laboratorios', formData.otrosLaboratorios, 10, y, 190, false, 8.2);
-      }
-
-      y += 5.8;
-      doc.setFillColor(241, 245, 249);
-      doc.rect(10, y - 3.4, 190, 5.4, 'F');
-      renderCell('Índice Goldman (Riesgo Cardíaco)', formData.goldman || 'Clase I (0-5 pts - Riesgo Muy Bajo 1%)', 12, y + 0.3, 85, true, 8.4);
-      renderCell('Clasificación ASA', formData.asa || 'ASA I', 98, y + 0.3, 40, true, 8.4);
-      renderCell('Apto para Cirugía', displayApto, 140, y + 0.3, 58, true, 8.4);
-
-      // 5. RECOMENDACIONES Y PLAN ANESTÉSICO
-      y += 8.0;
-      addSectionHeader('5. RECOMENDACIONES, PLAN ANESTÉSICO Y PRESCRIPCIONES', y);
-      y += 5.8;
-
-      // Clean recommendations rendering
-      const rawRecom = formData.recomendaciones?.trim() || '• Monitorización estándar básica ASA continua (ECG, PANI, SpO2, Capnografía).\n• Ayuno preoperatorio adecuado (8h sólidos / 2h líquidos claros) y confort térmico activo.';
-      const recomLines = rawRecom
-        .split('\n')
-        .map(l => l.trim())
-        .filter(Boolean);
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8.3);
-      doc.setTextColor(51, 65, 85);
-
-      // Render recommendations with vertical boundary protection
-      for (const line of recomLines) {
-        if (y > 250) break; // Prevent overflow into signature block
-        const splitWrapped = doc.splitTextToSize(line, 188);
-        for (const subLine of splitWrapped) {
-          if (y > 250) break;
-          doc.text(subLine, 11, y);
-          y += 4.6;
-        }
-      }
-
-      // 6. FIRMA DEL ESPECIALISTA Y CONSENTIMIENTO INFORMADO (Fixed safe bottom area on Page 1)
-      y = Math.max(y + 6, 256);
-      if (y > 263) y = 260; // Hard cap guaranteeing 100% Page 1 placement
-
-      doc.setDrawColor(148, 163, 184);
-      doc.setLineWidth(0.4);
-      doc.line(10, y + 2, 90, y + 2);
-      doc.line(115, y + 2, 190, y + 2);
-
-      y += 6.8;
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(8.6);
-      doc.setTextColor(30, 41, 59);
-      doc.text(`Anestesiólogo: Dr(a). ${formData.anestesio || 'Médico Anestesiólogo'}`, 10, y);
-      doc.text('Firma / Huella del Paciente o Representante', 115, y);
-
-      y += 4.5;
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8.2);
-      doc.setTextColor(71, 85, 105);
-      doc.text(`C.I. / Matrícula: ${formData.cedula || '---'}   •   Teléfono: ${formData.telefono || '---'}`, 10, y);
-      doc.text(`Nombre: ${formData.nombre || 'Paciente'}   •   C.I.: ${formData.cedulaPaciente || '---'}`, 115, y);
-
-      y += 4.3;
-      doc.text('Servicio de Anestesiología y Reanimación', 10, y);
-      doc.text('Consentimiento Informado Preanestésico Autorizado', 115, y);
-
-      // Micro-Footer at absolute bottom
-      doc.setDrawColor(226, 232, 240);
-      doc.line(10, 287, 200, 287);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(6.8);
-      doc.setTextColor(148, 163, 184);
-      doc.text(`AnestesiaPro App Clínica • Generado el ${formData.fecha || ''} ${formData.hora || ''} • Documento Médico Legal Confidencial • Hoja Única (1/1)`, 10, 291);
-
-      // Store jsPDF document instance in ref for 100% reliable direct saving
-      currentDocRef.current = doc;
-
-      // Save and generate Blob
-      const pdfBlob = doc.output('blob');
-      const blobUrl = URL.createObjectURL(pdfBlob);
-
-      // Clean up previous blob URL if any to avoid memory leak
       if (pdfUrl) {
         URL.revokeObjectURL(pdfUrl);
       }
 
-      // Set PDF in state and display in-app preview modal first
-      setPdfBlobData(pdfBlob);
-      setPdfUrl(blobUrl);
-      setPdfFileName(fileName);
+      setPdfBlobData(result.blob);
+      setPdfUrl(result.blobUrl);
+      setPdfFileName(result.fileName);
       setShowPdfModal(true);
 
-      // Record generation event
       recordPreanesthesiaUsage('evaluation_generated', formData.nombre);
-
+      return result;
     } catch (error) {
       console.error('Error generating PDF:', error);
       alert('Hubo un error al generar el PDF. Por favor verifique los campos.');
+      return null;
     }
   };
 
@@ -775,140 +708,62 @@ export const PreanesthesiaModule: React.FC = () => {
   };
 
   const handleDirectDownload = () => {
-    const targetName = pdfFileName || `Preanestesia_${(formData.nombre || 'Paciente').trim().replace(/\s+/g, '_')}.pdf`;
-
     setIsDownloading(true);
     recordPreanesthesiaUsage('evaluation_downloaded', formData.nombre);
 
-    let downloaded = false;
+    try {
+      let docToSave = currentDocRef.current;
+      let targetName = pdfFileName;
 
-    // Method 1: jsPDF direct save (bulletproof on all browsers)
-    if (currentDocRef.current) {
-      try {
-        currentDocRef.current.save(targetName);
-        downloaded = true;
-      } catch (docErr) {
-        console.warn('jsPDF save failed, trying DOM link fallback:', docErr);
+      if (!docToSave) {
+        const result = generatePreanesthesiaPdfDocument(formData, riskScore, riskCategory);
+        docToSave = result.doc;
+        targetName = result.fileName;
+        currentDocRef.current = result.doc;
+        setPdfBlobData(result.blob);
+        setPdfUrl(result.blobUrl);
+        setPdfFileName(result.fileName);
       }
-    }
 
-    // Method 2: Blob anchor download fallback
-    if (!downloaded && (pdfBlobData || pdfUrl)) {
-      try {
-        const downloadBlob = pdfBlobData;
-        const urlToUse = downloadBlob ? URL.createObjectURL(downloadBlob) : (pdfUrl || '');
-        
-        const link = document.createElement('a');
-        link.href = urlToUse;
-        link.download = targetName;
-        link.setAttribute('target', '_blank');
-        link.style.display = 'none';
-        document.body.appendChild(link);
-        link.click();
-        
-        setTimeout(() => {
-          if (document.body.contains(link)) {
-            document.body.removeChild(link);
-          }
-          if (downloadBlob && urlToUse !== pdfUrl) {
-            URL.revokeObjectURL(urlToUse);
-          }
-        }, 300);
-        downloaded = true;
-      } catch (err) {
-        console.error('Blob link download error:', err);
-      }
-    }
+      const cleanPatientName = (formData.nombre || 'Paciente').trim().replace(/\s+/g, '_');
+      const finalName = targetName || `${cleanPatientName}.pdf`;
+      docToSave.save(finalName);
 
-    // Method 3: window.open as absolute last resort
-    if (!downloaded && pdfUrl) {
-      window.open(pdfUrl, '_blank');
-      downloaded = true;
+      setDownloadSuccessMsg(`✓ ¡PDF descargado con éxito en tu dispositivo!: ${finalName}`);
+      setTimeout(() => {
+        setDownloadSuccessMsg(null);
+      }, 5000);
+    } catch (err) {
+      console.error('Download error:', err);
+      alert('Hubo un inconveniente al generar o descargar el PDF. Verifique los datos ingresados.');
+    } finally {
+      setIsDownloading(false);
     }
-
-    setIsDownloading(false);
-    
-    // Display prominent confirmation toast
-    setDownloadSuccessMsg(`¡PDF descargado con éxito!: ${targetName}`);
-    setTimeout(() => {
-      setDownloadSuccessMsg(null);
-    }, 4500);
   };
 
-  const handleSharePdf = async () => {
-    const targetBlob = pdfBlobData;
-    const targetName = pdfFileName || 'Evaluacion_Preanestesica.pdf';
-
-    setIsSharing(true);
+  const handleCopyFullWhatsAppSummary = () => {
+    const summaryMsg = generateWhatsAppFullPreanesthesiaMessage(formData, riskScore, riskCategory);
     recordPreanesthesiaUsage('evaluation_shared', formData.nombre);
-
-    try {
-      let blob = targetBlob;
-      if (!blob && pdfUrl) {
-        const response = await fetch(pdfUrl);
-        blob = await response.blob();
-      }
-
-      if (blob) {
-        const file = new File([blob], targetName, { type: 'application/pdf' });
-        
-        // Native Web Share API with File support (Android / iOS Safari / Chrome Mobile)
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({
-            files: [file],
-            title: `Evaluación Preanestésica - ${formData.nombre || 'Paciente'}`,
-            text: `Evaluación Preanestésica de ${formData.nombre || 'Paciente'} • Cirugía: ${formData.cirugia || 'Programada'} • Servicio: ${formData.servicio || 'Anestesiología'}`
-          });
-          setIsSharing(false);
-          return;
-        }
-
-        // Native Web Share API with text/url fallback
-        if (navigator.share) {
-          await navigator.share({
-            title: `Evaluación Preanestésica - ${formData.nombre || 'Paciente'}`,
-            text: `Evaluación Preanestésica de ${formData.nombre || 'Paciente'} • Cirugía: ${formData.cirugia || 'Programada'} • Apto: ${formData.apto || 'SÍ'}`
-          });
-          setIsSharing(false);
-          return;
-        }
-      }
-
-      // If Web Share is not supported (Desktop Chrome/Firefox), provide WhatsApp message fallback or download
-      const summaryText = encodeURIComponent(
-        `*ANESTESIAPRO - EVALUACIÓN PREANESTÉSICA*\n` +
-        `*Paciente:* ${formData.nombre || '---'}\n` +
-        `*Cédula:* ${formData.cedulaPaciente || '---'} | *Edad:* ${formData.edad || '---'}\n` +
-        `*Servicio:* ${formData.servicio || '---'}\n` +
-        `*Cirugía:* ${formData.cirugia || '---'}\n` +
-        `*Apto para Cirugía:* ${formData.apto || 'SÍ'}\n` +
-        `*ASA:* ${formData.asa || '---'} | *Goldman:* ${formData.goldman || '---'}\n` +
-        `*Índice EGRI:* ${riskScore}/14 pts (${riskCategory})\n` +
-        `*Anestesiólogo:* Dr(a). ${formData.anestesio || '---'}`
-      );
-
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      const whatsappUrl = isMobile 
-        ? `whatsapp://send?text=${summaryText}` 
-        : `https://api.whatsapp.com/send?text=${summaryText}`;
-
-      // Trigger download so user has the PDF file ready to attach
-      handleDirectDownload();
-      
-      // Also open WhatsApp if user desires
-      const openWhatsApp = window.confirm('Se ha descargado el PDF oficial. ¿Deseas abrir WhatsApp para compartir el resumen clínico y adjuntar el archivo?');
-      if (openWhatsApp) {
-        window.open(whatsappUrl, '_blank');
-      }
-
-    } catch (shareErr: any) {
-      if (shareErr.name !== 'AbortError') {
-        console.warn('Share cancelled or unavailable, falling back to download:', shareErr);
-        handleDirectDownload();
-      }
-    } finally {
-      setIsSharing(false);
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(summaryMsg);
+      setCopiedSummary(true);
+      setTimeout(() => setCopiedSummary(false), 3500);
     }
+  };
+
+  const handleSaveDoctorCreds = () => {
+    if (!formData.anestesio) {
+      alert('Por favor ingrese el nombre del anestesiólogo antes de guardar.');
+      return;
+    }
+    saveDoctorCredentials({
+      doctorName: formData.anestesio,
+      doctorCedula: formData.cedula,
+      doctorLicense: formData.matricula,
+      doctorPhone: formData.telefono
+    });
+    setDoctorSavedNotice(true);
+    setTimeout(() => setDoctorSavedNotice(false), 3000);
   };
 
   return (
@@ -922,18 +777,28 @@ export const PreanesthesiaModule: React.FC = () => {
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <span className="bg-cyan-500/20 text-cyan-200 border border-cyan-400/30 text-xs font-black px-3 py-1 rounded-full uppercase tracking-wider">
-                Módulo Clínico Oficial
+                ANESTESIA PRO
               </span>
               <span className="bg-blue-500/20 text-blue-200 border border-blue-400/30 text-xs font-bold px-2.5 py-1 rounded-full">
-                AnestesiaPro v2.5
+                Fundador Dr. Carlos Leal
               </span>
+              {isLetterheadConfigured() && (
+                <span className="bg-amber-500/20 text-amber-200 border border-amber-400/30 text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
+                  <Building2 className="w-3 h-3 text-amber-400" /> Membrete Configurado
+                </span>
+              )}
             </div>
             <h2 className="text-xl md:text-2xl font-black text-white mt-2">
-              Formato de Evaluación Preanestésica e Índice de Riesgo
+              Formato de Evaluación Preanestésica
             </h2>
-            <p className="text-xs md:text-sm text-blue-100/90 mt-1 max-w-2xl">
-              Diligencie los datos clínicos del paciente. Incluye el cálculo ponderado del Índice de Vía Aérea en 7 acápites y exportación en PDF.
-            </p>
+            <div className="text-xs md:text-sm text-blue-100/90 mt-1 space-y-0.5">
+              <p className="font-extrabold text-cyan-300 uppercase tracking-wide">
+                Anestesia Pro • Fundador Dr. Carlos Leal
+              </p>
+              <p className="text-blue-200/80 text-xs">
+                Cálculo ponderado de predictores clínicos, escala EGRI de vía aérea, valoración de Caprini y exportación oficial en PDF.
+              </p>
+            </div>
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -1169,37 +1034,159 @@ export const PreanesthesiaModule: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-[11px] font-extrabold uppercase text-slate-400 mb-1">
-                Patológicos Familiares
-              </label>
+            {/* Patológicos Familiares */}
+            <div className="bg-slate-950/30 p-3 rounded-xl border border-slate-800/80">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 mb-1.5">
+                <label className="block text-[11px] font-extrabold uppercase text-slate-400">
+                  Patológicos Familiares
+                </label>
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] text-cyan-400 font-bold hidden sm:inline">Menú:</span>
+                  <select
+                    onChange={(e) => {
+                      handleAntecedentSelect('antFam', e.target.value);
+                      e.target.value = '';
+                    }}
+                    defaultValue=""
+                    className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-500/30 rounded-lg px-2 py-1 text-[11px] font-bold cursor-pointer transition-colors"
+                  >
+                    <option value="" disabled>▾ Elegir opción del menú...</option>
+                    {ANTECEDENTS_DROPDOWN_OPTIONS.patologicosFamiliares.map((opt, idx) => (
+                      <option key={idx} value={opt.label} className="bg-slate-900 text-white">
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
               <textarea
                 id="antFam"
                 rows={2}
                 value={formData.antFam}
                 onChange={handleChange}
-                placeholder="Hipertensión, diabetes, hipertermia maligna..."
+                placeholder="Seleccione del menú desplegable o redacte antecedentes familiares..."
                 className="w-full bg-slate-800/80 border border-slate-700/80 rounded-xl px-3 py-2 text-sm text-white focus:border-cyan-400 focus:outline-none"
               />
+              <div className="flex flex-wrap gap-1 mt-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleAntecedentSelect('antFam', 'Sin antecedentes patológicos de relevancia')}
+                  className="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-all cursor-pointer"
+                >
+                  ✓ Sin antecedentes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAntecedentSelect('antFam', 'Madre viva con HTA')}
+                  className="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-all cursor-pointer"
+                >
+                  + Madre HTA
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAntecedentSelect('antFam', 'Padre con Diabetes Tipo 2')}
+                  className="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-all cursor-pointer"
+                >
+                  + Padre DM2
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAntecedentSelect('antFam', 'Hipertermia Maligna en familiar directo')}
+                  className="text-[10px] px-2 py-0.5 rounded-md bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 border border-rose-600/40 transition-all cursor-pointer font-semibold"
+                >
+                  ⚠️ Hipertermia Maligna
+                </button>
+              </div>
             </div>
 
-            <div>
-              <label className="block text-[11px] font-extrabold uppercase text-slate-400 mb-1">
-                Patológicos Personales
-              </label>
+            {/* Patológicos Personales */}
+            <div className="bg-slate-950/30 p-3 rounded-xl border border-slate-800/80">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 mb-1.5">
+                <label className="block text-[11px] font-extrabold uppercase text-slate-400">
+                  Patológicos Personales
+                </label>
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] text-cyan-400 font-bold hidden sm:inline">Menú:</span>
+                  <select
+                    onChange={(e) => {
+                      handleAntecedentSelect('antPers', e.target.value);
+                      e.target.value = '';
+                    }}
+                    defaultValue=""
+                    className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-500/30 rounded-lg px-2 py-1 text-[11px] font-bold cursor-pointer transition-colors"
+                  >
+                    <option value="" disabled>▾ Elegir opción del menú...</option>
+                    {ANTECEDENTS_DROPDOWN_OPTIONS.patologicosPersonales.map((opt, idx) => (
+                      <option key={idx} value={opt.label} className="bg-slate-900 text-white">
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
               <textarea
                 id="antPers"
                 rows={2}
                 value={formData.antPers}
                 onChange={handleChange}
-                placeholder="HTA, Asma, Diabetes, Cardiopatías..."
+                placeholder="Seleccione del menú desplegable o redacte patologías personales..."
                 className="w-full bg-slate-800/80 border border-slate-700/80 rounded-xl px-3 py-2 text-sm text-white focus:border-cyan-400 focus:outline-none"
               />
+              <div className="flex flex-wrap gap-1 mt-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleAntecedentSelect('antPers', 'No refiere patologías crónicas')}
+                  className="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-all cursor-pointer"
+                >
+                  ✓ Sano / Niega patología
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAntecedentSelect('antPers', 'Hipertensión Arterial (HTA) controlada')}
+                  className="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-all cursor-pointer"
+                >
+                  + HTA controlada
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAntecedentSelect('antPers', 'Diabetes Mellitus Tipo 2')}
+                  className="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-all cursor-pointer"
+                >
+                  + DM Tipo 2
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAntecedentSelect('antPers', 'Asma bronquial intermitente')}
+                  className="text-[10px] px-2 py-0.5 rounded-md bg-amber-950/60 hover:bg-amber-900/60 text-amber-300 border border-amber-600/40 transition-all cursor-pointer"
+                >
+                  + Asma
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:col-span-2">
-              <div>
-                <label className="block text-[11px] font-extrabold uppercase text-slate-400 mb-1">Alergias</label>
+              {/* Alergias */}
+              <div className="bg-slate-950/30 p-3 rounded-xl border border-slate-800/80">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1.5">
+                  <label className="block text-[11px] font-extrabold uppercase text-slate-400">
+                    Alergias
+                  </label>
+                  <select
+                    onChange={(e) => {
+                      handleAntecedentSelect('alergias', e.target.value);
+                      e.target.value = '';
+                    }}
+                    defaultValue=""
+                    className="bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-500/30 rounded-lg px-2 py-0.5 text-[10px] font-bold cursor-pointer"
+                  >
+                    <option value="" disabled>▾ Menú alergias...</option>
+                    {ANTECEDENTS_DROPDOWN_OPTIONS.alergias.map((opt, idx) => (
+                      <option key={idx} value={opt.label} className="bg-slate-900 text-white">
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <input
                   type="text"
                   id="alergias"
@@ -1209,10 +1196,29 @@ export const PreanesthesiaModule: React.FC = () => {
                   className="w-full bg-slate-800/80 border border-slate-700/80 rounded-xl px-3 py-2 text-sm text-white focus:border-cyan-400 focus:outline-none"
                 />
               </div>
-              <div>
-                <label className="block text-[11px] font-extrabold uppercase text-slate-400 mb-1">
-                  Alcohol / Hábitos
-                </label>
+
+              {/* Alcohol / Hábitos */}
+              <div className="bg-slate-950/30 p-3 rounded-xl border border-slate-800/80">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1.5">
+                  <label className="block text-[11px] font-extrabold uppercase text-slate-400">
+                    Alcohol / Hábitos
+                  </label>
+                  <select
+                    onChange={(e) => {
+                      handleAntecedentSelect('alcohol', e.target.value);
+                      e.target.value = '';
+                    }}
+                    defaultValue=""
+                    className="bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-500/30 rounded-lg px-2 py-0.5 text-[10px] font-bold cursor-pointer"
+                  >
+                    <option value="" disabled>▾ Menú hábitos...</option>
+                    {ANTECEDENTS_DROPDOWN_OPTIONS.habitos.map((opt, idx) => (
+                      <option key={idx} value={opt.label} className="bg-slate-900 text-white">
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <input
                   type="text"
                   id="alcohol"
@@ -1222,10 +1228,29 @@ export const PreanesthesiaModule: React.FC = () => {
                   className="w-full bg-slate-800/80 border border-slate-700/80 rounded-xl px-3 py-2 text-sm text-white focus:border-cyan-400 focus:outline-none"
                 />
               </div>
-              <div>
-                <label className="block text-[11px] font-extrabold uppercase text-slate-400 mb-1">
-                  Cirugías Previas
-                </label>
+
+              {/* Cirugías Previas */}
+              <div className="bg-slate-950/30 p-3 rounded-xl border border-slate-800/80">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1.5">
+                  <label className="block text-[11px] font-extrabold uppercase text-slate-400">
+                    Cirugías Previas
+                  </label>
+                  <select
+                    onChange={(e) => {
+                      handleAntecedentSelect('cirugiasPrev', e.target.value);
+                      e.target.value = '';
+                    }}
+                    defaultValue=""
+                    className="bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-500/30 rounded-lg px-2 py-0.5 text-[10px] font-bold cursor-pointer"
+                  >
+                    <option value="" disabled>▾ Menú cirugías...</option>
+                    {ANTECEDENTS_DROPDOWN_OPTIONS.cirugiasPrevias.map((opt, idx) => (
+                      <option key={idx} value={opt.label} className="bg-slate-900 text-white">
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <input
                   type="text"
                   id="cirugiasPrev"
@@ -2439,6 +2464,104 @@ export const PreanesthesiaModule: React.FC = () => {
             />
           </div>
 
+          {/* Escala de Caprini: Riesgo Tromboembólico Quirúrgico (TEV / TVP / TEP) */}
+          <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 p-4 rounded-xl border border-indigo-500/30 mb-4 shadow-md">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-indigo-500/20 text-indigo-400 rounded-xl border border-indigo-500/30">
+                  <ShieldAlert className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-sm font-black text-white">Escala de Caprini: Riesgo Tromboembólico Quirúrgico (TEV)</h4>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                      Score: {formData.capriniScore ?? 0} pts
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400">
+                    Estratificación de riesgo de trombosis venosa profunda y embolia pulmonar perioperatoria
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsCapriniModalOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-md shadow-indigo-600/20 cursor-pointer active:scale-95"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-200" />
+                  <span>Calculadora Caprini (+40 Factores)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={addCapriniToRecommendations}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 text-xs font-bold transition-all cursor-pointer"
+                  title="Añadir recomendación de profilaxis a las indicaciones de la sección 5"
+                >
+                  <PlusCircle className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>+ Agregar al Plan</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-3">
+              <div>
+                <label className="block text-[10px] font-extrabold uppercase text-slate-400 mb-1">
+                  Categoría de Riesgo Caprini
+                </label>
+                <select
+                  id="capriniCategory"
+                  value={formData.capriniCategory || 'Riesgo Bajo (1 - 2 pts)'}
+                  onChange={(e) => {
+                    const cat = e.target.value;
+                    let pts = 2;
+                    let prof = 'Tromboprofilaxis mecánica: Medias de compresión elástica graduada o CNI.';
+                    if (cat.includes('Muy Bajo')) {
+                      pts = 0;
+                      prof = 'Deambulación temprana y frecuente.';
+                    } else if (cat.includes('Bajo (1')) {
+                      pts = 2;
+                      prof = 'Tromboprofilaxis mecánica: Medias de compresión elástica graduada o CNI.';
+                    } else if (cat.includes('Moderado')) {
+                      pts = 3;
+                      prof = 'Tromboprofilaxis farmacológica: Enoxaparina 20-40 mg SC/día (o CNI mecánica si alto riesgo de sangrado).';
+                    } else if (cat.includes('Alto (5')) {
+                      pts = 5;
+                      prof = 'Tromboprofilaxis combinada: Enoxaparina 40 mg SC/día + Compresión neumática intermitente (CNI).';
+                    } else if (cat.includes('Muy Alto')) {
+                      pts = 9;
+                      prof = 'Tromboprofilaxis extendida combinada: Enoxaparina 40 mg SC/día + CNI por hasta 30 días postoperatorios.';
+                    }
+                    setFormData(prev => ({
+                      ...prev,
+                      capriniScore: pts,
+                      capriniCategory: cat,
+                      capriniProfilaxis: prof
+                    }));
+                  }}
+                  className="w-full bg-slate-800/90 border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-white focus:border-cyan-400 focus:outline-none font-bold text-indigo-300"
+                >
+                  <option value="Riesgo Muy Bajo (0 pts)">0 pts - Riesgo Muy Bajo (Incidencia TEV &lt; 0.5%)</option>
+                  <option value="Riesgo Bajo (1 - 2 pts)">1 - 2 pts - Riesgo Bajo (Incidencia TEV ~1.5%)</option>
+                  <option value="Riesgo Moderado (3 - 4 pts)">3 - 4 pts - Riesgo Moderado (Incidencia TEV ~3.0%)</option>
+                  <option value="Riesgo Alto (5 - 8 pts)">5 - 8 pts - Riesgo Alto (Incidencia TEV ~6.0%)</option>
+                  <option value="Riesgo Muy Alto (≥ 9 pts)">≥ 9 pts - Riesgo Muy Alto (Incidencia TEV &gt; 10.7%)</option>
+                </select>
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-[10px] font-extrabold uppercase text-slate-400 mb-1">
+                  Pauta de Tromboprofilaxis Sugerida (Caprini)
+                </label>
+                <div className="flex items-center gap-2 bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-200">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span className="truncate">{formData.capriniProfilaxis || 'Deambulación precoz y compresión mecánica.'}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Goldman, ASA, Apto */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
@@ -2540,272 +2663,208 @@ export const PreanesthesiaModule: React.FC = () => {
             </div>
           </div>
 
-          <div className="space-y-4">
-            {/* Panel de Opciones Rápidas Seleccionables para el Médico */}
-            <div className="bg-slate-950/70 p-4 rounded-xl border border-slate-800/90 space-y-3">
-              <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-cyan-400">
-                <Zap className="w-4 h-4 text-amber-400" /> Opciones Rápidas de Plan e Indicaciones (Toque para agregar):
-              </div>
+          <div className="space-y-3">
+            {/* Menú Desplegable con Selección Múltiple Continua */}
+            <div className="bg-slate-950/90 rounded-2xl border-2 border-cyan-500/40 shadow-xl overflow-hidden transition-all">
+              {/* Botón Cabecera de Despliegue */}
+              <button
+                type="button"
+                onClick={() => setIsPlanDropdownOpen(!isPlanDropdownOpen)}
+                className="w-full flex items-center justify-between p-3.5 sm:p-4 bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 hover:from-slate-850 hover:to-slate-800 transition-all cursor-pointer text-left select-none"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="p-2 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shrink-0">
+                    <ListChecks className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs sm:text-sm font-black text-white">
+                        Menú Desplegable de Pautas y Plan Anestésico
+                      </span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-950/90 text-emerald-300 border border-emerald-500/50">
+                        Selección Múltiple Continua
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 truncate">
+                      Baje por la lista y toque todas las pautas que desee agregar o retirar a la vez
+                    </p>
+                  </div>
+                </div>
 
-              {/* Botones de Chips Rápidos de Recomendaciones Frecuentes */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                {/* Confort Térmico */}
-                <button
-                  type="button"
-                  onClick={() => addRecommendationItem('• Confort térmico trans y postoperatorio (manta térmica activa).')}
-                  className="flex items-center gap-2 text-left p-2 rounded-xl bg-slate-800/80 hover:bg-cyan-950/50 border border-slate-700/80 hover:border-cyan-500/50 text-xs text-slate-200 transition-all cursor-pointer group"
-                >
-                  <Thermometer className="w-4 h-4 text-cyan-400 shrink-0 group-hover:scale-110 transition-transform" />
-                  <span className="font-bold text-white">Confort Térmico</span> (Manta térmica activa)
-                </button>
+                <div className="flex items-center gap-2.5 shrink-0 ml-2">
+                  <span className="text-xs font-mono font-black px-2.5 py-1 rounded-xl bg-slate-950 text-cyan-300 border border-slate-700 shadow-inner">
+                    {selectedPlanCount} elegidas
+                  </span>
+                  <div className="p-1.5 rounded-lg bg-slate-800 text-cyan-400 hover:bg-slate-700 transition-colors">
+                    {isPlanDropdownOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </div>
+                </div>
+              </button>
 
-                {/* Analgesia Oportuna */}
-                <button
-                  type="button"
-                  onClick={() => addRecommendationItem('• Analgesia multimodal oportuna preventiva y manejo de dolor postoperatorio.')}
-                  className="flex items-center gap-2 text-left p-2 rounded-xl bg-slate-800/80 hover:bg-indigo-950/50 border border-slate-700/80 hover:border-indigo-500/50 text-xs text-slate-200 transition-all cursor-pointer group"
-                >
-                  <Pill className="w-4 h-4 text-indigo-400 shrink-0 group-hover:scale-110 transition-transform" />
-                  <span className="font-bold text-white">Analgesia Oportuna</span> (Multimodal preventiva)
-                </button>
+              {/* Panel Desplegable */}
+              {isPlanDropdownOpen && (
+                <div className="p-3 sm:p-4 border-t border-slate-800/80 space-y-3 bg-slate-950/95 animate-fadeIn">
+                  {/* Buscador y Filtro por Categoría */}
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <div className="relative flex-1">
+                      <Search className="w-4 h-4 text-slate-500 absolute left-3 top-2.5 pointer-events-none" />
+                      <input
+                        type="text"
+                        value={planSearchQuery}
+                        onChange={(e) => setPlanSearchQuery(e.target.value)}
+                        placeholder="Buscar pauta (ej: ayuno, enoxaparina, omeprazol, sangre, dolor)..."
+                        className="w-full bg-slate-900 border border-slate-700 focus:border-cyan-400 text-xs text-slate-200 placeholder-slate-500 rounded-xl pl-9 pr-8 py-2 focus:outline-none"
+                      />
+                      {planSearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setPlanSearchQuery('')}
+                          className="absolute right-2.5 top-2 text-slate-400 hover:text-white"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
 
-                {/* Profilaxis Antibiótica */}
-                <button
-                  type="button"
-                  onClick={() => addRecommendationItem('• Administrar profilaxis antibiótica 30 a 60 minutos antes de la incisión quirúrgica.')}
-                  className="flex items-center gap-2 text-left p-2 rounded-xl bg-slate-800/80 hover:bg-emerald-950/50 border border-slate-700/80 hover:border-emerald-500/50 text-xs text-slate-200 transition-all cursor-pointer group"
-                >
-                  <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
-                  <span className="font-bold text-white">Profilaxis Antibiótica</span> (30-60 min previos)
-                </button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <select
+                        value={planCategoryFilter}
+                        onChange={(e) => setPlanCategoryFilter(e.target.value)}
+                        className="bg-slate-900 border border-slate-700 text-slate-300 text-xs font-bold rounded-xl px-2.5 py-2 focus:border-cyan-400 focus:outline-none cursor-pointer"
+                      >
+                        <option value="all">Todas las categorías ({PLAN_ANESTHESIA_SUGGESTIONS.length})</option>
+                        {PLAN_ANESTHESIA_SUGGESTIONS.map((cat) => (
+                          <option key={cat.category} value={cat.category}>
+                            {cat.category}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
 
-                {/* Tromboprofilaxis: Enoxaparina 40 mg SC */}
-                <button
-                  type="button"
-                  onClick={() => addRecommendationItem('• Tromboprofilaxis farmacológica: Enoxaparina 40 mg (4000 UI) SC cada 24 horas (iniciar según hemostasia y riesgo trombótico).')}
-                  className="flex items-center gap-2 text-left p-2 rounded-xl bg-slate-800/80 hover:bg-rose-950/50 border border-slate-700/80 hover:border-rose-500/50 text-xs text-slate-200 transition-all cursor-pointer group"
-                >
-                  <ShieldCheck className="w-4 h-4 text-rose-400 shrink-0 group-hover:scale-110 transition-transform" />
-                  <span className="font-bold text-rose-300">Enoxaparina 40 mg SC/día</span> (Tromboprofilaxis estándar)
-                </button>
+                  {/* Lista con scroll continuo para ir bajando y marcando todo lo deseado */}
+                  <div className="max-h-72 sm:max-h-80 overflow-y-auto space-y-4 pr-1">
+                    {filteredPlanSuggestions.length === 0 ? (
+                      <p className="text-center text-xs text-slate-500 py-6">
+                        No se encontraron pautas que coincidan con la búsqueda.
+                      </p>
+                    ) : (
+                      filteredPlanSuggestions.map((cat) => {
+                        const activeInCat = cat.options.filter(o => isRecommendationSelected(o.text)).length;
+                        return (
+                          <div key={cat.category} className="space-y-1.5">
+                            <div className="sticky top-0 z-10 bg-slate-950/95 backdrop-blur-sm py-1 px-1 border-b border-slate-800 flex items-center justify-between">
+                              <span className="text-[11px] sm:text-xs font-black text-amber-300 tracking-wide uppercase">
+                                {cat.category}
+                              </span>
+                              <span className="text-[10px] text-slate-400 font-mono">
+                                {activeInCat} / {cat.options.length}
+                              </span>
+                            </div>
 
-                {/* Tromboprofilaxis: Enoxaparina 20 mg SC */}
-                <button
-                  type="button"
-                  onClick={() => addRecommendationItem('• Tromboprofilaxis farmacológica: Enoxaparina 20 mg (2000 UI) SC cada 24 horas (riesgo moderado / ajuste peso o renal).')}
-                  className="flex items-center gap-2 text-left p-2 rounded-xl bg-slate-800/80 hover:bg-rose-950/50 border border-slate-700/80 hover:border-rose-500/50 text-xs text-slate-200 transition-all cursor-pointer group"
-                >
-                  <ShieldCheck className="w-4 h-4 text-rose-400 shrink-0 group-hover:scale-110 transition-transform" />
-                  <span className="font-bold text-rose-300">Enoxaparina 20 mg SC/día</span> (Ajuste renal / bajo peso)
-                </button>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5 pt-1">
+                              {cat.options.map((opt) => {
+                                const isSelected = isRecommendationSelected(opt.text);
+                                return (
+                                  <button
+                                    key={opt.id}
+                                    type="button"
+                                    onClick={() => toggleRecommendationItem(opt.text)}
+                                    className={`w-full text-left p-2.5 rounded-xl border transition-all cursor-pointer flex items-start gap-2.5 select-none active:scale-[0.99] ${
+                                      isSelected
+                                        ? 'bg-emerald-950/70 border-emerald-500/80 text-white shadow-sm ring-1 ring-emerald-500/30'
+                                        : 'bg-slate-900/80 hover:bg-slate-850 border-slate-800 hover:border-slate-700 text-slate-300'
+                                    }`}
+                                  >
+                                    <div className={`mt-0.5 shrink-0 w-4 h-4 rounded flex items-center justify-center border transition-colors ${
+                                      isSelected
+                                        ? 'bg-emerald-500 border-emerald-400 text-slate-950 font-black'
+                                        : 'border-slate-600 bg-slate-800/80'
+                                    }`}>
+                                      {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <p className={`text-xs font-bold leading-snug ${isSelected ? 'text-emerald-300' : 'text-slate-200'}`}>
+                                        {opt.label}
+                                      </p>
+                                      {opt.shortDesc && (
+                                        <p className="text-[10px] text-slate-400 truncate mt-0.5">
+                                          {opt.shortDesc}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
 
-                {/* Tromboprofilaxis: Enoxaparina 60 mg SC (Alto Riesgo / Obesidad) */}
-                <button
-                  type="button"
-                  onClick={() => addRecommendationItem('• Tromboprofilaxis farmacológica: Enoxaparina 60 mg (6000 UI) SC cada 24 horas (alto riesgo trombótico / IMC > 40 kg/m²).')}
-                  className="flex items-center gap-2 text-left p-2 rounded-xl bg-slate-800/80 hover:bg-rose-950/50 border border-slate-700/80 hover:border-rose-500/50 text-xs text-slate-200 transition-all cursor-pointer group"
-                >
-                  <ShieldCheck className="w-4 h-4 text-rose-400 shrink-0 group-hover:scale-110 transition-transform" />
-                  <span className="font-bold text-rose-300">Enoxaparina 60 mg SC/día</span> (Alto riesgo / Obesidad)
-                </button>
+                  {/* Acciones Rápidas al pie del catálogo */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800/80">
+                    <span className="text-[10px] font-bold text-slate-400">
+                      💡 Toque cualquier pauta para sumarla o quitarla sin que el menú se cierre.
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsPlanDropdownOpen(false)}
+                      className="text-[11px] font-bold px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 transition-all cursor-pointer"
+                    >
+                      Ocultar menú desplegable ↑
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
 
-                {/* Tromboprofilaxis Mecánica + Medias */}
-                <button
-                  type="button"
-                  onClick={() => addRecommendationItem('• Tromboprofilaxis mecánica: Medias de compresión elástica graduada antitrombóticas y/o compresión neumática intermitente.')}
-                  className="flex items-center gap-2 text-left p-2 rounded-xl bg-slate-800/80 hover:bg-rose-950/50 border border-slate-700/80 hover:border-rose-500/50 text-xs text-slate-200 transition-all cursor-pointer group"
-                >
-                  <ShieldCheck className="w-4 h-4 text-rose-400 shrink-0 group-hover:scale-110 transition-transform" />
-                  <span className="font-bold text-white">Tromboprofilaxis Mecánica</span> (Medias antitrombóticas / CNI)
-                </button>
-
-                {/* Pausa Enoxaparina por Anestesia Neuroaxial */}
-                <button
-                  type="button"
-                  onClick={() => addRecommendationItem('• Seguridad Neuroaxial: Suspender Enoxaparina profiláctica mínimo 12 horas antes de punción o retiro de catéter peridural/subaracnoideo (24h si dosis terapéutica).')}
-                  className="flex items-center gap-2 text-left p-2 rounded-xl bg-slate-800/80 hover:bg-amber-950/50 border border-slate-700/80 hover:border-amber-500/50 text-xs text-slate-200 transition-all cursor-pointer group"
-                >
-                  <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 group-hover:scale-110 transition-transform" />
-                  <span className="font-bold text-amber-300">Pausa Neuroaxial Enoxaparina</span> (12h profiláctica / 24h terap.)
-                </button>
-
-                {/* Concentrado Globular 1 */}
-                <button
-                  type="button"
-                  onClick={() => addRecommendationItem('• Reservar 01 unidad de Concentrado Globular (CG).')}
-                  className="flex items-center gap-2 text-left p-2 rounded-xl bg-slate-800/80 hover:bg-rose-950/50 border border-slate-700/80 hover:border-rose-500/50 text-xs text-slate-200 transition-all cursor-pointer group"
-                >
-                  <Droplets className="w-4 h-4 text-rose-400 shrink-0 group-hover:scale-110 transition-transform" />
-                  <span className="font-bold text-white">Reservar 1 Unidad CG</span> (Concentrado globular)
-                </button>
-
-                {/* Concentrado Globular 2 */}
-                <button
-                  type="button"
-                  onClick={() => addRecommendationItem('• Reservar 02 unidades de Concentrado Globular (CG).')}
-                  className="flex items-center gap-2 text-left p-2 rounded-xl bg-slate-800/80 hover:bg-rose-950/50 border border-slate-700/80 hover:border-rose-500/50 text-xs text-slate-200 transition-all cursor-pointer group"
-                >
-                  <Droplets className="w-4 h-4 text-rose-400 shrink-0 group-hover:scale-110 transition-transform" />
-                  <span className="font-bold text-white">Reservar 2 Unidades CG</span> (Concentrado globular)
-                </button>
-
-                {/* Concentrado Globular 3 / Plasma */}
-                <button
-                  type="button"
-                  onClick={() => addRecommendationItem('• Reservar 02 unidades de CG y 02 unidades de Plasma Fresco Congelado (PFC).')}
-                  className="flex items-center gap-2 text-left p-2 rounded-xl bg-slate-800/80 hover:bg-rose-950/50 border border-slate-700/80 hover:border-rose-500/50 text-xs text-slate-200 transition-all cursor-pointer group"
-                >
-                  <Droplets className="w-4 h-4 text-rose-400 shrink-0 group-hover:scale-110 transition-transform" />
-                  <span className="font-bold text-white">Reserva CG + Plasma</span> (PFC hemoderivados)
-                </button>
-
-                {/* Ayuno 8h */}
-                <button
-                  type="button"
-                  onClick={() => addRecommendationItem('• Ayuno preoperatorio mínimo de 8 horas para sólidos y 2 horas para líquidos claros.')}
-                  className="flex items-center gap-2 text-left p-2 rounded-xl bg-slate-800/80 hover:bg-amber-950/50 border border-slate-700/80 hover:border-amber-500/50 text-xs text-slate-200 transition-all cursor-pointer group"
-                >
-                  <Clock className="w-4 h-4 text-amber-400 shrink-0 group-hover:scale-110 transition-transform" />
-                  <span className="font-bold text-white">Ayuno 8 horas</span> (Sólidos / 2h claros)
-                </button>
-
-                {/* Ayuno 6h */}
-                <button
-                  type="button"
-                  onClick={() => addRecommendationItem('• Ayuno preoperatorio de 6 horas.')}
-                  className="flex items-center gap-2 text-left p-2 rounded-xl bg-slate-800/80 hover:bg-amber-950/50 border border-slate-700/80 hover:border-amber-500/50 text-xs text-slate-200 transition-all cursor-pointer group"
-                >
-                  <Clock className="w-4 h-4 text-amber-400 shrink-0 group-hover:scale-110 transition-transform" />
-                  <span className="font-bold text-white">Ayuno 6 horas</span> (Dieta blanda / leche)
-                </button>
-
-                {/* Estómago lleno / SRI */}
-                <button
-                  type="button"
-                  onClick={() => addRecommendationItem('• Paciente con estómago lleno: realizar Secuencia de Inducción Rápida (SRI) y presión cricoidea.')}
-                  className="flex items-center gap-2 text-left p-2 rounded-xl bg-slate-800/80 hover:bg-rose-950/50 border border-slate-700/80 hover:border-rose-500/50 text-xs text-slate-200 transition-all cursor-pointer group"
-                >
-                  <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 group-hover:scale-110 transition-transform" />
-                  <span className="font-bold text-rose-300">Estómago Lleno (SRI)</span> (Inducción rápida)
-                </button>
-
-                {/* Premedicación Midazolam */}
-                <button
-                  type="button"
-                  onClick={() => addRecommendationItem('• Premedicación ansiolítica con Midazolam 1-2 mg IV en área de pabellón.')}
-                  className="flex items-center gap-2 text-left p-2 rounded-xl bg-slate-800/80 hover:bg-purple-950/50 border border-slate-700/80 hover:border-purple-500/50 text-xs text-slate-200 transition-all cursor-pointer group"
-                >
-                  <Pill className="w-4 h-4 text-purple-400 shrink-0 group-hover:scale-110 transition-transform" />
-                  <span className="font-bold text-white">Midazolam 1-2 mg IV</span> (Premedicación)
-                </button>
-
-                {/* Protector Gástrico */}
-                <button
-                  type="button"
-                  onClick={() => addRecommendationItem('• Protector gástrico con Omeprazol 40 mg IV / Ranitidina 50 mg IV previo al acto.')}
-                  className="flex items-center gap-2 text-left p-2 rounded-xl bg-slate-800/80 hover:bg-cyan-950/50 border border-slate-700/80 hover:border-cyan-500/50 text-xs text-slate-200 transition-all cursor-pointer group"
-                >
-                  <Pill className="w-4 h-4 text-cyan-400 shrink-0 group-hover:scale-110 transition-transform" />
-                  <span className="font-bold text-white">Protector Gástrico</span> (Omeprazol / Ranitidina)
-                </button>
-
-                {/* Profilaxis Antiemética */}
-                <button
-                  type="button"
-                  onClick={() => addRecommendationItem('• Profilaxis antiemética con Ondansetrón 4-8 mg IV + Dexametasona 4-8 mg IV.')}
-                  className="flex items-center gap-2 text-left p-2 rounded-xl bg-slate-800/80 hover:bg-teal-950/50 border border-slate-700/80 hover:border-teal-500/50 text-xs text-slate-200 transition-all cursor-pointer group"
-                >
-                  <Pill className="w-4 h-4 text-teal-400 shrink-0 group-hover:scale-110 transition-transform" />
-                  <span className="font-bold text-white">Antiemético</span> (Ondansetrón + Dexametasona)
-                </button>
-
-                {/* Nebuloterapia con Salbutamol / Berodual */}
-                <button
-                  type="button"
-                  onClick={() => addRecommendationItem('• Nebuloterapia previa a cirugía con Salbutamol (10-20 gotas) + Bromuro de Ipratropio (20 gotas) en 3 cc de solución fisiológica.')}
-                  className="flex items-center gap-2 text-left p-2 rounded-xl bg-slate-800/80 hover:bg-sky-950/50 border border-slate-700/80 hover:border-sky-500/50 text-xs text-slate-200 transition-all cursor-pointer group"
-                >
-                  <Activity className="w-4 h-4 text-sky-400 shrink-0 group-hover:scale-110 transition-transform" />
-                  <span className="font-bold text-sky-300">Nebuloterapia Previa</span> (Salbutamol / Ipratropio)
-                </button>
-
-                {/* Nebuloterapia con Budesonida */}
-                <button
-                  type="button"
-                  onClick={() => addRecommendationItem('• Nebuloterapia con Budesonida 0.5 mg / 1 mg en 3 cc solución fisiológica previa a inducción.')}
-                  className="flex items-center gap-2 text-left p-2 rounded-xl bg-slate-800/80 hover:bg-sky-950/50 border border-slate-700/80 hover:border-sky-500/50 text-xs text-slate-200 transition-all cursor-pointer group"
-                >
-                  <Activity className="w-4 h-4 text-sky-400 shrink-0 group-hover:scale-110 transition-transform" />
-                  <span className="font-bold text-white">Nebulización Budesonida</span> (0.5 - 1 mg)
-                </button>
-
-                {/* Esteroides Endovenosos: Hidrocortisona */}
-                <button
-                  type="button"
-                  onClick={() => addRecommendationItem('• Administrar esteroide endovenoso previo a cirugía: Hidrocortisona 100 mg - 200 mg IV.')}
-                  className="flex items-center gap-2 text-left p-2 rounded-xl bg-slate-800/80 hover:bg-amber-950/50 border border-slate-700/80 hover:border-amber-500/50 text-xs text-slate-200 transition-all cursor-pointer group"
-                >
-                  <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0 group-hover:scale-110 transition-transform" />
-                  <span className="font-bold text-amber-300">Hidrocortisona IV</span> (100 - 200 mg previo)
-                </button>
-
-                {/* Esteroides Endovenosos: Metilprednisolona / Dexametasona */}
-                <button
-                  type="button"
-                  onClick={() => addRecommendationItem('• Administrar esteroide endovenoso previo a cirugía: Metilprednisolona 40-80 mg IV o Dexametasona 8 mg IV.')}
-                  className="flex items-center gap-2 text-left p-2 rounded-xl bg-slate-800/80 hover:bg-amber-950/50 border border-slate-700/80 hover:border-amber-500/50 text-xs text-slate-200 transition-all cursor-pointer group"
-                >
-                  <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0 group-hover:scale-110 transition-transform" />
-                  <span className="font-bold text-amber-300">Metilprednisolona / Dexa IV</span> (Previo a cirugía)
-                </button>
-
-                {/* Monitorización Estándar ASA */}
-                <button
-                  type="button"
-                  onClick={() => addRecommendationItem('• Monitorización estándar básica ASA continua (ECG, PANI, SpO2, Capnografía, Temperatura).')}
-                  className="flex items-center gap-2 text-left p-2 rounded-xl bg-slate-800/80 hover:bg-blue-950/50 border border-slate-700/80 hover:border-blue-500/50 text-xs text-slate-200 transition-all cursor-pointer group"
-                >
-                  <Activity className="w-4 h-4 text-blue-400 shrink-0 group-hover:scale-110 transition-transform" />
-                  <span className="font-bold text-white">Monitorización ASA</span> (ECG, PANI, SpO2, EtCO2)
-                </button>
-
-                {/* Monitorización Invasiva */}
-                <button
-                  type="button"
-                  onClick={() => addRecommendationItem('• Monitorización hemodinámica invasiva continua (Línea arterial continua / Acceso venoso central).')}
-                  className="flex items-center gap-2 text-left p-2 rounded-xl bg-slate-800/80 hover:bg-rose-950/50 border border-slate-700/80 hover:border-rose-500/50 text-xs text-slate-200 transition-all cursor-pointer group"
-                >
-                  <HeartPulse className="w-4 h-4 text-rose-400 shrink-0 group-hover:scale-110 transition-transform" />
-                  <span className="font-bold text-white">Monitoreo Invasivo</span> (Línea arterial / PVC)
-                </button>
-
-                {/* Consentimiento Informado */}
-                <button
-                  type="button"
-                  onClick={() => addRecommendationItem('• Consentimiento informado para procedimiento anestésico firmado por el paciente o representante legal.')}
-                  className="flex items-center gap-2 text-left p-2 rounded-xl bg-slate-800/80 hover:bg-emerald-950/50 border border-slate-700/80 hover:border-emerald-500/50 text-xs text-slate-200 transition-all cursor-pointer group"
-                >
-                  <FileText className="w-4 h-4 text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
-                  <span className="font-bold text-white">Consentimiento Firmado</span> (Paciente / Familiar)
-                </button>
-              </div>
+            {/* Botones de Acceso Rápido a 1 Toque (Pautas Frecuentes) */}
+            <div className="flex flex-wrap items-center gap-1.5 px-2">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 mr-1">Frecuentes:</span>
+              {[
+                { label: 'Ayuno 8h/2h', text: '• Ayuno de 8h para sólidos y 2h para líquidos claros.' },
+                { label: 'Protector Gástrico', text: '• Protección gástrica: Omeprazol 40 mg IV (o Ranitidina 50 mg IV).' },
+                { label: 'Analgesia Multimodal', text: '• Analgesia multimodal preventiva y control oportuno del dolor.' },
+                { label: 'Profilaxis Antibiótica', text: '• Profilaxis antibiótica 30 a 60 min previos a incisión quirúrgica.' },
+                { label: 'Tromboprofilaxis Caprini', text: '• Tromboprofilaxis ajustada según estratificación de riesgo de Caprini.' },
+                { label: 'Vigilancia URPA', text: '• Cuidados inmediatos y vigilancia continua en Sala de Recuperación (URPA).' }
+              ].map((chip) => {
+                const isSelected = isRecommendationSelected(chip.text);
+                return (
+                  <button
+                    key={chip.label}
+                    type="button"
+                    onClick={() => toggleRecommendationItem(chip.text)}
+                    className={`text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer flex items-center gap-1 active:scale-95 ${
+                      isSelected
+                        ? 'bg-emerald-950/80 border-emerald-500 text-emerald-300 shadow-sm'
+                        : 'bg-slate-900/90 hover:bg-slate-800 border-slate-700 text-slate-300 hover:text-white'
+                    }`}
+                  >
+                    <span>{isSelected ? '✓' : '+'}</span>
+                    <span>{chip.label}</span>
+                  </button>
+                );
+              })}
             </div>
 
             <div>
               <label className="block text-[11px] font-extrabold uppercase text-slate-400 mb-1">
-                Texto del Plan Anestésico y Recomendaciones (Editable)
+                Texto del Plan Anestésico y Prescripciones (Editable)
               </label>
               <textarea
                 id="recomendaciones"
-                rows={5}
+                rows={4}
                 value={formData.recomendaciones}
                 onChange={handleChange}
-                placeholder="Toque los botones rápidos de arriba o redacte aquí las indicaciones específicas..."
-                className="w-full bg-slate-800/80 border border-slate-700/80 rounded-xl px-3 py-2 text-sm text-white focus:border-cyan-400 focus:outline-none leading-relaxed font-sans"
+                placeholder="• Seleccione pautas del menú desplegable o escriba aquí libremente las indicaciones..."
+                className="w-full bg-slate-800/80 border border-slate-700/80 rounded-xl px-3 py-2 text-sm text-white focus:border-cyan-400 focus:outline-none leading-relaxed font-sans shadow-inner"
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <div>
                 <label className="block text-[11px] font-extrabold uppercase text-slate-400 mb-1">
                   Anestesiólogo Evaluador
@@ -2821,7 +2880,7 @@ export const PreanesthesiaModule: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-[11px] font-extrabold uppercase text-slate-400 mb-1">Cédula</label>
+                <label className="block text-[11px] font-extrabold uppercase text-slate-400 mb-1">Cédula / ID</label>
                 <input
                   type="text"
                   id="cedula"
@@ -2829,6 +2888,20 @@ export const PreanesthesiaModule: React.FC = () => {
                   onChange={handleChange}
                   placeholder="Ej. V-12.345.678"
                   className="w-full bg-slate-800/80 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-extrabold uppercase text-cyan-300 mb-1">
+                  Matrícula / Reg. Médico
+                </label>
+                <input
+                  type="text"
+                  id="matricula"
+                  value={formData.matricula || ''}
+                  onChange={handleChange}
+                  placeholder="Ej. MPPS 84920 / ColMed 4521"
+                  className="w-full bg-slate-800/80 border border-cyan-500/40 rounded-xl px-3 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none font-semibold text-cyan-200"
                 />
               </div>
 
@@ -2844,23 +2917,88 @@ export const PreanesthesiaModule: React.FC = () => {
                 />
               </div>
             </div>
+
+            {/* Guardar credenciales del anestesiólogo */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800/80">
+              <span className="text-[11px] text-slate-400">
+                Los datos del anestesiólogo van en la ficha médica evaluadora (no en el membrete hospitalario fijo).
+              </span>
+              <div className="flex items-center gap-2">
+                {doctorSavedNotice && (
+                  <span className="text-[11px] font-bold text-emerald-400 flex items-center gap-1">
+                    <Check className="w-3.5 h-3.5" /> ¡Guardado en este equipo!
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={handleSaveDoctorCreds}
+                  className="px-3 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>Recordar mis datos en este equipo</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Action button bar */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-          <button
-            type="button"
-            onClick={generatePDF}
-            className="w-full sm:w-auto flex items-center justify-center gap-2.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-black py-4 px-8 rounded-2xl shadow-xl shadow-blue-600/30 transition-all text-sm md:text-base cursor-pointer transform active:scale-95"
-          >
-            <Eye className="w-5 h-5 text-cyan-200" />
-            <span>Previsualizar y Compartir PDF</span>
-          </button>
+        <div className="flex flex-col items-center justify-center gap-3 pt-2">
+          <div className="w-full flex flex-col sm:flex-row items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={handleCopyFullWhatsAppSummary}
+              className="w-full sm:w-auto flex items-center justify-center gap-2.5 bg-emerald-700 hover:bg-emerald-600 border border-emerald-500/40 text-white font-black py-4 px-6 rounded-2xl shadow-xl shadow-emerald-700/20 transition-all text-sm md:text-base cursor-pointer transform active:scale-95"
+              title="Copiar informe clínico en texto"
+            >
+              <Copy className="w-5 h-5 text-emerald-200" />
+              <span>{copiedSummary ? '✓ ¡Texto Clínico Copiado!' : 'Copiar Texto Preanestésico'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDirectDownload}
+              disabled={isDownloading}
+              className="w-full sm:w-auto flex items-center justify-center gap-2.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 disabled:opacity-50 text-white font-black py-4 px-7 rounded-2xl shadow-xl shadow-blue-600/30 transition-all text-sm md:text-base cursor-pointer transform active:scale-95"
+            >
+              <Download className="w-5 h-5 text-cyan-200" />
+              <span>{isDownloading ? 'Generando PDF...' : 'Descargar PDF en el Teléfono'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={generatePDF}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold py-4 px-6 rounded-2xl transition-all text-sm md:text-base cursor-pointer transform active:scale-95"
+            >
+              <Eye className="w-5 h-5 text-slate-300" />
+              <span>Previsualizar Hoja PDF</span>
+            </button>
+          </div>
+
+          {/* Banner de Aviso de Descarga Exitosa en el Formulario */}
+          {downloadSuccessMsg && (
+            <div className="w-full max-w-md flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-500/20 border border-emerald-500/40 rounded-xl text-emerald-300 text-xs font-bold animate-fadeIn">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>{downloadSuccessMsg}</span>
+            </div>
+          )}
         </div>
       </form>
 
-      {/* Modal de Previsualización y Compartición de PDF Directo */}
+      {/* Modal de Calculadora de Caprini */}
+      <CapriniRiskModal
+        isOpen={isCapriniModalOpen}
+        onClose={() => setIsCapriniModalOpen(false)}
+        currentScore={formData.capriniScore || 0}
+        currentSelectedItems={formData.capriniSelectedItems || []}
+        onApply={applyCapriniAssessment}
+        onApplyToPlan={(text) => addRecommendationItem(`• Tromboprofilaxis Caprini: ${text}`)}
+        patientAge={formData.edad || ''}
+        patientWeight={formData.peso || ''}
+        patientSurgery={formData.cirugia || ''}
+      />
+
+      {/* Modal de Previsualización y Descarga de PDF Directo */}
       {showPdfModal && pdfUrl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/90 backdrop-blur-md animate-fadeIn">
           <div className="bg-slate-900 border border-slate-700 w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[94vh] overflow-hidden">
@@ -2874,7 +3012,7 @@ export const PreanesthesiaModule: React.FC = () => {
                   <h3 className="text-sm md:text-base font-black text-white flex items-center gap-2">
                     Evaluación Preanestésica
                     <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full">
-                      1 Hoja
+                      1 Hoja Oficial
                     </span>
                   </h3>
                   <p className="text-xs text-slate-400 truncate max-w-xs sm:max-w-md">
@@ -2892,28 +3030,28 @@ export const PreanesthesiaModule: React.FC = () => {
               </button>
             </div>
 
-            {/* Barra de Acciones: Compartir WhatsApp, Descargar, Imprimir y Cerrar para Corregir */}
+            {/* Barra de Acciones: Descargar PDF, Enviar por WhatsApp, Imprimir y Cerrar */}
             <div className="p-3 bg-slate-800/90 border-b border-slate-700 flex flex-col gap-2">
               <div className="flex flex-wrap items-center justify-between gap-2.5">
                 <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                   <button
                     type="button"
-                    onClick={handleSharePdf}
-                    disabled={isSharing}
-                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-black text-xs px-4 py-2.5 rounded-xl shadow-lg shadow-emerald-600/30 transition-all cursor-pointer active:scale-95"
+                    onClick={handleDirectDownload}
+                    disabled={isDownloading}
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-white font-black text-xs px-4 py-2.5 rounded-xl transition-all cursor-pointer shadow-lg shadow-blue-600/20 active:scale-95"
                   >
-                    <Share2 className="w-4 h-4 text-emerald-100" />
-                    <span>{isSharing ? 'Abriendo...' : 'Compartir (WhatsApp / Email)'}</span>
+                    <Download className="w-4 h-4 text-cyan-200" />
+                    <span>{isDownloading ? 'Descargando...' : 'Descargar PDF en el Teléfono'}</span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={handleDirectDownload}
-                    disabled={isDownloading}
-                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all cursor-pointer shadow-lg shadow-blue-600/20 active:scale-95"
+                    onClick={handleCopyFullWhatsAppSummary}
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-emerald-700 hover:bg-emerald-600 border border-emerald-600/50 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all cursor-pointer active:scale-95 shadow-md shadow-emerald-700/20"
+                    title="Copiar texto del formato clínico"
                   >
-                    <Download className="w-4 h-4 text-cyan-200" />
-                    <span>{isDownloading ? 'Descargando...' : 'Descargar PDF'}</span>
+                    <Copy className="w-4 h-4 text-emerald-200" />
+                    <span>{copiedSummary ? '✓ ¡Texto Copiado!' : 'Copiar Texto'}</span>
                   </button>
 
                   <button

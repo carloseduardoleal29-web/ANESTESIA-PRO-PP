@@ -1,24 +1,61 @@
-import React, { useState } from 'react';
-import { BarChart2, CheckCircle2, ChevronDown, ChevronUp, Activity, AlertTriangle, Volume2, Copy, Check, ShieldAlert, FileText } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { 
+  BarChart2, CheckCircle2, ChevronDown, ChevronUp, Activity, AlertTriangle, 
+  Volume2, Copy, Check, ShieldAlert, FileText, Sparkles, RotateCcw, Clock, Info, Search 
+} from 'lucide-react';
 import { BromageDiagram, EvaScaleDiagram, PogoScaleDiagram } from './MedicalDiagrams';
 import { playNotificationChime } from '../lib/statsService';
 import { WhatsAppShareBanner } from './WhatsAppShareBanner';
+import { CAPRINI_FACTORS, CapriniItem, evaluateCapriniScore, CapriniAssessmentResult } from '../data/preanesthesiaCatalog';
 
 export const ScalesModule: React.FC = () => {
+  // All scales closed/recogidas by default per clinical UX requirement
   const [openSubmenu, setOpenSubmenu] = useState<Record<string, boolean>>({
-    asaMenu: true,
-    shockMenu: true,
-    evaMenu: true,
-    pogoMenu: true,
-    ramsayMenu: true,
-    bromageMenu: true,
-    aldreteMenu: true,
-    rassMenu: true
+    asaMenu: false,
+    shockMenu: false,
+    capriniMenu: false,
+    evaMenu: false,
+    pogoMenu: false,
+    ramsayMenu: false,
+    bromageMenu: false,
+    aldreteMenu: false,
+    rassMenu: false
   });
 
   const toggleSubMenu = (key: string) => {
     setOpenSubmenu((prev) => ({ ...prev, [key]: !prev[key] }));
   };
+
+  const expandAll = () => {
+    setOpenSubmenu({
+      asaMenu: true,
+      shockMenu: true,
+      capriniMenu: true,
+      evaMenu: true,
+      pogoMenu: true,
+      ramsayMenu: true,
+      bromageMenu: true,
+      aldreteMenu: true,
+      rassMenu: true
+    });
+  };
+
+  const collapseAll = () => {
+    setOpenSubmenu({
+      asaMenu: false,
+      shockMenu: false,
+      capriniMenu: false,
+      evaMenu: false,
+      pogoMenu: false,
+      ramsayMenu: false,
+      bromageMenu: false,
+      aldreteMenu: false,
+      rassMenu: false
+    });
+  };
+
+  const allOpen = Object.values(openSubmenu).every(Boolean);
+  const anyOpen = Object.values(openSubmenu).some(Boolean);
 
   // ASA state
   const [selectedAsa, setSelectedAsa] = useState<string>('ASA1');
@@ -103,6 +140,94 @@ Evaluado vía AnestesiaPro (Dr. Carlos Leal).`;
   const totalAldrete =
     aldrete.actividad + aldrete.respiracion + aldrete.circulacion + aldrete.conciencia + aldrete.saturacion;
 
+  // Caprini VTE Risk Score state
+  const [capriniSelectedIds, setCapriniSelectedIds] = useState<string[]>([]);
+  const [capriniFilter, setCapriniFilter] = useState<'all' | '1_punto' | '2_puntos' | '3_puntos' | '5_puntos'>('all');
+  const [capriniSearch, setCapriniSearch] = useState<string>('');
+  const [capriniCopied, setCapriniCopied] = useState(false);
+  const [showCapriniNeuroaxialTiming, setShowCapriniNeuroaxialTiming] = useState(false);
+
+  const capriniScore = useMemo(() => {
+    return capriniSelectedIds.reduce((sum, id) => {
+      const factor = CAPRINI_FACTORS.find((f) => f.id === id);
+      return sum + (factor ? factor.points : 0);
+    }, 0);
+  }, [capriniSelectedIds]);
+
+  const capriniAssessment = useMemo(() => {
+    return evaluateCapriniScore(capriniScore);
+  }, [capriniScore]);
+
+  const toggleCapriniItem = (id: string) => {
+    setCapriniSelectedIds((prev) => {
+      const isAge = id.startsWith('age_');
+      let next = isAge ? prev.filter((item) => !item.startsWith('age_')) : [...prev];
+      if (prev.includes(id)) {
+        return prev.filter((item) => item !== id);
+      } else {
+        return [...next, id];
+      }
+    });
+  };
+
+  const handleApplyCapriniPreset = (presetScore: number) => {
+    if (presetScore === 0) {
+      setCapriniSelectedIds([]);
+    } else if (presetScore === 1) {
+      setCapriniSelectedIds(['minor_surg']);
+    } else if (presetScore === 3) {
+      setCapriniSelectedIds(['age_41_60', 'major_surg_45m']);
+    } else if (presetScore === 6) {
+      setCapriniSelectedIds(['age_61_74', 'major_surg_45m', 'active_malignancy']);
+    } else if (presetScore === 8) {
+      setCapriniSelectedIds(['age_61_74', 'major_ortho_surg']);
+    }
+  };
+
+  const filteredCapriniFactors = useMemo(() => {
+    return CAPRINI_FACTORS.filter((factor) => {
+      const matchesCategory = capriniFilter === 'all' || factor.category === capriniFilter;
+      const matchesSearch =
+        capriniSearch.trim() === '' ||
+        factor.label.toLowerCase().includes(capriniSearch.toLowerCase());
+      return matchesCategory && matchesSearch;
+    });
+  }, [capriniFilter, capriniSearch]);
+
+  const handleCopyCapriniReport = () => {
+    const selectedLabels = capriniSelectedIds
+      .map((id) => CAPRINI_FACTORS.find((f) => f.id === id))
+      .filter(Boolean)
+      .map((f) => `  • ${f!.label} (+${f!.points} ${f!.points === 1 ? 'punto' : 'puntos'})`)
+      .join('\n');
+
+    const text = `📋 EVALUACIÓN DE RIESGO DE CAPRINI (TROMBOEMBOLISMO VENOSO - TEV)
+-----------------------------------------------------------
+Puntaje Total: ${capriniScore} puntos
+Estratificación: ${capriniAssessment.categoryTitle.toUpperCase()}
+Incidencia estimada de TVP sin profilaxis: ${capriniAssessment.incidenceText}
+
+Factores de Riesgo Identificados:
+${selectedLabels || '  • Ningún factor seleccionado (Riesgo basal / muy bajo)'}
+
+Recomendación Profiláctica Perioperatoria:
+- Mecánica: ${capriniAssessment.profilaxisText}
+- Farmacológica sugerida: ${capriniAssessment.profilaxisDrug}
+
+Recomendaciones de Seguridad Anestésica (Neuroaxial / ASRA):
+- HBPM dosis profiláctica (Enoxaparina 20-40 mg SC/día): Intervalo mínimo de 12 horas antes de punción espinal/epidural o retiro de catéter.
+- HBPM dosis terapéutica (1 mg/kg c/12h): Intervalo mínimo de 24 horas.
+- Retiro de catéter: Reiniciar HBPM al menos 4 horas después del retiro del catéter.
+- HNF profiláctica SC (5000 UI): Intervalo mínimo de 4 a 6 horas.
+- Deambulación temprana y adecuada hidratación postoperatoria.
+
+Evaluado en AnestesiaPro (Dr. Carlos Leal).`;
+
+    navigator.clipboard.writeText(text);
+    setCapriniCopied(true);
+    setTimeout(() => setCapriniCopied(false), 2500);
+  };
+
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Title Header */}
@@ -114,7 +239,7 @@ Evaluado vía AnestesiaPro (Dr. Carlos Leal).`;
           <div>
             <h2 className="text-xl font-black text-white">Escalas Usadas en Anestesiología</h2>
             <p className="text-xs text-slate-400">
-              Evaluación estandarizada de estado físico (ASA), dolor, sedación, bloqueo motor y criterios URPA
+              Evaluación estandarizada de estado físico (ASA), riesgo de Caprini (TEV), dolor, sedación, bloqueo motor y criterios URPA
             </p>
           </div>
         </div>
@@ -123,22 +248,63 @@ Evaluado vía AnestesiaPro (Dr. Carlos Leal).`;
       {/* BANNER PARA COMPARTIR POR WHATSAPP Y REDES */}
       <WhatsAppShareBanner
         title="Escalas Clínicas en Anestesiología & URPA"
-        description="Baremación estandarizada: Estado Físico ASA I-VI con ejemplos clínicos, Criterios de Aldrete modificado para alta URPA, escala de dolor EVA, bloqueo de Bromage y sedación de Ramsay/RASS."
-        shareText="📋 Colega, te recomiendo revisar las Escalas Clínicas de Anestesiología en AnestesiaPro: clasificación ASA I-VI, criterios de alta URPA (Aldrete modificado), Bromage, EVA y sedación Ramsay/RASS:"
+        description="Baremación estandarizada: Estado Físico ASA I-VI con ejemplos clínicos, Escala de Riesgo de Caprini (TEV/TVP/TEP), Criterios de Aldrete modificado para alta URPA, escala de dolor EVA, bloqueo de Bromage y sedación de Ramsay/RASS."
+        shareText="📋 Colega, te recomiendo revisar las Escalas Clínicas de Anestesiología en AnestesiaPro: clasificación ASA I-VI, Escala de Caprini (tromboprofilaxis perioperatoria), criterios de alta URPA (Aldrete modificado), Bromage, EVA y sedación Ramsay/RASS:"
         tabParam="escalas"
         theme="cyan"
       />
+
+      {/* Control Bar: Expandir / Recoger Todas */}
+      <div className="flex flex-wrap items-center justify-between gap-2 p-3.5 bg-slate-900/90 border border-slate-800 rounded-2xl text-xs shadow-sm">
+        <div className="flex items-center gap-2 text-slate-300 font-medium">
+          <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
+          <span>9 escalas clínicas organizadas en acordeón. Toca cualquier escala o la flecha para desplegarla.</span>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={expandAll}
+            className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 cursor-pointer text-xs ${
+              allOpen
+                ? 'bg-slate-800 text-slate-500'
+                : 'bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 border border-cyan-500/40'
+            }`}
+            title="Desplegar todas las escalas simultáneamente"
+          >
+            <ChevronDown className="w-3.5 h-3.5 text-cyan-400" />
+            <span>Desplegar Todas</span>
+          </button>
+          <button
+            onClick={collapseAll}
+            className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 cursor-pointer text-xs ${
+              !anyOpen
+                ? 'bg-slate-800 text-slate-500'
+                : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'
+            }`}
+            title="Recoger y cerrar todas las escalas"
+          >
+            <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
+            <span>Recoger Todas</span>
+          </button>
+        </div>
+      </div>
 
       {/* 0. Clasificación del Estado Físico ASA */}
       <div className="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
         <button
           onClick={() => toggleSubMenu('asaMenu')}
-          className="w-full flex items-center justify-between p-4 bg-slate-900 hover:bg-slate-800/80 transition-all text-left"
+          className="w-full flex items-center justify-between p-4 bg-slate-900 hover:bg-slate-800/80 transition-all text-left cursor-pointer group"
         >
-          <div className="flex items-center gap-2">
-            <span className="text-base font-extrabold text-white">🫁 Clasificación del Estado Físico ASA (ASA I - VI)</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-base font-extrabold text-white group-hover:text-cyan-300 transition-colors">
+              🫁 Clasificación del Estado Físico ASA (ASA I - VI)
+            </span>
+            <span className="bg-slate-800 text-cyan-300 text-[10px] font-bold px-2 py-0.5 rounded-md border border-slate-700">
+              Estratificación Perioperatoria
+            </span>
           </div>
-          {openSubmenu.asaMenu ? <ChevronUp className="w-4 h-4 text-cyan-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+          <div className="p-1.5 rounded-lg bg-slate-800 text-cyan-400 group-hover:bg-slate-700 transition-colors shrink-0 ml-2">
+            {openSubmenu.asaMenu ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+          </div>
         </button>
 
         {openSubmenu.asaMenu && (
@@ -185,15 +351,28 @@ Evaluado vía AnestesiaPro (Dr. Carlos Leal).`;
       <div className="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
         <button
           onClick={() => toggleSubMenu('shockMenu')}
-          className="w-full flex items-center justify-between p-4 bg-slate-900 hover:bg-slate-800/80 transition-all text-left cursor-pointer"
+          className="w-full flex items-center justify-between p-4 bg-slate-900 hover:bg-slate-800/80 transition-all text-left cursor-pointer group"
         >
-          <div className="flex items-center gap-2">
-            <span className="text-base font-extrabold text-white">🩸 Índice de Shock (Shock Index: IS & MSI)</span>
-            <span className="bg-rose-950 text-rose-300 border border-rose-500/40 text-[10px] font-black px-2 py-0.5 rounded-md uppercase hidden sm:inline-block">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-base font-extrabold text-white group-hover:text-cyan-300 transition-colors">
+              🩸 Índice de Shock (Shock Index: IS & MSI)
+            </span>
+            <span className="bg-rose-950 text-rose-300 border border-rose-500/40 text-[10px] font-black px-2 py-0.5 rounded-md uppercase">
               Hemorragia & Hipoperfusión
             </span>
+            {pasVal > 0 && (
+              <span className={`text-[10px] font-black px-2 py-0.5 rounded-md border ${
+                shockIndex >= 0.9 
+                  ? 'bg-rose-500/20 text-rose-300 border-rose-500/50' 
+                  : 'bg-slate-800 text-emerald-300 border-slate-700'
+              }`}>
+                IS: {shockIndex.toFixed(2)}
+              </span>
+            )}
           </div>
-          {openSubmenu.shockMenu ? <ChevronUp className="w-4 h-4 text-cyan-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+          <div className="p-1.5 rounded-lg bg-slate-800 text-cyan-400 group-hover:bg-slate-700 transition-colors shrink-0 ml-2">
+            {openSubmenu.shockMenu ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+          </div>
         </button>
 
         {openSubmenu.shockMenu && (
@@ -447,16 +626,427 @@ Evaluado vía AnestesiaPro (Dr. Carlos Leal).`;
         )}
       </div>
 
+      {/* 0.8. ESCALA DE CAPRINI (RIESGO DE TROMBOEMBOLISMO VENOSO - TEV / TVP / TEP) */}
+      <div className="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+        <button
+          onClick={() => toggleSubMenu('capriniMenu')}
+          className="w-full flex items-center justify-between p-4 bg-slate-900 hover:bg-slate-800/80 transition-all text-left cursor-pointer group"
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-base font-extrabold text-white group-hover:text-cyan-300 transition-colors">
+              🛡️ Escala de Caprini (Riesgo Tromboembólico Venoso - TEV)
+            </span>
+            <span className="bg-purple-950 text-purple-300 border border-purple-500/40 text-[10px] font-black px-2 py-0.5 rounded-md uppercase">
+              Tromboprofilaxis Perioperatoria
+            </span>
+            <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-md border transition-all ${
+              capriniScore === 0
+                ? 'bg-slate-800 text-slate-300 border-slate-700'
+                : capriniScore <= 2
+                ? 'bg-emerald-950 text-emerald-300 border-emerald-500/40'
+                : capriniScore <= 4
+                ? 'bg-amber-950 text-amber-300 border-amber-500/40'
+                : capriniScore <= 8
+                ? 'bg-rose-950 text-rose-300 border-rose-500/50'
+                : 'bg-gradient-to-r from-purple-950 to-rose-950 text-rose-200 border-rose-400 animate-pulse'
+            }`}>
+              Score: {capriniScore} pts &bull; {capriniAssessment.categoryTitle.split('(')[0].trim()}
+            </span>
+          </div>
+          <div className="p-1.5 rounded-lg bg-slate-800 text-cyan-400 group-hover:bg-slate-700 transition-colors shrink-0 ml-2">
+            {openSubmenu.capriniMenu ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+          </div>
+        </button>
+
+        {openSubmenu.capriniMenu && (
+          <div className="p-4 border-t border-slate-800 text-xs text-slate-200 space-y-4 leading-relaxed">
+            {/* Description */}
+            <p className="text-slate-300">
+              El <strong>Modelo de Riesgo de Caprini</strong> es el estándar internacionalmente validado por el American College of Chest Physicians (ACCP/Chest) para estratificar el riesgo de <strong>Tromboembolismo Venoso (TVP / TEP)</strong> en pacientes quirúrgicos y definir la indicación de tromboprofilaxis mecánica, farmacológica o combinada.
+            </p>
+
+            {/* STRATIFICATION RESULT DASHBOARD */}
+            <div className={`p-4 rounded-2xl border transition-all shadow-md ${
+              capriniScore === 0
+                ? 'bg-slate-950 border-slate-800 text-slate-200'
+                : capriniScore <= 2
+                ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-100'
+                : capriniScore <= 4
+                ? 'bg-amber-950/40 border-amber-500/40 text-amber-100'
+                : capriniScore <= 8
+                ? 'bg-rose-950/50 border-rose-500/60 text-rose-100'
+                : 'bg-gradient-to-r from-purple-950/80 via-rose-950/80 to-slate-950 border-rose-400 text-rose-100'
+            }`}>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-700/50">
+                <div className="flex items-center gap-3">
+                  <div className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center font-black border ${
+                    capriniScore === 0
+                      ? 'bg-slate-900 border-slate-700 text-slate-300'
+                      : capriniScore <= 2
+                      ? 'bg-emerald-900/60 border-emerald-400 text-emerald-200'
+                      : capriniScore <= 4
+                      ? 'bg-amber-900/60 border-amber-400 text-amber-200'
+                      : 'bg-rose-900/70 border-rose-400 text-rose-100 animate-pulse'
+                  }`}>
+                    <span className="text-2xl leading-none">{capriniScore}</span>
+                    <span className="text-[9px] uppercase font-bold text-slate-300">puntos</span>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-black uppercase tracking-wide">
+                        {capriniAssessment.categoryTitle}
+                      </span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-900/80 border border-slate-700">
+                        {capriniAssessment.incidenceText}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-300 mt-0.5">
+                      {capriniSelectedIds.length} factor(es) de riesgo activo(s).
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <button
+                    onClick={handleCopyCapriniReport}
+                    className="flex-1 sm:flex-initial bg-slate-900 hover:bg-slate-800 text-cyan-300 border border-cyan-500/40 font-bold text-xs px-3.5 py-2 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow"
+                    title="Copiar reporte clínico de Caprini al portapapeles"
+                  >
+                    {capriniCopied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                    <span>{capriniCopied ? '¡Copiado!' : 'Copiar Reporte'}</span>
+                  </button>
+
+                  <button
+                    onClick={() => setShowCapriniNeuroaxialTiming(!showCapriniNeuroaxialTiming)}
+                    className="bg-indigo-950 hover:bg-indigo-900 text-indigo-200 border border-indigo-500/40 font-bold text-xs px-3.5 py-2 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow"
+                    title="Ver pautas de seguridad para punción neuroaxial (ASRA)"
+                  >
+                    <Clock className="w-4 h-4 text-indigo-400" />
+                    <span>{showCapriniNeuroaxialTiming ? 'Ocultar Tiempos' : 'Tiempos Neuroaxial'}</span>
+                  </button>
+
+                  {capriniSelectedIds.length > 0 && (
+                    <button
+                      onClick={() => setCapriniSelectedIds([])}
+                      className="p-2 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-rose-400 border border-slate-700 rounded-xl transition-all cursor-pointer"
+                      title="Reiniciar y desmarcar todos los factores"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Specific Recommendations */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 pt-3 text-xs">
+                <div className="p-3 bg-slate-950/70 rounded-xl border border-slate-800 space-y-1">
+                  <span className="text-[10px] font-black uppercase text-cyan-400 tracking-wide flex items-center gap-1">
+                    <ShieldAlert className="w-3.5 h-3.5" />
+                    <span>Tromboprofilaxis Recomendada:</span>
+                  </span>
+                  <p className="text-slate-200 font-medium">
+                    {capriniAssessment.profilaxisText}
+                  </p>
+                </div>
+
+                <div className="p-3 bg-slate-950/70 rounded-xl border border-slate-800 space-y-1">
+                  <span className="text-[10px] font-black uppercase text-purple-400 tracking-wide flex items-center gap-1">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Fármaco / Esquema Sugerido:</span>
+                  </span>
+                  <p className="text-slate-200 font-bold">
+                    {capriniAssessment.profilaxisDrug}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* TIMING NEUROAXIAL & HEMATOMA ESPINAL (ASRA GUIDELINES) */}
+            {showCapriniNeuroaxialTiming && (
+              <div className="bg-indigo-950/40 border border-indigo-500/50 rounded-2xl p-4 text-xs space-y-3 animate-fadeIn">
+                <div className="flex items-center gap-2 text-indigo-200">
+                  <Clock className="w-5 h-5 text-indigo-400 shrink-0" />
+                  <h4 className="font-extrabold text-sm text-indigo-100 uppercase tracking-wide">
+                    ⏱️ Intervalos de Seguridad Anestésica para Anestesia Neuroaxial (Guías ASRA / ESRA)
+                  </h4>
+                </div>
+                <p className="text-indigo-200/90 text-[11px]">
+                  Para prevenir el <strong>hematoma espinal/epidural</strong>, respete estrictamente los tiempos de espera entre la administración de anticoagulantes y la punción neuroaxial o retiro del catéter peridural:
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                  <div className="p-3 bg-slate-950/90 rounded-xl border border-indigo-500/30 space-y-1">
+                    <span className="font-extrabold text-cyan-300 block">HBPM Profiláctica</span>
+                    <span className="text-[10px] text-slate-400 block">(Enoxaparina 20-40 mg SC/día)</span>
+                    <p className="text-[11px] text-slate-200 font-medium pt-1">
+                      Esperar <strong>mínimo 12 horas</strong> antes de punción o retiro de catéter.
+                    </p>
+                  </div>
+
+                  <div className="p-3 bg-slate-950/90 rounded-xl border border-indigo-500/30 space-y-1">
+                    <span className="font-extrabold text-amber-300 block">HBPM Terapéutica</span>
+                    <span className="text-[10px] text-slate-400 block">(Enoxaparina 1 mg/kg c/12h)</span>
+                    <p className="text-[11px] text-slate-200 font-medium pt-1">
+                      Esperar <strong>mínimo 24 horas</strong> antes de punción o retiro de catéter.
+                    </p>
+                  </div>
+
+                  <div className="p-3 bg-slate-950/90 rounded-xl border border-indigo-500/30 space-y-1">
+                    <span className="font-extrabold text-emerald-300 block">Reinicio Post-Retiro de Catéter</span>
+                    <span className="text-[10px] text-slate-400 block">(Cualquier dosis de HBPM)</span>
+                    <p className="text-[11px] text-slate-200 font-medium pt-1">
+                      Esperar <strong>al menos 4 horas</strong> posteriores al retiro para la siguiente dosis.
+                    </p>
+                  </div>
+
+                  <div className="p-3 bg-slate-950/90 rounded-xl border border-indigo-500/30 space-y-1">
+                    <span className="font-extrabold text-rose-300 block">HNF Profiláctica SC</span>
+                    <span className="text-[10px] text-slate-400 block">(5,000 UI SC cada 8-12h)</span>
+                    <p className="text-[11px] text-slate-200 font-medium pt-1">
+                      Esperar <strong>4 a 6 horas</strong> antes de punción o manipulación de catéter.
+                    </p>
+                  </div>
+
+                  <div className="p-3 bg-slate-950/90 rounded-xl border border-indigo-500/30 space-y-1">
+                    <span className="font-extrabold text-purple-300 block">Anticoagulantes Orales Directos</span>
+                    <span className="text-[10px] text-slate-400 block">(Rivaroxaban, Apixaban, Dabigatran)</span>
+                    <p className="text-[11px] text-slate-200 font-medium pt-1">
+                      Suspender <strong>48 a 72 horas</strong> antes (según aclaramiento de creatinina).
+                    </p>
+                  </div>
+
+                  <div className="p-3 bg-slate-950/90 rounded-xl border border-indigo-500/30 space-y-1">
+                    <span className="font-extrabold text-slate-300 block">Antiagregantes Plaquetarios</span>
+                    <span className="text-[10px] text-slate-400 block">(AAS y Clopidogrel)</span>
+                    <p className="text-[11px] text-slate-200 font-medium pt-1">
+                      Aspirina aislada no contraindica. Clopidogrel: suspender <strong>5 a 7 días</strong> previos.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* PRESETS / ESCENARIOS CLÍNICOS FRECUENTES */}
+            <div className="space-y-2">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wide flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Carga Rápida de Casos Clínicos Típicos:</span>
+              </span>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <button
+                  onClick={() => handleApplyCapriniPreset(0)}
+                  className="p-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-left transition-all text-xs cursor-pointer group"
+                >
+                  <span className="font-bold text-slate-300 group-hover:text-emerald-300 block">🟢 Basal / Cirugía Menor</span>
+                  <span className="text-[10px] text-slate-500 block mt-0.5">0-1 pt (Riesgo Bajo)</span>
+                </button>
+
+                <button
+                  onClick={() => handleApplyCapriniPreset(3)}
+                  className="p-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-left transition-all text-xs cursor-pointer group"
+                >
+                  <span className="font-bold text-slate-300 group-hover:text-amber-300 block">🟡 Laparotomía &gt; 45m</span>
+                  <span className="text-[10px] text-slate-500 block mt-0.5">3 pts (Riesgo Moderado)</span>
+                </button>
+
+                <button
+                  onClick={() => handleApplyCapriniPreset(6)}
+                  className="p-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-left transition-all text-xs cursor-pointer group"
+                >
+                  <span className="font-bold text-slate-300 group-hover:text-rose-300 block">🟠 Neoplasia + Cirugía Mayor</span>
+                  <span className="text-[10px] text-slate-500 block mt-0.5">6 pts (Riesgo Alto)</span>
+                </button>
+
+                <button
+                  onClick={() => handleApplyCapriniPreset(8)}
+                  className="p-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-left transition-all text-xs cursor-pointer group"
+                >
+                  <span className="font-bold text-slate-300 group-hover:text-purple-300 block">🔴 Artroplastia Ortopédica</span>
+                  <span className="text-[10px] text-slate-500 block mt-0.5">7-8 pts (Riesgo Muy Alto)</span>
+                </button>
+              </div>
+            </div>
+
+            {/* FILTER TABS & SEARCH */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-2">
+              <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+                <button
+                  onClick={() => setCapriniFilter('all')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
+                    capriniFilter === 'all'
+                      ? 'bg-cyan-500 text-slate-950 font-black shadow'
+                      : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+                  }`}
+                >
+                  Todos ({CAPRINI_FACTORS.length})
+                </button>
+                <button
+                  onClick={() => setCapriniFilter('1_punto')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
+                    capriniFilter === '1_punto'
+                      ? 'bg-blue-600 text-white font-black shadow'
+                      : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+                  }`}
+                >
+                  1 Punto (15)
+                </button>
+                <button
+                  onClick={() => setCapriniFilter('2_puntos')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
+                    capriniFilter === '2_puntos'
+                      ? 'bg-emerald-600 text-white font-black shadow'
+                      : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+                  }`}
+                >
+                  2 Puntos (7)
+                </button>
+                <button
+                  onClick={() => setCapriniFilter('3_puntos')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
+                    capriniFilter === '3_puntos'
+                      ? 'bg-amber-600 text-white font-black shadow'
+                      : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+                  }`}
+                >
+                  3 Puntos (9)
+                </button>
+                <button
+                  onClick={() => setCapriniFilter('5_puntos')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
+                    capriniFilter === '5_puntos'
+                      ? 'bg-rose-600 text-white font-black shadow'
+                      : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+                  }`}
+                >
+                  5 Puntos (4)
+                </button>
+              </div>
+
+              <div className="relative w-full sm:w-auto sm:min-w-[220px]">
+                <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Buscar factor de riesgo..."
+                  value={capriniSearch}
+                  onChange={(e) => setCapriniSearch(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+            </div>
+
+            {/* FACTORS CHECKLIST GRID */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-[440px] overflow-y-auto pr-1">
+              {filteredCapriniFactors.map((factor) => {
+                const isSelected = capriniSelectedIds.includes(factor.id);
+                return (
+                  <button
+                    key={factor.id}
+                    onClick={() => toggleCapriniItem(factor.id)}
+                    className={`p-3 rounded-xl border text-left transition-all flex items-start justify-between gap-2.5 cursor-pointer ${
+                      isSelected
+                        ? factor.points === 5
+                          ? 'bg-rose-950/60 border-rose-500 text-rose-100 shadow-md ring-1 ring-rose-500/50'
+                          : factor.points === 3
+                          ? 'bg-amber-950/60 border-amber-500 text-amber-100 shadow-md ring-1 ring-amber-500/50'
+                          : factor.points === 2
+                          ? 'bg-emerald-950/60 border-emerald-500 text-emerald-100 shadow-md ring-1 ring-emerald-500/50'
+                          : 'bg-blue-950/60 border-blue-500 text-blue-100 shadow-md ring-1 ring-blue-500/50'
+                        : 'bg-slate-950/80 border-slate-800 hover:border-slate-700 text-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-start gap-2.5 flex-1">
+                      <div className={`w-4 h-4 rounded mt-0.5 shrink-0 flex items-center justify-center border transition-all ${
+                        isSelected
+                          ? factor.points === 5
+                            ? 'bg-rose-500 border-rose-400 text-white'
+                            : factor.points === 3
+                            ? 'bg-amber-500 border-amber-400 text-slate-950'
+                            : factor.points === 2
+                            ? 'bg-emerald-500 border-emerald-400 text-slate-950'
+                            : 'bg-blue-500 border-blue-400 text-white'
+                          : 'border-slate-600 bg-slate-900'
+                      }`}>
+                        {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                      </div>
+                      <span className="text-xs font-medium leading-snug">{factor.label}</span>
+                    </div>
+
+                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-md shrink-0 ${
+                      factor.points === 5
+                        ? 'bg-rose-950 border border-rose-500/50 text-rose-300'
+                        : factor.points === 3
+                        ? 'bg-amber-950 border border-amber-500/50 text-amber-300'
+                        : factor.points === 2
+                        ? 'bg-emerald-950 border border-emerald-500/50 text-emerald-300'
+                        : 'bg-blue-950 border border-blue-500/50 text-blue-300'
+                    }`}>
+                      +{factor.points} {factor.points === 1 ? 'pto' : 'ptos'}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* ACTIVE SELECTIONS CHIPS (IF ANY) */}
+            {capriniSelectedIds.length > 0 && (
+              <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-slate-400">
+                    Factores Seleccionados ({capriniSelectedIds.length}):
+                  </span>
+                  <button
+                    onClick={() => setCapriniSelectedIds([])}
+                    className="text-[10px] text-rose-400 hover:text-rose-300 underline font-medium cursor-pointer"
+                  >
+                    Borrar todos
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {capriniSelectedIds.map((id) => {
+                    const factor = CAPRINI_FACTORS.find((f) => f.id === id);
+                    if (!factor) return null;
+                    return (
+                      <span
+                        key={id}
+                        onClick={() => toggleCapriniItem(id)}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-900 hover:bg-rose-950/60 border border-slate-700 hover:border-rose-500/50 text-slate-300 hover:text-rose-200 text-[11px] cursor-pointer transition-colors"
+                        title="Toca para eliminar este factor"
+                      >
+                        <span>{factor.label}</span>
+                        <span className="text-cyan-400 font-black">+{factor.points}</span>
+                        <span className="text-slate-500 hover:text-rose-400 ml-0.5">&times;</span>
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <p className="text-[10px] text-slate-500 italic pt-1 border-t border-slate-800">
+              Bibliografía: Caprini JA. Risk assessment as a guide for the prevention of the many faces of venous thromboembolism. Am J Surg. 2010; Chest 2012 / 2016 Guidelines for Prevention of VTE in Surgical Patients.
+            </p>
+          </div>
+        )}
+      </div>
+
       {/* 1. Escala Visual Análoga (EVA / VAS) */}
       <div className="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
         <button
           onClick={() => toggleSubMenu('evaMenu')}
-          className="w-full flex items-center justify-between p-4 bg-slate-900 hover:bg-slate-800/80 transition-all text-left"
+          className="w-full flex items-center justify-between p-4 bg-slate-900 hover:bg-slate-800/80 transition-all text-left cursor-pointer group"
         >
-          <div className="flex items-center gap-2">
-            <span className="text-base font-extrabold text-white">▪️ Escala Visual Análoga del Dolor (EVA / VAS) con Imágenes</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-base font-extrabold text-white group-hover:text-cyan-300 transition-colors">
+              📊 Escala Visual Análoga del Dolor (EVA / VAS)
+            </span>
+            <span className="bg-amber-950/60 text-amber-300 border border-amber-500/40 text-[10px] font-bold px-2 py-0.5 rounded-md">
+              Dolor Agudo (0-10)
+            </span>
           </div>
-          {openSubmenu.evaMenu ? <ChevronUp className="w-4 h-4 text-cyan-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+          <div className="p-1.5 rounded-lg bg-slate-800 text-cyan-400 group-hover:bg-slate-700 transition-colors shrink-0 ml-2">
+            {openSubmenu.evaMenu ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+          </div>
         </button>
 
         {openSubmenu.evaMenu && (
@@ -476,12 +1066,19 @@ Evaluado vía AnestesiaPro (Dr. Carlos Leal).`;
       <div className="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
         <button
           onClick={() => toggleSubMenu('pogoMenu')}
-          className="w-full flex items-center justify-between p-4 bg-slate-900 hover:bg-slate-800/80 transition-all text-left"
+          className="w-full flex items-center justify-between p-4 bg-slate-900 hover:bg-slate-800/80 transition-all text-left cursor-pointer group"
         >
-          <div className="flex items-center gap-2">
-            <span className="text-base font-extrabold text-white">▪️ Escala POGO (Percentage of Glottic Opening) con Imágenes</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-base font-extrabold text-white group-hover:text-cyan-300 transition-colors">
+              🎯 Escala POGO (Percentage of Glottic Opening)
+            </span>
+            <span className="bg-cyan-950/60 text-cyan-300 border border-cyan-500/40 text-[10px] font-bold px-2 py-0.5 rounded-md">
+              Apertura Glótica (0-100%)
+            </span>
           </div>
-          {openSubmenu.pogoMenu ? <ChevronUp className="w-4 h-4 text-cyan-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+          <div className="p-1.5 rounded-lg bg-slate-800 text-cyan-400 group-hover:bg-slate-700 transition-colors shrink-0 ml-2">
+            {openSubmenu.pogoMenu ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+          </div>
         </button>
 
         {openSubmenu.pogoMenu && (
@@ -501,12 +1098,19 @@ Evaluado vía AnestesiaPro (Dr. Carlos Leal).`;
       <div className="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
         <button
           onClick={() => toggleSubMenu('ramsayMenu')}
-          className="w-full flex items-center justify-between p-4 bg-slate-900 hover:bg-slate-800/80 transition-all text-left"
+          className="w-full flex items-center justify-between p-4 bg-slate-900 hover:bg-slate-800/80 transition-all text-left cursor-pointer group"
         >
-          <div className="flex items-center gap-2">
-            <span className="text-base font-extrabold text-white">▪️ Escala de Sedación de Ramsay</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-base font-extrabold text-white group-hover:text-cyan-300 transition-colors">
+              😴 Escala de Sedación de Ramsay
+            </span>
+            <span className="bg-indigo-950/60 text-indigo-300 border border-indigo-500/40 text-[10px] font-bold px-2 py-0.5 rounded-md">
+              Sedoanalgesia (Nivel 1-6)
+            </span>
           </div>
-          {openSubmenu.ramsayMenu ? <ChevronUp className="w-4 h-4 text-cyan-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+          <div className="p-1.5 rounded-lg bg-slate-800 text-cyan-400 group-hover:bg-slate-700 transition-colors shrink-0 ml-2">
+            {openSubmenu.ramsayMenu ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+          </div>
         </button>
 
         {openSubmenu.ramsayMenu && (
@@ -551,12 +1155,19 @@ Evaluado vía AnestesiaPro (Dr. Carlos Leal).`;
       <div className="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
         <button
           onClick={() => toggleSubMenu('bromageMenu')}
-          className="w-full flex items-center justify-between p-4 bg-slate-900 hover:bg-slate-800/80 transition-all text-left"
+          className="w-full flex items-center justify-between p-4 bg-slate-900 hover:bg-slate-800/80 transition-all text-left cursor-pointer group"
         >
-          <div className="flex items-center gap-2">
-            <span className="text-base font-extrabold text-white">▪️ Escala de Bloqueo Motor (Bromage)</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-base font-extrabold text-white group-hover:text-cyan-300 transition-colors">
+              🦵 Escala de Bloqueo Motor (Bromage)
+            </span>
+            <span className="bg-emerald-950/60 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold px-2 py-0.5 rounded-md">
+              Bloqueo Espinal / Epidural
+            </span>
           </div>
-          {openSubmenu.bromageMenu ? <ChevronUp className="w-4 h-4 text-cyan-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+          <div className="p-1.5 rounded-lg bg-slate-800 text-cyan-400 group-hover:bg-slate-700 transition-colors shrink-0 ml-2">
+            {openSubmenu.bromageMenu ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+          </div>
         </button>
 
         {openSubmenu.bromageMenu && (
@@ -576,12 +1187,23 @@ Evaluado vía AnestesiaPro (Dr. Carlos Leal).`;
       <div className="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
         <button
           onClick={() => toggleSubMenu('aldreteMenu')}
-          className="w-full flex items-center justify-between p-4 bg-slate-900 hover:bg-slate-800/80 transition-all text-left"
+          className="w-full flex items-center justify-between p-4 bg-slate-900 hover:bg-slate-800/80 transition-all text-left cursor-pointer group"
         >
-          <div className="flex items-center gap-2">
-            <span className="text-base font-extrabold text-white">▪️ Índice de Aldrete (Recuperación Postanestésica URPA)</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-base font-extrabold text-white group-hover:text-cyan-300 transition-colors">
+              🏥 Criterios de Aldrete Modificado (Alta de URPA)
+            </span>
+            <span className={`text-[10px] font-black px-2 py-0.5 rounded-md border ${
+              totalAldrete >= 9
+                ? 'bg-emerald-950/60 text-emerald-300 border-emerald-500/40'
+                : 'bg-amber-950/60 text-amber-300 border-amber-500/40'
+            }`}>
+              Puntaje: {totalAldrete}/10 {totalAldrete >= 9 ? '• ✅ Apto Egreso' : '• ⏳ Permanecer'}
+            </span>
           </div>
-          {openSubmenu.aldreteMenu ? <ChevronUp className="w-4 h-4 text-cyan-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+          <div className="p-1.5 rounded-lg bg-slate-800 text-cyan-400 group-hover:bg-slate-700 transition-colors shrink-0 ml-2">
+            {openSubmenu.aldreteMenu ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+          </div>
         </button>
 
         {openSubmenu.aldreteMenu && (
@@ -699,12 +1321,19 @@ Evaluado vía AnestesiaPro (Dr. Carlos Leal).`;
       <div className="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
         <button
           onClick={() => toggleSubMenu('rassMenu')}
-          className="w-full flex items-center justify-between p-4 bg-slate-900 hover:bg-slate-800/80 transition-all text-left"
+          className="w-full flex items-center justify-between p-4 bg-slate-900 hover:bg-slate-800/80 transition-all text-left cursor-pointer group"
         >
-          <div className="flex items-center gap-2">
-            <span className="text-base font-extrabold text-white">▪️ Escala de Agitación-Sedación Richmond (RASS)</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-base font-extrabold text-white group-hover:text-cyan-300 transition-colors">
+              🧠 Escala de Agitación-Sedación Richmond (RASS)
+            </span>
+            <span className="bg-purple-950/60 text-purple-300 border border-purple-500/40 text-[10px] font-bold px-2 py-0.5 rounded-md">
+              Graduación (-5 a +4)
+            </span>
           </div>
-          {openSubmenu.rassMenu ? <ChevronUp className="w-4 h-4 text-cyan-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+          <div className="p-1.5 rounded-lg bg-slate-800 text-cyan-400 group-hover:bg-slate-700 transition-colors shrink-0 ml-2">
+            {openSubmenu.rassMenu ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+          </div>
         </button>
 
         {openSubmenu.rassMenu && (

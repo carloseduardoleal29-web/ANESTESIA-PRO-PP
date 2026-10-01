@@ -46,18 +46,53 @@ export const AirwayModule: React.FC = () => {
     history: 0
   });
 
-  // Collapsible accordion state
+  // Collapsible accordion state - All scales collapsed by default per clinical UX requirement
   const [openSubmenu, setOpenSubmenu] = useState<Record<string, boolean>>({
+    egriMenu: false,
+    mallampatiMenu: false,
+    predictoresMenu: false,
     hanMenu: false,
     cormackMenu: false,
     pogoMenu: false,
-    vortexMenu: true,
-    dasMenu: true
+    macochaMenu: false,
+    vortexMenu: false,
+    dasMenu: false
   });
 
   const toggleSubMenu = (key: string) => {
     setOpenSubmenu((prev) => ({ ...prev, [key]: !prev[key] }));
   };
+
+  const expandAll = () => {
+    setOpenSubmenu({
+      egriMenu: true,
+      mallampatiMenu: true,
+      predictoresMenu: true,
+      hanMenu: true,
+      cormackMenu: true,
+      pogoMenu: true,
+      macochaMenu: true,
+      vortexMenu: true,
+      dasMenu: true
+    });
+  };
+
+  const collapseAll = () => {
+    setOpenSubmenu({
+      egriMenu: false,
+      mallampatiMenu: false,
+      predictoresMenu: false,
+      hanMenu: false,
+      cormackMenu: false,
+      pogoMenu: false,
+      macochaMenu: false,
+      vortexMenu: false,
+      dasMenu: false
+    });
+  };
+
+  const allOpen = Object.values(openSubmenu).every(Boolean);
+  const anyOpen = Object.values(openSubmenu).some(Boolean);
 
   const totalEgri =
     egri.apertura + egri.tiro + egri.mallampati + egri.cervical + egri.sublux + egri.peso + egri.history;
@@ -161,17 +196,72 @@ export const AirwayModule: React.FC = () => {
 
       {/* TAB 1: ESCALAS E ÍNDICES */}
       {activeTab === 'scales' && (
-        <div className="space-y-6">
-          {/* 1. EGRI - El-Ganzouri Multivariate Risk Index */}
-          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-sm">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
-              <div>
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  🧮 EGRI: Índice de Riesgo Multivariado de El-Ganzouri
-                </h3>
-                <p className="text-xs text-slate-400">Puntuación predictiva ponderada para vía aérea difícil (0 - 14 puntos)</p>
-              </div>
+        <div className="space-y-4">
+          {/* Control Bar: Expandir / Recoger Todas */}
+          <div className="flex flex-wrap items-center justify-between gap-2 p-3.5 bg-slate-900/90 border border-slate-800 rounded-2xl text-xs shadow-sm">
+            <div className="flex items-center gap-2 text-slate-300 font-medium">
+              <span className="w-2.5 h-2.5 rounded-full bg-indigo-400 animate-pulse"></span>
+              <span>Escalas e índices de vía aérea organizados en acordeón. Toca cualquier escala o la flecha para desplegarla.</span>
             </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={expandAll}
+                className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 cursor-pointer text-xs ${
+                  allOpen
+                    ? 'bg-slate-800 text-slate-500'
+                    : 'bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 border border-indigo-500/40'
+                }`}
+                title="Desplegar todas las escalas simultáneamente"
+              >
+                <ChevronDown className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Desplegar Todas</span>
+              </button>
+              <button
+                onClick={collapseAll}
+                className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 cursor-pointer text-xs ${
+                  !anyOpen
+                    ? 'bg-slate-800 text-slate-500'
+                    : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'
+                }`}
+                title="Recoger y cerrar todas las escalas"
+              >
+                <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
+                <span>Recoger Todas</span>
+              </button>
+            </div>
+          </div>
+
+          {/* 1. EGRI - El-Ganzouri Multivariate Risk Index (Collapsible) */}
+          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+            <button
+              onClick={() => toggleSubMenu('egriMenu')}
+              className="w-full flex items-center justify-between p-4 bg-slate-900 hover:bg-slate-800/80 transition-all text-left cursor-pointer group"
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-base font-extrabold text-white group-hover:text-cyan-300 transition-colors">
+                  🧮 EGRI: Índice Multivariado de El-Ganzouri
+                </span>
+                <span className="bg-indigo-950/60 text-indigo-300 border border-indigo-500/40 text-[10px] font-bold px-2 py-0.5 rounded-md">
+                  Predicción VAD (0 - 14 pts)
+                </span>
+                <span className={`text-[10px] font-black px-2 py-0.5 rounded-md border ${
+                  totalEgri >= 4
+                    ? 'bg-rose-500/20 text-rose-300 border-rose-500/50'
+                    : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50'
+                }`}>
+                  Puntaje: {totalEgri}/14 &bull; {totalEgri >= 4 ? '⚠️ VAD Prevista' : '✅ Baja Dificultad'}
+                </span>
+              </div>
+              <div className="p-1.5 rounded-lg bg-slate-800 text-cyan-400 group-hover:bg-slate-700 transition-colors shrink-0 ml-2">
+                {openSubmenu.egriMenu ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+              </div>
+            </button>
+
+            {openSubmenu.egriMenu && (
+              <div className="p-4 border-t border-slate-800 text-xs text-slate-200 space-y-4 leading-relaxed">
+                <p className="text-slate-300">
+                  Escala ponderada multivariada para estratificación preoperatoria de vía aérea difícil. Un puntaje <strong>≥ 4 puntos</strong> indica alta probabilidad de intubación difícil y necesidad de videolaringoscopio o carro de VAD.
+                </p>
 
             <div className="space-y-4">
               {/* 1. Apertura Bucal */}
@@ -385,147 +475,444 @@ export const AirwayModule: React.FC = () => {
                 {totalEgri >= 4 ? 'Estrategia VAD' : 'Manejo Convencional'}
               </span>
             </div>
-            <p className="text-[10px] text-slate-500 italic mt-2">Referencia: El-Ganzouri AR, et al. Anesth Analg.</p>
+                <p className="text-[10px] text-slate-500 italic mt-2">Referencia: El-Ganzouri AR, et al. Anesth Analg. 1996.</p>
+              </div>
+            )}
           </div>
 
-          {/* 3. Escalas Anatómicas (Han, Cormack, POGO) */}
-          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-sm space-y-3">
-            <h3 className="text-base font-bold text-white mb-2">📑 Escalas Anatómicas y de Laringoscopia</h3>
+          {/* 2. Clasificación de Mallampati Modificada (Collapsible) */}
+          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+            <button
+              onClick={() => toggleSubMenu('mallampatiMenu')}
+              className="w-full flex items-center justify-between p-4 bg-slate-900 hover:bg-slate-800/80 transition-all text-left cursor-pointer group"
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-base font-extrabold text-white group-hover:text-cyan-300 transition-colors">
+                  👅 Clasificación de Mallampati Modificada (Samsoon & Young)
+                </span>
+                <span className="bg-indigo-950/60 text-indigo-300 border border-indigo-500/40 text-[10px] font-bold px-2 py-0.5 rounded-md">
+                  Orofaríngea (Clases I - IV)
+                </span>
+              </div>
+              <div className="p-1.5 rounded-lg bg-slate-800 text-cyan-400 group-hover:bg-slate-700 transition-colors shrink-0 ml-2">
+                {openSubmenu.mallampatiMenu ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+              </div>
+            </button>
 
-            {/* Han */}
-            <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-950/40">
-              <button
-                onClick={() => toggleSubMenu('hanMenu')}
-                className="w-full flex items-center justify-between p-3 text-xs font-bold text-white hover:bg-slate-800/60 transition-all text-left"
-              >
-                <span>▪️ Escala de Ventilación Difícil con Mascarilla de Han</span>
-                {openSubmenu.hanMenu ? <ChevronUp className="w-4 h-4 text-cyan-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
-              </button>
-              {openSubmenu.hanMenu && (
-                <div className="p-3 text-xs text-slate-300 space-y-1.5 border-t border-slate-800 bg-slate-900/50 leading-relaxed">
-                  <p><strong>Grado I:</strong> Ventilación fácil sin dispositivos auxiliares.</p>
-                  <p><strong>Grado II:</strong> Ventilación difícil, requiere cánula orofaríngea o reposicionamiento.</p>
-                  <p><strong>Grado III:</strong> Ventilación muy difícil, requiere dos operadores o relajantes musculares.</p>
-                  <p><strong>Grado IV:</strong> Ventilación imposible por mascarilla facial.</p>
-                  <p className="text-[10px] text-slate-500 italic pt-1 border-t border-slate-800">Ref: Han et al. (2004).</p>
-                </div>
-              )}
-            </div>
+            {openSubmenu.mallampatiMenu && (
+              <div className="p-4 border-t border-slate-800 text-xs text-slate-200 space-y-4 leading-relaxed">
+                <p className="text-slate-300">
+                  Evaluación anatómica orofaríngea del paciente sentado, con la cabeza neutra, boca abierta al máximo y lengua protruida sin fonar.
+                </p>
 
-            {/* Cormack-Lehane */}
-            <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-950/40">
-              <button
-                onClick={() => toggleSubMenu('cormackMenu')}
-                className="w-full flex items-center justify-between p-3 text-xs font-bold text-white hover:bg-slate-800/60 transition-all text-left"
-              >
-                <span>▪️ Clasificación Laringoscópica de Cormack-Lehane</span>
-                {openSubmenu.cormackMenu ? <ChevronUp className="w-4 h-4 text-cyan-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
-              </button>
-              {openSubmenu.cormackMenu && (
-                <div className="p-3 text-xs text-slate-300 space-y-3 border-t border-slate-800 bg-slate-900/50 leading-relaxed">
-                  <CormackDiagram />
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-300">
-                    <p><strong>Grado I:</strong> Visualización completa de las cuerdas vocales.</p>
-                    <p><strong>Grado II:</strong> Solo comisura posterior o aritenoides visibles.</p>
-                    <p><strong>Grado III:</strong> Solo la epiglotis es visible (sin cuerdas).</p>
-                    <p><strong>Grado IV:</strong> Sin visualización ni siquiera de la epiglotis (solo paladar blando).</p>
+                <MallampatiDiagram
+                  selectedClass={egri.mallampati === 0 ? 1 : egri.mallampati === 1 ? 2 : 3}
+                  onSelectClass={(c) => {
+                    const egriVal = c === 1 ? 0 : c === 2 ? 1 : 2;
+                    setEgri((p) => ({ ...p, mallampati: egriVal }));
+                  }}
+                />
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 pt-2">
+                  <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800">
+                    <span className="font-extrabold text-emerald-400 block mb-1">Clase I</span>
+                    <p className="text-slate-300">Visibles: Paladar blando, fauces, úvula completa y pilares amigdalinos anteriores y posteriores.</p>
                   </div>
-                  <p className="text-[10px] text-slate-500 italic pt-1 border-t border-slate-800">Ref: Cormack & Lehane (1984).</p>
+                  <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800">
+                    <span className="font-extrabold text-cyan-400 block mb-1">Clase II</span>
+                    <p className="text-slate-300">Visibles: Paladar blando, fauces y úvula. Los pilares amigdalinos quedan ocultos por la base lingual.</p>
+                  </div>
+                  <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800">
+                    <span className="font-extrabold text-amber-400 block mb-1">Clase III (Sospecha VAD)</span>
+                    <p className="text-slate-300">Visibles únicamente el paladar blando y la base de la úvula.</p>
+                  </div>
+                  <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800">
+                    <span className="font-extrabold text-rose-400 block mb-1">Clase IV (VAD Severa)</span>
+                    <p className="text-slate-300">Solo es visible el paladar duro. El paladar blando no es visible en absoluto.</p>
+                  </div>
                 </div>
-              )}
-            </div>
 
-            {/* POGO */}
-            <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-950/40">
-              <button
-                onClick={() => toggleSubMenu('pogoMenu')}
-                className="w-full flex items-center justify-between p-3 text-xs font-bold text-white hover:bg-slate-800/60 transition-all text-left"
-              >
-                <span>▪️ Escala POGO (Percentage of Glottic Opening)</span>
-                {openSubmenu.pogoMenu ? <ChevronUp className="w-4 h-4 text-cyan-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
-              </button>
-              {openSubmenu.pogoMenu && (
-                <div className="p-3 text-xs text-slate-300 space-y-3 border-t border-slate-800 bg-slate-900/50 leading-relaxed">
-                  <p>Porcentaje de apertura glótica expuesta durante la laringoscopia (0 a 100%).</p>
-                  <PogoScaleDiagram />
-                  <p className="text-cyan-300 font-semibold">Un POGO &lt; 50% se asocia a intubación traqueal más compleja que requiere estilete/videolaringoscopio.</p>
-                  <p className="text-[10px] text-slate-500 italic pt-1 border-t border-slate-800">Ref: Orebaugh et al. (2011) / Levitan et al. (1998).</p>
-                </div>
-              )}
-            </div>
+                <p className="text-[10px] text-slate-500 italic pt-1 border-t border-slate-800">
+                  Bibliografía: Mallampati SR, et al. Can Anaesth Soc J. 1985; Samsoon GL, Young JR. Anaesthesia. 1987.
+                </p>
+              </div>
+            )}
           </div>
 
-          {/* 4. Algoritmos de Rescate (Vortex & DAS) */}
-          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
-            <h3 className="text-base font-bold text-white flex items-center gap-2">
-              🌀 Algoritmos y Protocolos de Rescate en Vía Aérea
-            </h3>
+          {/* 3. Predictores Clínicos de Vía Aérea & Distancias Anatómicas (Collapsible) */}
+          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+            <button
+              onClick={() => toggleSubMenu('predictoresMenu')}
+              className="w-full flex items-center justify-between p-4 bg-slate-900 hover:bg-slate-800/80 transition-all text-left cursor-pointer group"
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-base font-extrabold text-white group-hover:text-cyan-300 transition-colors">
+                  📏 Predictores Clínicos & Distancias Anatómicas
+                </span>
+                <span className="bg-slate-800 text-cyan-300 text-[10px] font-bold px-2 py-0.5 rounded-md border border-slate-700">
+                  Patil-Aldreti, Savva, Interincisivos, ULBT & Bellhouse
+                </span>
+              </div>
+              <div className="p-1.5 rounded-lg bg-slate-800 text-cyan-400 group-hover:bg-slate-700 transition-colors shrink-0 ml-2">
+                {openSubmenu.predictoresMenu ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+              </div>
+            </button>
 
-            {/* Vortex */}
-            <div className="border border-indigo-800/50 rounded-2xl overflow-hidden bg-indigo-950/30">
-              <button
-                onClick={() => toggleSubMenu('vortexMenu')}
-                className="w-full flex items-center justify-between p-4 text-sm font-extrabold text-white bg-indigo-900/40 hover:bg-indigo-900/60 transition-all text-left"
-              >
-                <span className="flex items-center gap-2">🌀 Enfoque Vórtex (Vortex Approach)</span>
-                {openSubmenu.vortexMenu ? <ChevronUp className="w-4 h-4 text-cyan-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
-              </button>
-              {openSubmenu.vortexMenu && (
-                <div className="p-4 text-xs text-slate-200 space-y-3 border-t border-indigo-800/40 leading-relaxed">
-                  <VortexDiagram />
-                  <div className="bg-amber-950/50 border-l-4 border-amber-500 p-3 rounded-r-xl text-amber-200 text-xs">
-                    <strong>📌 Historia y Origen:</strong> Creado por el Dr. Nicholas Chrimes y el Dr. Peter Fritz (2015). Herramienta cognitiva tridimensional para simplificar la toma de decisiones críticas en crisis de vía aérea.
+            {openSubmenu.predictoresMenu && (
+              <div className="p-4 border-t border-slate-800 text-xs text-slate-200 space-y-3 leading-relaxed">
+                <p className="text-slate-300">
+                  Criterios cuantitativos de exploración física para estimar el eje laríngeo-faríngeo y predecir dificultad para la alineación de ejes durante la laringoscopia directa.
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800">
+                    <span className="font-extrabold text-cyan-400 block mb-1">Distancia Tiromentoniana (Patil-Aldreti)</span>
+                    <p className="text-slate-300">Distancia del cartílago tiroides al borde inferior de la mandíbula con cuello en hiperextensión.</p>
+                    <div className="mt-2 text-[11px] font-semibold text-rose-300 bg-rose-950/40 p-1.5 rounded-lg border border-rose-800/40">
+                      ⚠️ Valor de corte: &lt; 6.5 cm predice laringoscopia difícil.
+                    </div>
                   </div>
-                  <p className="text-[10px] text-slate-500 italic border-t border-indigo-800/40 pt-2">Ref: Chrimes N, et al. The Vortex Approach.</p>
+
+                  <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800">
+                    <span className="font-extrabold text-cyan-400 block mb-1">Distancia Esternomentoniana (Savva)</span>
+                    <p className="text-slate-300">Distancia en línea recta desde el manubrio esternal hasta la punta del mentón con cuello en máxima extensión.</p>
+                    <div className="mt-2 text-[11px] font-semibold text-rose-300 bg-rose-950/40 p-1.5 rounded-lg border border-rose-800/40">
+                      ⚠️ Valor de corte: &lt; 12.5 cm predice intubación difícil.
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800">
+                    <span className="font-extrabold text-cyan-400 block mb-1">Apertura Bucal (Interincisivos)</span>
+                    <p className="text-slate-300">Distancia entre los bordes de los incisivos superiores e inferiores en máxima apertura.</p>
+                    <div className="mt-2 text-[11px] font-semibold text-rose-300 bg-rose-950/40 p-1.5 rounded-lg border border-rose-800/40">
+                      ⚠️ &lt; 3 cm: Dificultad severa para insertar palas convencionales.
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800">
+                    <span className="font-extrabold text-cyan-400 block mb-1">Mordedura de Labio Superior (ULBT)</span>
+                    <p className="text-slate-300">Capacidad de los incisivos inferiores de morder el labio superior (valora protrusión mandibular).</p>
+                    <div className="mt-2 text-[11px] space-y-0.5 text-slate-300">
+                      <div><strong>Clase I:</strong> Cubre sobre la línea bermellón.</div>
+                      <div><strong>Clase II:</strong> Muerde debajo de línea bermellón.</div>
+                      <div className="text-rose-300 font-bold"><strong>Clase III:</strong> Incapaz de morder el labio (alta sospecha VAD).</div>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 sm:col-span-2">
+                    <span className="font-extrabold text-cyan-400 block mb-1">Movilidad Cervical (Bellhouse-Doré)</span>
+                    <p className="text-slate-300">Grado de extensión de la articulación atlanto-occipital normal (aprox. 35°). Reducción a menos de 80° de flexoextensión global o &lt; 35° de extensión reduce significativamente la línea de visión glótica directa.</p>
+                  </div>
                 </div>
-              )}
-            </div>
 
-            {/* DAS */}
-            <div className="border border-blue-800/50 rounded-2xl overflow-hidden bg-slate-950/40">
-              <button
-                onClick={() => toggleSubMenu('dasMenu')}
-                className="w-full flex items-center justify-between p-4 text-sm font-extrabold text-white bg-blue-900/40 hover:bg-blue-900/60 transition-all text-left"
-              >
-                <span className="flex items-center gap-2">▪️ Guías DAS (Difficult Airway Society Protocol)</span>
-                {openSubmenu.dasMenu ? <ChevronUp className="w-4 h-4 text-cyan-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
-              </button>
-              {openSubmenu.dasMenu && (
-                <div className="p-4 text-xs text-slate-200 space-y-3 border-t border-blue-800/40 leading-relaxed">
-                  <div className="bg-slate-900 p-3 rounded-xl border border-blue-500/30 flex items-center justify-between gap-3">
-                    <span className="font-semibold text-slate-200">🎥 Ver video tutorial del Protocolo DAS en YouTube:</span>
-                    <a
-                      href="https://www.youtube.com/results?search_query=DAS+difficult+airway+society+guidelines+anesthesia"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center gap-1.5 bg-red-600 hover:bg-red-500 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition-all shrink-0 shadow-md"
-                    >
-                      Ver Video <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
-                  </div>
+                <p className="text-[10px] text-slate-500 italic pt-1 border-t border-slate-800">
+                  Bibliografía: Patil VU, et al. 1983; Savva D. Br J Anaesth. 1994; Khan ZH, et al. Anesth Analg. 2003.
+                </p>
+              </div>
+            )}
+          </div>
 
-                  <div className="space-y-2.5">
-                    <div className="p-3 bg-blue-950/40 rounded-xl border border-blue-800/50">
-                      <strong className="text-cyan-300 block mb-0.5">Plan A: Intubación Traqueal Inicial</strong>
-                      Laringoscopia directa o videolaringoscopia con maniobra BURP o estilete. Máximo 3 intentos. Si fracasa → Plan B.
-                    </div>
-                    <div className="p-3 bg-indigo-950/40 rounded-xl border border-indigo-800/50">
-                      <strong className="text-indigo-300 block mb-0.5">Plan B: Mantenimiento de Oxigenación con DSG</strong>
-                      Inserción de Dispositivo Supraglótico (LMA de 2da generación). Máximo 2 intentos. Si oxigena → evaluar despertar o intubar a través del DSG. Si fracasa → Plan C.
-                    </div>
-                    <div className="p-3 bg-amber-950/40 rounded-xl border border-amber-800/50">
-                      <strong className="text-amber-300 block mb-0.5">Plan C: Ventilación con Mascarilla Facial o Despertar</strong>
-                      Pedir ayuda experta, revertir el bloqueo neuromuscular si aplica (Sugammadex). Si la ventilación es imposible → Escenario "No Puedo Intubar, No Puedo Oxigenar" (NINO) → Plan D urgente.
-                    </div>
-                    <div className="p-3 bg-rose-950/50 rounded-xl border border-rose-800/60 text-rose-100">
-                      <strong className="text-rose-300 block mb-0.5">Plan D: Acceso Frontal de Cuello (AFC / CPO)</strong>
-                      Cricotiroidotomía quirúrgica o técnica de Seldinger (Bisturí - Buajía - Tubo de traqueostomía/TET #6.0) de emergencia inmediata.
-                    </div>
+          {/* 4. Escala de Ventilación Difícil con Mascarilla de Han (Collapsible) */}
+          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+            <button
+              onClick={() => toggleSubMenu('hanMenu')}
+              className="w-full flex items-center justify-between p-4 bg-slate-900 hover:bg-slate-800/80 transition-all text-left cursor-pointer group"
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-base font-extrabold text-white group-hover:text-cyan-300 transition-colors">
+                  🎭 Escala de Ventilación con Mascarilla Facial (Han)
+                </span>
+                <span className="bg-slate-800 text-cyan-300 text-[10px] font-bold px-2 py-0.5 rounded-md border border-slate-700">
+                  Grados I - IV
+                </span>
+              </div>
+              <div className="p-1.5 rounded-lg bg-slate-800 text-cyan-400 group-hover:bg-slate-700 transition-colors shrink-0 ml-2">
+                {openSubmenu.hanMenu ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+              </div>
+            </button>
+
+            {openSubmenu.hanMenu && (
+              <div className="p-4 border-t border-slate-800 text-xs text-slate-200 space-y-3 leading-relaxed">
+                <p className="text-slate-300">
+                  Clasificación escalonada de dificultad de ventilación con bolsa-válvula-mascarilla facial durante la inducción anestésica.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800">
+                    <strong className="text-emerald-400 block mb-1">Grado I: Ventilación Fácil</strong>
+                    Ventilación adecuada por una sola persona sin necesidad de adyuvantes ni reposicionamiento.
                   </div>
-                  <p className="text-[10px] text-slate-500 italic border-t border-slate-800 pt-2">Ref: Frerk C, et al. Difficult Airway Society 2015 guidelines for management of unanticipated difficult intubation in adults.</p>
+                  <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800">
+                    <strong className="text-cyan-400 block mb-1">Grado II: Ventilación con Adyuvante</strong>
+                    Requiere cánula orofaríngea (Guedel), nasofaríngea o maniobras de tracción mandibular.
+                  </div>
+                  <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800">
+                    <strong className="text-amber-400 block mb-1">Grado III: Ventilación Difícil</strong>
+                    Requiere dos operadores simultáneos (técnica VE de sellado bimanual) o relajante muscular.
+                  </div>
+                  <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800">
+                    <strong className="text-rose-400 block mb-1">Grado IV: Ventilación Imposible</strong>
+                    Imposible ventilar por mascarilla facial. Entrada inmediata al algoritmo de rescate o DSG.
+                  </div>
                 </div>
-              )}
-            </div>
+                <p className="text-[10px] text-slate-500 italic pt-1 border-t border-slate-800">Ref: Han R, et al. Anesthesiology. 2004.</p>
+              </div>
+            )}
+          </div>
+
+          {/* 5. Cormack-Lehane (Collapsible) */}
+          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+            <button
+              onClick={() => toggleSubMenu('cormackMenu')}
+              className="w-full flex items-center justify-between p-4 bg-slate-900 hover:bg-slate-800/80 transition-all text-left cursor-pointer group"
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-base font-extrabold text-white group-hover:text-cyan-300 transition-colors">
+                  👁️ Clasificación Laringoscópica de Cormack-Lehane
+                </span>
+                <span className="bg-slate-800 text-cyan-300 text-[10px] font-bold px-2 py-0.5 rounded-md border border-slate-700">
+                  Visión Glótica (Grados I - IV)
+                </span>
+              </div>
+              <div className="p-1.5 rounded-lg bg-slate-800 text-cyan-400 group-hover:bg-slate-700 transition-colors shrink-0 ml-2">
+                {openSubmenu.cormackMenu ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+              </div>
+            </button>
+
+            {openSubmenu.cormackMenu && (
+              <div className="p-4 border-t border-slate-800 text-xs text-slate-200 space-y-4 leading-relaxed">
+                <p className="text-slate-300">
+                  Graduación objetiva de la exposición de estructuras glóticas obtenida durante la laringoscopia directa convencional.
+                </p>
+                <CormackDiagram />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800">
+                    <strong className="text-emerald-400 block mb-1">Grado I: Completa</strong>
+                    Visualización completa de la glotis y de las cuerdas vocales verdaderas anteriores y posteriores.
+                  </div>
+                  <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800">
+                    <strong className="text-cyan-400 block mb-1">Grado II: Parcial</strong>
+                    Solo comisura posterior o aritenoides visibles. (IIa: parte posterior de cuerdas; IIb: solo aritenoides).
+                  </div>
+                  <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800">
+                    <strong className="text-amber-400 block mb-1">Grado III: Epiglotis Únicamente</strong>
+                    Solo la epiglotis es visible; no se observa ninguna porción del orificio glótico ni de las cuerdas.
+                  </div>
+                  <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800">
+                    <strong className="text-rose-400 block mb-1">Grado IV: Ninguna Estructura</strong>
+                    Ni la epiglotis ni la glotis son visibles (solo paladar blando).
+                  </div>
+                </div>
+                <p className="text-[10px] text-slate-500 italic pt-1 border-t border-slate-800">Ref: Cormack RS, Lehane J. Anaesthesia. 1984.</p>
+              </div>
+            )}
+          </div>
+
+          {/* 6. Escala POGO (Collapsible) */}
+          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+            <button
+              onClick={() => toggleSubMenu('pogoMenu')}
+              className="w-full flex items-center justify-between p-4 bg-slate-900 hover:bg-slate-800/80 transition-all text-left cursor-pointer group"
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-base font-extrabold text-white group-hover:text-cyan-300 transition-colors">
+                  🎯 Escala POGO (Percentage of Glottic Opening)
+                </span>
+                <span className="bg-cyan-950/60 text-cyan-300 border border-cyan-500/40 text-[10px] font-bold px-2 py-0.5 rounded-md">
+                  Apertura Glótica (0 - 100%)
+                </span>
+              </div>
+              <div className="p-1.5 rounded-lg bg-slate-800 text-cyan-400 group-hover:bg-slate-700 transition-colors shrink-0 ml-2">
+                {openSubmenu.pogoMenu ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+              </div>
+            </button>
+
+            {openSubmenu.pogoMenu && (
+              <div className="p-4 border-t border-slate-800 text-xs text-slate-200 space-y-4 leading-relaxed">
+                <p className="text-slate-300">
+                  Evaluación cuantitativa directa de la exposición de la apertura glótica desde la comisura anterior hasta la comisura posterior (0% a 100%).
+                </p>
+                <PogoScaleDiagram />
+                <div className="p-3 bg-indigo-950/40 rounded-xl border border-indigo-800/50 text-slate-300">
+                  <span className="font-bold text-cyan-300 block mb-1">Implicación Clínica:</span>
+                  Un POGO &lt; 50% predice una probabilidad significativamente mayor de intubación prolongada o fallida con laringoscopia directa tradicional, recomendando el uso precoz de un estilete angulado (Frova, Buajía) o videolaringoscopio.
+                </div>
+                <p className="text-[10px] text-slate-500 italic pt-1 border-t border-slate-800">Ref: Levitan RM, et al. Acad Emerg Med. 1998.</p>
+              </div>
+            )}
+          </div>
+
+          {/* 7. Score MACOCHA (Collapsible) */}
+          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+            <button
+              onClick={() => toggleSubMenu('macochaMenu')}
+              className="w-full flex items-center justify-between p-4 bg-slate-900 hover:bg-slate-800/80 transition-all text-left cursor-pointer group"
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-base font-extrabold text-white group-hover:text-cyan-300 transition-colors">
+                  🏥 Score MACOCHA (Vía Aérea Difícil en UCI / Paciente Crítico)
+                </span>
+                <span className="bg-rose-950 text-rose-300 border border-rose-500/40 text-[10px] font-black px-2 py-0.5 rounded-md uppercase">
+                  Paciente Crítico (0 - 12 pts)
+                </span>
+              </div>
+              <div className="p-1.5 rounded-lg bg-slate-800 text-cyan-400 group-hover:bg-slate-700 transition-colors shrink-0 ml-2">
+                {openSubmenu.macochaMenu ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+              </div>
+            </button>
+
+            {openSubmenu.macochaMenu && (
+              <div className="p-4 border-t border-slate-800 text-xs text-slate-200 space-y-4 leading-relaxed">
+                <p className="text-slate-300">
+                  Score de predicción de intubación difícil validado internacionalmente para unidades de cuidados intensivos, emergencias y pacientes sépticos/inestables.
+                </p>
+
+                <div className="space-y-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                    <div className="p-2.5 bg-slate-950/60 rounded-xl border border-slate-800">
+                      <span className="font-extrabold text-cyan-300 block">M: Mallampati III o IV</span>
+                      <span className="text-rose-400 font-bold">+5 Puntos</span> (Factor anatómico mayor)
+                    </div>
+                    <div className="p-2.5 bg-slate-950/60 rounded-xl border border-slate-800">
+                      <span className="font-extrabold text-cyan-300 block">A: Apnea Obstructiva (SAHOS)</span>
+                      <span className="text-amber-400 font-bold">+2 Puntos</span>
+                    </div>
+                    <div className="p-2.5 bg-slate-950/60 rounded-xl border border-slate-800">
+                      <span className="font-extrabold text-cyan-300 block">C: Cuello con movilidad reducida</span>
+                      <span className="text-amber-400 font-bold">+1 Punto</span>
+                    </div>
+                    <div className="p-2.5 bg-slate-950/60 rounded-xl border border-slate-800">
+                      <span className="font-extrabold text-cyan-300 block">O: Apertura bucal &lt; 3 cm</span>
+                      <span className="text-amber-400 font-bold">+1 Punto</span>
+                    </div>
+                    <div className="p-2.5 bg-slate-950/60 rounded-xl border border-slate-800">
+                      <span className="font-extrabold text-cyan-300 block">C: Coma (Glasgow &le; 8)</span>
+                      <span className="text-amber-400 font-bold">+1 Punto</span>
+                    </div>
+                    <div className="p-2.5 bg-slate-950/60 rounded-xl border border-slate-800">
+                      <span className="font-extrabold text-cyan-300 block">H: Hipoxemia severa (PaO2/FiO2 &lt; 100)</span>
+                      <span className="text-amber-400 font-bold">+1 Punto</span>
+                    </div>
+                    <div className="p-2.5 bg-slate-950/60 rounded-xl border border-slate-800 sm:col-span-2 md:col-span-3">
+                      <span className="font-extrabold text-cyan-300 block">A: Operador no anestesiólogo</span>
+                      <span className="text-amber-400 font-bold">+1 Punto</span> (Factor dependiente del operador)
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-amber-950/40 rounded-xl border border-amber-500/40 text-amber-200">
+                    <strong>Punto de corte clínico:</strong> Un score MACOCHA <strong>&ge; 3 puntos</strong> predice intubación difícil con alta sensibilidad y especificidad en UCI, requiriendo videolaringoscopio y operador experimentado.
+                  </div>
+                </div>
+
+                <p className="text-[10px] text-slate-500 italic pt-1 border-t border-slate-800">
+                  Bibliografía: De Jong A, et al. Early identification of patients at risk of difficult intubation in intensive care units: the MACOCHA score. Intensive Care Med. 2013.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* 8. Algoritmo de Rescate: Enfoque Vórtex (Collapsible) */}
+          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+            <button
+              onClick={() => toggleSubMenu('vortexMenu')}
+              className="w-full flex items-center justify-between p-4 bg-slate-900 hover:bg-slate-800/80 transition-all text-left cursor-pointer group"
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-base font-extrabold text-white group-hover:text-cyan-300 transition-colors">
+                  🌀 Algoritmo de Rescate: Enfoque Vórtex (Vortex Approach)
+                </span>
+                <span className="bg-indigo-950/60 text-indigo-300 border border-indigo-500/40 text-[10px] font-bold px-2 py-0.5 rounded-md">
+                  Modelo Cognitivo de Crisis
+                </span>
+              </div>
+              <div className="p-1.5 rounded-lg bg-slate-800 text-cyan-400 group-hover:bg-slate-700 transition-colors shrink-0 ml-2">
+                {openSubmenu.vortexMenu ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+              </div>
+            </button>
+
+            {openSubmenu.vortexMenu && (
+              <div className="p-4 border-t border-slate-800 text-xs text-slate-200 space-y-4 leading-relaxed">
+                <p className="text-slate-300">
+                  Herramienta cognitiva visual tridimensional creada por Nicholas Chrimes y Peter Fritz (2015) para la toma de decisiones clínicas durante cualquier emergencia de vía aérea.
+                </p>
+                <VortexDiagram />
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800">
+                    <strong className="text-cyan-300 block mb-1">1. Mascarilla Facial</strong>
+                    Máximo 3 intentos optimizados (cambio de tamaño, cánula orofaríngea, técnica bimanual a 4 manos).
+                  </div>
+                  <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800">
+                    <strong className="text-indigo-300 block mb-1">2. Dispositivo Supraglótico</strong>
+                    Máximo 3 intentos con DSG de 2ª generación (i-gel, Supreme) con cuff optimizado y lubricación.
+                  </div>
+                  <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800">
+                    <strong className="text-emerald-300 block mb-1">3. Tubo Endotraqueal</strong>
+                    Máximo 3 intentos con videolaringoscopio, bujía de Frova/Eschmann y manipulación laríngea externa (BURP).
+                  </div>
+                </div>
+                <div className="p-3 bg-rose-950/40 border border-rose-800/60 rounded-xl text-rose-200 font-medium">
+                  🚨 <strong>Falla de las 3 Líneas Superiores:</strong> Transición inmediata a <em>Acceso Frontal de Cuello de Emergencia (Cricotiroidotomía Bisturí-Bujía-Tubo)</em> antes de hipoxemia irreversible.
+                </div>
+                <p className="text-[10px] text-slate-500 italic border-t border-slate-800 pt-1">Ref: Chrimes N, et al. The Vortex Approach. 2015.</p>
+              </div>
+            )}
+          </div>
+
+          {/* 9. Guías DAS (Difficult Airway Society) (Collapsible) */}
+          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+            <button
+              onClick={() => toggleSubMenu('dasMenu')}
+              className="w-full flex items-center justify-between p-4 bg-slate-900 hover:bg-slate-800/80 transition-all text-left cursor-pointer group"
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-base font-extrabold text-white group-hover:text-cyan-300 transition-colors">
+                  🚨 Protocolo DAS (Difficult Airway Society: Planes A, B, C y D)
+                </span>
+                <span className="bg-blue-950/60 text-blue-300 border border-blue-500/40 text-[10px] font-bold px-2 py-0.5 rounded-md">
+                  Guía de Intubación Difícil No Prevista
+                </span>
+              </div>
+              <div className="p-1.5 rounded-lg bg-slate-800 text-cyan-400 group-hover:bg-slate-700 transition-colors shrink-0 ml-2">
+                {openSubmenu.dasMenu ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+              </div>
+            </button>
+
+            {openSubmenu.dasMenu && (
+              <div className="p-4 border-t border-slate-800 text-xs text-slate-200 space-y-4 leading-relaxed">
+                <div className="bg-slate-950 p-3 rounded-xl border border-blue-500/30 flex items-center justify-between gap-3">
+                  <span className="font-semibold text-slate-200">🎥 Ver video tutorial del Protocolo DAS en YouTube:</span>
+                  <a
+                    href="https://www.youtube.com/results?search_query=DAS+difficult+airway+society+guidelines+anesthesia"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1.5 bg-red-600 hover:bg-red-500 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition-all shrink-0 shadow-md"
+                  >
+                    Ver Video <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+
+                <div className="space-y-2.5">
+                  <div className="p-3 bg-blue-950/40 rounded-xl border border-blue-800/50">
+                    <strong className="text-cyan-300 block mb-0.5">Plan A: Intubación Traqueal Inicial</strong>
+                    Laringoscopia directa o videolaringoscopia con maniobra BURP o estilete. Máximo 3 intentos. Si fracasa → Plan B.
+                  </div>
+                  <div className="p-3 bg-indigo-950/40 rounded-xl border border-indigo-800/50">
+                    <strong className="text-indigo-300 block mb-0.5">Plan B: Mantenimiento de Oxigenación con DSG</strong>
+                    Inserción de Dispositivo Supraglótico (LMA de 2da generación). Máximo 2 intentos. Si oxigena → evaluar despertar o intubar a través del DSG. Si fracasa → Plan C.
+                  </div>
+                  <div className="p-3 bg-amber-950/40 rounded-xl border border-amber-800/50">
+                    <strong className="text-amber-300 block mb-0.5">Plan C: Ventilación con Mascarilla Facial o Despertar</strong>
+                    Pedir ayuda experta, revertir el bloqueo neuromuscular si aplica (Sugammadex). Si la ventilación es imposible → Escenario "No Puedo Intubar, No Puedo Oxigenar" (NINO) → Plan D urgente.
+                  </div>
+                  <div className="p-3 bg-rose-950/50 rounded-xl border border-rose-800/60 text-rose-100">
+                    <strong className="text-rose-300 block mb-0.5">Plan D: Acceso Frontal de Cuello (AFC / CPO)</strong>
+                    Cricotiroidotomía quirúrgica o técnica de Seldinger (Bisturí - Buajía - Tubo de traqueostomía/TET #6.0) de emergencia inmediata.
+                  </div>
+                </div>
+                <p className="text-[10px] text-slate-500 italic border-t border-slate-800 pt-2">
+                  Ref: Frerk C, et al. Difficult Airway Society 2015 guidelines for management of unanticipated difficult intubation in adults. Br J Anaesth. 2015.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}

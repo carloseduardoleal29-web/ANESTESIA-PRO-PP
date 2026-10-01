@@ -82,19 +82,6 @@ export const HomeModule: React.FC<HomeModuleProps> = ({ setActiveTab, onSelectEd
   // NOVEDADES ORDENADAS ESTRICTAMENTE DE LO MÁS NUEVO A LO MÁS VIEJO (Últimas 48 horas)
   const novedades = [
     {
-      id: 'res-ciprofol-hsk3486-hipnotico-gabaa-2026',
-      type: 'education',
-      title: '💊 Ciprofol (HSK3486): El Nuevo Hipnótico Modulador del Receptor GABA-A (BJA / EJA 2026)',
-      tag: '🔥 NUEVO • DESTACADO OFICIAL',
-      date: 'Septiembre 2026 • Farmacología & TIVA',
-      badgeColor: 'bg-purple-500/20 text-purple-300 border-purple-400/40',
-      gradient: 'from-slate-900 via-purple-950 to-indigo-950 border-purple-500/50 hover:border-purple-400',
-      iconColor: 'bg-gradient-to-br from-purple-500 to-indigo-600 text-white',
-      image: '/images/ciprofol/slide_1_mecanismo_gabaa.svg',
-      desc: 'Nuevo agente anestésico intravenoso no esteroideo: 4-5 veces más potente que propofol, estabilidad hemodinámica cardiovascular superior, eliminación del dolor a la inyección venosa (0%) y recuperación psicomotriz ultrarrápida. Álbum interactivo con 6 láminas deslizables en HD, calculadora de inducción/mantenimiento TIVA y Guía Oficial en PDF.',
-      cta: 'Ver Álbum HD, Calculadora & PDF'
-    },
-    {
       id: 'res-preeclampsia-eclampsia-enfoque-anestesiologico',
       type: 'education',
       title: '🧬 Protocolo Obstétrico y Atlas Visual: Preeclampsia, Eclampsia y Síndrome HELLP (ACOG / FIGO / SOAP 2026)',
@@ -191,8 +178,8 @@ export const HomeModule: React.FC<HomeModuleProps> = ({ setActiveTab, onSelectEd
     {
       id: 'escalas' as TabType,
       title: '3. Escalas Usadas en Anestesiología',
-      badge: 'PACU, ASA & SEDACIÓN',
-      desc: 'Clasificación ASA (I-VI), Escala de Ramsay, Bloqueo Motor de Bromage, Índice de Aldrete interactivo para URPA, EVA y RASS.',
+      badge: 'ASA, CAPRINI, PACU & SHOCK',
+      desc: 'Clasificación ASA (I-VI), Escala de Caprini (TEV/TVP), Índice de Shock (IS/MSI/PAM), Ramsay, Bromage, Aldrete para URPA, EVA y RASS.',
       icon: BarChart2,
       color: 'from-cyan-600 to-teal-600',
       image: 'https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&w=600&q=80'
@@ -249,15 +236,20 @@ export const HomeModule: React.FC<HomeModuleProps> = ({ setActiveTab, onSelectEd
 
         <div className="relative z-10 max-w-2xl space-y-3">
           <div className="flex items-center gap-3">
-            <div className="shrink-0 p-1.5 bg-white rounded-2xl border-2 border-cyan-300 shadow-xl overflow-hidden flex items-center justify-center">
-              <img
-                src={LOGO_SHIELD_BASE64}
-                alt="AnestesiaPro Logo"
-                className="w-13 h-13 sm:w-16 sm:h-16 object-contain rounded-xl"
-                onError={(e) => {
-                  e.currentTarget.src = LOGO_FALLBACK_SVG;
-                }}
-              />
+            {/* Animated Logo Container with Vital Glow Halo and Cardiac Heartbeat Pulse */}
+            <div className="relative shrink-0 flex items-center justify-center">
+              <div className="absolute -inset-1.5 bg-gradient-to-r from-cyan-400 via-sky-300 to-blue-500 rounded-2xl opacity-60 blur-[4px] animate-vital-glow pointer-events-none" />
+              <div className="relative p-1.5 bg-white rounded-2xl border-2 border-cyan-300 shadow-xl overflow-hidden flex items-center justify-center animate-cardiac-logo shadow-cyan-500/40">
+                <div className="absolute inset-0 w-[200%] h-full bg-gradient-to-r from-transparent via-cyan-100/60 to-transparent pointer-events-none animate-specular-sweep" />
+                <img
+                  src={LOGO_SHIELD_BASE64}
+                  alt="AnestesiaPro Logo"
+                  className="w-13 h-13 sm:w-16 sm:h-16 object-contain rounded-xl relative z-10"
+                  onError={(e) => {
+                    e.currentTarget.src = LOGO_FALLBACK_SVG;
+                  }}
+                />
+              </div>
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">

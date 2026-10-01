@@ -1,0 +1,197 @@
+[
+  {
+    "id": "res-preeclampsia-eclampsia-enfoque-anestesiologico",
+    "title": "Preeclampsia, Eclampsia y sus Complicaciones: Enfoque para Anestesiólogo (Guías Actualizadas ACOG / FIGO / SOAP 2026)",
+    "category": "articulo",
+    "specialty": "obstetrica",
+    "author": "Dr. Carlos Leal (Anestesiología Obstétrica de Alta Complejidad)",
+    "date": "2026-03-24",
+    "isFeatured": true,
+    "featuredOrder": 1,
+    "readTime": "15 min de lectura interactiva",
+    "rating": 5.0,
+    "likes": 348,
+    "views": 4120,
+    "description": "Protocolo exhaustivo interactivo y visual para el manejo anestésico integral de la preeclampsia con criterios de severidad, eclampsia y síndrome HELLP. Incluye simuladores hemodinámicos, algoritmos de vía aérea difícil obstétrica, dosificación y reversión con Sulfato de Magnesio, y atlas anatomopatológico.",
+    "tags": [
+      "Preeclampsia",
+      "Eclampsia",
+      "HELLP",
+      "Anestesia Obstétrica",
+      "Sulfato de Magnesio",
+      "Vía Aérea Difícil",
+      "Labetalol",
+      "SOAP 2026"
+    ]
+  },
+  {
+    "id": "res-cppd-manejo-integral",
+    "title": "Cefalea Poscunción Dural (CPPD): Protocolo de Aminofilina / Teofilina y Parche Hemático",
+    "category": "infografia",
+    "specialty": "neuro",
+    "author": "Dr. Carlos Leal (Comité de Vía Aérea y Neuroanestesia)",
+    "date": "2026-03-22",
+    "isFeatured": true,
+    "featuredOrder": 2,
+    "readTime": "8 min",
+    "rating": 4.9,
+    "likes": 215,
+    "views": 2980,
+    "description": "Infografía interactiva y guía de práctica clínica sobre el bloqueo de receptores de adenosina con aminofilina/teofilina para vasoconstricción cerebral y reducción de CPPD obstétrica y neuroquirúrgica.",
+    "tags": [
+      "CPPD",
+      "Cefalea Pospunción",
+      "Aminofilina",
+      "Teofilina",
+      "Parche Hemático",
+      "Anestesia Neuro/Obstétrica"
+    ]
+  },
+  {
+    "id": "res-fona-crico-airway",
+    "title": "Algoritmo FONA & Cricotiroidotomía de Emergencia (DAS 2025)",
+    "category": "infografia",
+    "specialty": "general",
+    "author": "Dr. Carlos Leal (Comité de Vía Aérea)",
+    "date": "2026-03-20",
+    "isFeatured": true,
+    "featuredOrder": 3,
+    "readTime": "6 min",
+    "rating": 5.0,
+    "likes": 189,
+    "views": 3410,
+    "description": "Algoritmo estandarizado paso a paso para el escenario 'No puedo intubar, no puedo oxigenar' (CICO) con técnica bisturí-bujía-tubo (Scalpel-Bougie-Tube).",
+    "tags": [
+      "FONA",
+      "Cricotiroidotomía",
+      "Vía Aérea Difícil",
+      "DAS 2025",
+      "CICO"
+    ]
+  },
+  {
+    "id": "res-vortex-airway-approach",
+    "title": "El Enfoque Vortex: Manejo Moderno de la Vía Aérea Crítica",
+    "category": "infografia",
+    "specialty": "general",
+    "author": "Dr. Carlos Leal (Comité de Vía Aérea)",
+    "date": "2026-03-18",
+    "isFeatured": true,
+    "featuredOrder": 4,
+    "readTime": "7 min",
+    "rating": 4.9,
+    "likes": 142,
+    "views": 2100,
+    "description": "Implementación del modelo Vortex en sala de operaciones: Optimización de las 3 líneas no quirúrgicas y toma de decisiones oportunas bajo estrés.",
+    "tags": [
+      "Vortex",
+      "Vía Aérea",
+      "Intubación",
+      "Dispositivos Supraglóticos",
+      "Mascarilla Facial"
+    ]
+  },
+  {
+    "id": "res-peng-block-hip-analgesia",
+    "title": "Bloqueo PENG (Pericapsular Nerve Group): Analgesia para Fracturas de Cadera",
+    "category": "infografia",
+    "specialty": "regional",
+    "author": "Dr. Carlos Leal (Unidad de Anestesia Regional)",
+    "date": "2026-03-15",
+    "isFeatured": false,
+    "readTime": "5 min",
+    "rating": 4.8,
+    "likes": 98,
+    "views": 1650,
+    "description": "Anatomía sonoanatómica de alta precisión, referencias vasculonerviosas y dosis de anestésicos locales para preservar la fuerza del cuádriceps en pacientes ancianos.",
+    "tags": [
+      "PENG Block",
+      "Anestesia Regional",
+      "Ultrasonido",
+      "Cadera",
+      "Analgesia Libre de Opioides"
+    ]
+  },
+  {
+    "id": "res-emotive-code-preeclampsia",
+    "title": "Protocolo E-M-O-T-I-V-E en Hemorragia Posparto & Preeclampsia",
+    "category": "infografia",
+    "specialty": "obstetrica",
+    "author": "Dr. Carlos Leal (Comité de Emergencias Obstétricas)",
+    "date": "2026-03-12",
+    "isFeatured": false,
+    "readTime": "6 min",
+    "rating": 5.0,
+    "likes": 174,
+    "views": 2890,
+    "description": "Paquete de cuidados estandarizado por la OMS y FIGO para la detección precoz y tratamiento rápido de choque hemorrágico en pacientes preeclámpticas.",
+    "tags": [
+      "E-M-O-T-I-V-E",
+      "Hemorragia Obstétrica",
+      "Código Rojo",
+      "Oxigenación y Manejo"
+    ]
+  },
+  {
+    "id": "res-orexin-emergence-neuro",
+    "title": "Orexina / Hipocretina: Mecanismos Neuroquímicos en el Despertar Anestésico",
+    "category": "infografia",
+    "specialty": "neuro",
+    "author": "Dr. Carlos Leal (Neurociencias y Anestesia)",
+    "date": "2026-03-10",
+    "isFeatured": false,
+    "readTime": "7 min",
+    "rating": 4.9,
+    "likes": 110,
+    "views": 1820,
+    "description": "Infografía avanzada de las proyecciones orexinérgicas hipotalámicas hacia núcleos reticulares activadores, tálamo y corteza cerebral.",
+    "tags": [
+      "Orexina",
+      "Hipocretina",
+      "Despertar Anestésico",
+      "Neuroanestesia"
+    ]
+  },
+  {
+    "id": "res-aminofilina-metaanalisis-2023",
+    "title": "Meta-análisis Clínico: Eficacia Profiláctica y Terapéutica de Aminofilina/Teofilina en CPPD (2023)",
+    "category": "articulo",
+    "specialty": "obstetrica",
+    "author": "Journal of Clinical Anesthesia / Dr. Carlos Leal",
+    "date": "2026-03-05",
+    "isFeatured": false,
+    "readTime": "12 min de lectura",
+    "rating": 5.0,
+    "likes": 156,
+    "views": 2340,
+    "description": "Documento científico completo con análisis sistemático de 14 ensayos clínicos controlados aleatorizados que evalúan el uso de metilxantinas.",
+    "tags": [
+      "Metaanálisis",
+      "CPPD",
+      "Aminofilina",
+      "Evidencia Científica",
+      "Cefalea"
+    ]
+  },
+  {
+    "id": "res-aminofilina-multicentrico-2016",
+    "title": "Estudio Clínico Multicéntrico: Aminofilina IV vs Parche Hemático Epidural Temprano",
+    "category": "articulo",
+    "specialty": "neuro",
+    "author": "European Journal of Anaesthesiology / Dr. Carlos Leal",
+    "date": "2026-02-28",
+    "isFeatured": false,
+    "readTime": "10 min de lectura",
+    "rating": 4.8,
+    "likes": 132,
+    "views": 1950,
+    "description": "Estudio prospectivo randomizado con 180 pacientes obstétricas y quirúrgicas con cefalea pospunción dural moderada a severa.",
+    "tags": [
+      "Ensayo Clínico",
+      "Aminofilina",
+      "Parche Hemático",
+      "CPPD",
+      "EJA"
+    ]
+  }
+]

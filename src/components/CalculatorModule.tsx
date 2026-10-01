@@ -20,7 +20,9 @@ export const CalculatorModule: React.FC = () => {
 
   // Selected custom doses
   const [dosePropofol, setDosePropofol] = useState<number>(2);
+  const [doseMidazolam, setDoseMidazolam] = useState<number>(0.2);
   const [doseKetamina, setDoseKetamina] = useState<number>(2);
+  const [doseEtomidato, setDoseEtomidato] = useState<number>(0.3);
   const [doseTiopental, setDoseTiopental] = useState<number>(4);
   const [doseFentanilo, setDoseFentanilo] = useState<number>(2);
   const [doseSufentanil, setDoseSufentanil] = useState<number>(1);
@@ -150,32 +152,73 @@ export const CalculatorModule: React.FC = () => {
               {hipnotico === 'propofol' && (
                 <div className="mt-2 p-3 bg-slate-900 rounded-xl border border-slate-800">
                   <label className="text-xs font-bold text-indigo-300 block mb-1">
-                    Dosis Inducción Propofol:
+                    Dosis Inducción Propofol (1.5 - 3 mg/kg):
                   </label>
                   <select
                     value={dosePropofol}
                     onChange={(e) => setDosePropofol(Number(e.target.value))}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-xs text-white"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-xs text-white focus:outline-none focus:border-cyan-400"
                   >
-                    <option value={2}>Estándar (2 mg/kg)</option>
-                    <option value={3}>Opción 1 (3 mg/kg)</option>
-                    <option value={4}>Opción 2 (4 mg/kg)</option>
-                    <option value={5}>Opción 3 (5 mg/kg)</option>
+                    <option value={1.5}>Dosis Baja / Cardiópata / Anciano (1.5 mg/kg)</option>
+                    <option value={2}>Estándar Inducción (2 mg/kg)</option>
+                    <option value={2.5}>Inducción Plena / Jóvenes (2.5 mg/kg)</option>
+                    <option value={3}>Dosis Alta (3 mg/kg)</option>
+                    <option value={4}>Pediátrico / Dosis Reforzada (4 mg/kg)</option>
+                    <option value={5}>Máxima Pediátrico (5 mg/kg)</option>
+                  </select>
+                </div>
+              )}
+
+              {hipnotico === 'midazolam' && (
+                <div className="mt-2 p-3 bg-slate-900 rounded-xl border border-slate-800">
+                  <label className="text-xs font-bold text-indigo-300 block mb-1">
+                    Dosis Midazolam (0.05 - 0.3 mg/kg):
+                  </label>
+                  <select
+                    value={doseMidazolam}
+                    onChange={(e) => setDoseMidazolam(Number(e.target.value))}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-xs text-white focus:outline-none focus:border-cyan-400"
+                  >
+                    <option value={0.05}>Sedación / Co-inducción leve (0.05 mg/kg)</option>
+                    <option value={0.1}>Sedación moderada / Anciano / Frágil (0.1 mg/kg)</option>
+                    <option value={0.15}>Inducción suave / Balanceada (0.15 mg/kg)</option>
+                    <option value={0.2}>Estándar Inducción (0.2 mg/kg)</option>
+                    <option value={0.25}>Inducción profunda (0.25 mg/kg)</option>
+                    <option value={0.3}>Inducción plena / Joven (0.3 mg/kg)</option>
                   </select>
                 </div>
               )}
 
               {hipnotico === 'ketamina' && (
                 <div className="mt-2 p-3 bg-slate-900 rounded-xl border border-slate-800">
-                  <label className="text-xs font-bold text-indigo-300 block mb-1">Dosis Ketamina:</label>
+                  <label className="text-xs font-bold text-indigo-300 block mb-1">Dosis Ketamina (0.5 - 2 mg/kg):</label>
                   <select
                     value={doseKetamina}
                     onChange={(e) => setDoseKetamina(Number(e.target.value))}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-xs text-white"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-xs text-white focus:outline-none focus:border-cyan-400"
                   >
                     <option value={2}>Inducción (2 mg/kg)</option>
-                    <option value={1}>Sedación (1 mg/kg)</option>
-                    <option value={0.5}>Analgesia (0.5 mg/kg)</option>
+                    <option value={1.5}>Inducción Moderada (1.5 mg/kg)</option>
+                    <option value={1}>Sedación / Procedimiento (1 mg/kg)</option>
+                    <option value={0.5}>Analgesia / Subanestésica (0.5 mg/kg)</option>
+                  </select>
+                </div>
+              )}
+
+              {hipnotico === 'etomidato' && (
+                <div className="mt-2 p-3 bg-slate-900 rounded-xl border border-slate-800">
+                  <label className="text-xs font-bold text-indigo-300 block mb-1">
+                    Dosis Inducción Etomidato (0.15 - 0.4 mg/kg):
+                  </label>
+                  <select
+                    value={doseEtomidato}
+                    onChange={(e) => setDoseEtomidato(Number(e.target.value))}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-xs text-white focus:outline-none focus:border-cyan-400"
+                  >
+                    <option value={0.15}>Dosis reducida / Shock / Fragilidad (0.15 mg/kg)</option>
+                    <option value={0.2}>Dosis baja / Cardiopatía / Anciano (0.2 mg/kg)</option>
+                    <option value={0.3}>Estándar Inducción / SRI (0.3 mg/kg)</option>
+                    <option value={0.4}>Dosis alta / Paciente hiperdinámico (0.4 mg/kg)</option>
                   </select>
                 </div>
               )}
@@ -183,12 +226,12 @@ export const CalculatorModule: React.FC = () => {
               {hipnotico === 'tiopental' && (
                 <div className="mt-2 p-3 bg-slate-900 rounded-xl border border-slate-800">
                   <label className="text-xs font-bold text-indigo-300 block mb-1">
-                    Dosis Tiopental Sódico (3-5 mg/kg):
+                    Dosis Tiopental Sódico (3 - 5 mg/kg):
                   </label>
                   <select
                     value={doseTiopental}
                     onChange={(e) => setDoseTiopental(Number(e.target.value))}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-xs text-white"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-xs text-white focus:outline-none focus:border-cyan-400"
                   >
                     <option value={3}>Baja / Ancianos (3 mg/kg)</option>
                     <option value={4}>Estándar Adulto (4 mg/kg)</option>
@@ -622,13 +665,13 @@ export const CalculatorModule: React.FC = () => {
           {hipnotico === 'midazolam' && (
             <div className="p-3 bg-slate-900/90 rounded-xl border border-indigo-800/50 flex justify-between items-center">
               <div>
-                <strong className="text-cyan-300 block">🔹 Midazolam (0.2 mg/kg):</strong>
-                <span className="text-xs text-slate-400">Ampolla 5 mg/mL</span>
+                <strong className="text-cyan-300 block">🔹 Midazolam ({doseMidazolam} mg/kg):</strong>
+                <span className="text-xs text-slate-400">Ampolla 5 mg/mL (15 mg / 3 mL o 5 mg / 1 mL)</span>
               </div>
               <div className="text-right">
-                <span className="text-base font-black text-white">{(safePeso * 0.2).toFixed(1)} mg</span>
+                <span className="text-base font-black text-white">{(safePeso * doseMidazolam).toFixed(1)} mg</span>
                 <span className="text-xs text-cyan-400 font-bold block">
-                  ({((safePeso * 0.2) / 5).toFixed(1)} mL)
+                  ({((safePeso * doseMidazolam) / 5).toFixed(1)} mL)
                 </span>
               </div>
             </div>
@@ -652,13 +695,13 @@ export const CalculatorModule: React.FC = () => {
           {hipnotico === 'etomidato' && (
             <div className="p-3 bg-slate-900/90 rounded-xl border border-indigo-800/50 flex justify-between items-center">
               <div>
-                <strong className="text-cyan-300 block">🔹 Etomidato (0.3 mg/kg):</strong>
-                <span className="text-xs text-slate-400">Ampolla 2 mg/mL (10 mL)</span>
+                <strong className="text-cyan-300 block">🔹 Etomidato ({doseEtomidato} mg/kg):</strong>
+                <span className="text-xs text-slate-400">Ampolla 2 mg/mL (20 mg / 10 mL)</span>
               </div>
               <div className="text-right">
-                <span className="text-base font-black text-white">{(safePeso * 0.3).toFixed(1)} mg</span>
+                <span className="text-base font-black text-white">{(safePeso * doseEtomidato).toFixed(1)} mg</span>
                 <span className="text-xs text-cyan-400 font-bold block">
-                  ({((safePeso * 0.3) / 2).toFixed(1)} mL)
+                  ({((safePeso * doseEtomidato) / 2).toFixed(1)} mL)
                 </span>
               </div>
             </div>

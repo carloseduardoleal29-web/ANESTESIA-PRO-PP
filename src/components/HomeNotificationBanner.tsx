@@ -1,65 +1,113 @@
-import React, { useState, useEffect } from 'react';
-import { Sparkles, ArrowRight, X, MessageCircle, Share2, Radio, Zap } from 'lucide-react';
-import { getCanonicalAppOrigin } from '../lib/statsService';
+import React, { useState, useEffect, useCallback } from 'react';
+import { ArrowRight, X, MessageCircle, Zap, Layers, Sparkles } from 'lucide-react';
+import { getCanonicalAppOrigin, AppNotification } from '../lib/statsService';
+import { getDeletedResourceIds } from '../lib/educationStorage';
 
 interface HomeNotificationBannerProps {
   onOpenResource: (resourceId: string) => void;
 }
 
-const STORAGE_KEY = 'anestesiapro_home_banner_seen_v2026';
-
 export const HomeNotificationBanner: React.FC<HomeNotificationBannerProps> = ({ onOpenResource }) => {
-  const [isVisible, setIsVisible] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem(STORAGE_KEY) !== 'dismissed';
-    } catch {
-      return true;
-    }
-  });
+  const [activeNotification, setActiveNotification] = useState<AppNotification | null>(null);
+  const [isVisible, setIsVisible] = useState<boolean>(false);
 
-  // Listen for admin publishing new resources to re-trigger the banner if desired
+  const fetchNotification = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/notifications?t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.notifications) && data.notifications.length > 0) {
+        const deletedIds = getDeletedResourceIds();
+        // Find the most recent notification that hasn't been dismissed and isn't for a deleted resource
+        const unread = data.notifications.find((n: AppNotification) => {
+          if (!n || !n.id) return false;
+          if (n.resourceId && deletedIds.includes(n.resourceId)) return false;
+          if (n.resourceId === 'test-item-1' || n.id.includes('test-item-1')) return false;
+          const isDismissed = localStorage.getItem(`anestesiapro_home_banner_seen_${n.id}`) === 'dismissed';
+          return !isDismissed;
+        });
+
+        if (unread) {
+          setActiveNotification(unread);
+          setIsVisible(true);
+          return;
+        }
+      }
+
+      setActiveNotification(null);
+      setIsVisible(false);
+    } catch {
+      setActiveNotification(null);
+      setIsVisible(false);
+    }
+  }, []);
+
   useEffect(() => {
+    fetchNotification();
+
     const handleNewAlert = () => {
-      setIsVisible(true);
-      try {
-        localStorage.removeItem(STORAGE_KEY);
-      } catch {}
+      fetchNotification();
     };
 
     window.addEventListener('anestesiapro_new_resource_published', handleNewAlert);
-    return () => window.removeEventListener('anestesiapro_new_resource_published', handleNewAlert);
-  }, []);
+    window.addEventListener('anestesiapro_new_notification_published', handleNewAlert);
+    window.addEventListener('anestesiapro_resource_deleted', handleNewAlert);
+    window.addEventListener('focus', handleNewAlert);
 
-  if (!isVisible) {
+    return () => {
+      window.removeEventListener('anestesiapro_new_resource_published', handleNewAlert);
+      window.removeEventListener('anestesiapro_new_notification_published', handleNewAlert);
+      window.removeEventListener('anestesiapro_resource_deleted', handleNewAlert);
+      window.removeEventListener('focus', handleNewAlert);
+    };
+  }, [fetchNotification]);
+
+  if (!isVisible || !activeNotification) {
     return null;
   }
 
   const dismissBanner = () => {
     setIsVisible(false);
     try {
-      localStorage.setItem(STORAGE_KEY, 'dismissed');
+      if (activeNotification?.id) {
+        localStorage.setItem(`anestesiapro_home_banner_seen_${activeNotification.id}`, 'dismissed');
+      }
     } catch {}
   };
 
   const handleBannerClick = () => {
+    const targetResId = activeNotification.resourceId || 'res-preeclampsia-eclampsia-enfoque-anestesiologico';
     dismissBanner();
-    onOpenResource('res-ciprofol-hsk3486-hipnotico-gabaa-2026');
+    onOpenResource(targetResId);
   };
 
   const handleWhatsAppShare = (e: React.MouseEvent) => {
     e.stopPropagation();
     const origin = getCanonicalAppOrigin();
-    const shareUrl = `${origin}/?tab=educacion&recurso=res-ciprofol-hsk3486-hipnotico-gabaa-2026`;
-    const message = `🚨 *¡NUEVO EN ANESTESIAPRO!* 🚨\n\n💊 *Ciprofol (HSK3486): El Nuevo Hipnótico GABA-A 2026*\nAtlas Ultra-HD de 6 Láminas, Calculadora de Inducción TIVA y Protocolos Oficiales revisados por el Dr. Carlos Leal.\n\n📲 *Accede directamente aquí:*\n${shareUrl}`;
+    const targetResId = activeNotification.resourceId || 'res-preeclampsia-eclampsia-enfoque-anestesiologico';
+    const shareUrl = `${origin}/?tab=educacion&recurso=${encodeURIComponent(targetResId)}`;
+    const message = `🚨 *¡NUEVO EN ANESTESIAPRO!* 🚨\n\n📌 *${activeNotification.title}*\n${activeNotification.message}\nRevisado por ${activeNotification.author || 'Dr. Carlos Leal'}.\n\n📲 *Accede directamente aquí:*\n${shareUrl}`;
     
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     const encoded = encodeURIComponent(message);
-    const url = isMobile ? `whatsapp://send?text=${encoded}` : `https://api.whatsapp.com/send?text=${encoded}`;
-    window.open(url, '_blank');
+    if (isMobile) {
+      window.location.href = `whatsapp://send?text=${encoded}`;
+    } else {
+      window.open(`https://web.whatsapp.com/send?text=${encoded}`, '_blank');
+    }
   };
 
+  const isCarousel = activeNotification.badge?.includes('CARRUSEL') || 
+                     activeNotification.title?.toLowerCase().includes('carrusel') ||
+                     activeNotification.title?.toLowerCase().includes('álbum');
+
   return (
-    <div className="relative group mb-3">
+    <div className="relative group mb-3 animate-in fade-in slide-in-from-top duration-300">
       {/* Blinking Halo / Glow Effect */}
       <div className="absolute -inset-1 bg-gradient-to-r from-amber-500 via-rose-500 to-cyan-500 rounded-3xl blur-md opacity-75 group-hover:opacity-100 transition duration-500 animate-pulse pointer-events-none" />
 
@@ -73,29 +121,30 @@ export const HomeNotificationBanner: React.FC<HomeNotificationBannerProps> = ({ 
       >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           {/* Content side */}
-          <div className="flex items-start gap-3">
+          <div className="flex items-start gap-3 min-w-0 flex-1">
             {/* Blinking Beacon */}
             <div className="relative shrink-0 mt-0.5">
               <div className="w-3.5 h-3.5 bg-amber-400 rounded-full animate-ping absolute inset-0" />
               <div className="w-3.5 h-3.5 bg-amber-300 rounded-full border-2 border-slate-950 relative shadow-lg shadow-amber-400/80" />
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-1 min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="bg-amber-400 text-slate-950 font-black text-[10px] sm:text-[11px] px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-sm flex items-center gap-1 animate-bounce">
-                  <Zap className="w-3 h-3 fill-current" /> ¡NOVEDAD DESTACADA!
+                  {isCarousel ? <Layers className="w-3 h-3 fill-current" /> : <Zap className="w-3 h-3 fill-current" />}
+                  {activeNotification.badge || '¡NOVEDAD DESTACADA!'}
                 </span>
                 <span className="text-[11px] font-bold text-cyan-300 bg-cyan-950/80 border border-cyan-500/40 px-2 py-0.5 rounded-full">
                   Educación Continua 2026
                 </span>
               </div>
 
-              <h3 className="text-sm sm:text-base font-black text-white leading-snug tracking-tight">
-                💊 Ciprofol (HSK3486) & Atlas de Preeclampsia 2026 Disponibles
+              <h3 className="text-sm sm:text-base font-black text-white leading-snug tracking-tight line-clamp-2">
+                {activeNotification.title}
               </h3>
 
-              <p className="text-xs text-slate-300 line-clamp-1 sm:line-clamp-none">
-                Láminas Ultra-HD, calculadoras clínicas y protocolos oficiales revisados por el <strong className="text-cyan-300">Dr. Carlos Leal</strong>.
+              <p className="text-xs text-slate-300 line-clamp-1 sm:line-clamp-2 leading-relaxed">
+                {activeNotification.message}
               </p>
             </div>
           </div>
@@ -125,7 +174,7 @@ export const HomeNotificationBanner: React.FC<HomeNotificationBannerProps> = ({ 
                 dismissBanner();
               }}
               className="p-2 text-slate-400 hover:text-white hover:bg-slate-800/80 rounded-xl transition-colors cursor-pointer"
-              title="Cerrar este anuncio"
+              title="Cerrar y no volver a mostrar este aviso"
               aria-label="Cerrar banner"
             >
               <X className="w-4 h-4" />
@@ -136,3 +185,4 @@ export const HomeNotificationBanner: React.FC<HomeNotificationBannerProps> = ({ 
     </div>
   );
 };
+

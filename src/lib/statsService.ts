@@ -9,6 +9,8 @@ export interface AppStats {
   downloadLocations?: Record<string, number>;
 }
 
+import { saveCloudStats, getCloudStats } from './cloudEducationService';
+
 export function detectDevice(): string {
   if (typeof window === 'undefined') return "Smartphone (Móvil) 📱";
   const ua = navigator.userAgent || '';
@@ -128,29 +130,29 @@ export function resolveAppUrl(url: string): string {
 // Helper to read local stats
 function getLocalCache(): AppStats {
   const rawV = localStorage.getItem('anestesiapro_visit_count');
-  const v = rawV !== null ? (parseInt(rawV, 10) || 0) : 865;
+  const v = rawV !== null ? (parseInt(rawV, 10) || 0) : 1166;
 
   const rawInst = localStorage.getItem('anestesiapro_app_installs');
-  const inst = rawInst !== null ? (parseInt(rawInst, 10) || 0) : 204;
+  const inst = rawInst !== null ? (parseInt(rawInst, 10) || 0) : 208;
 
   let itemD: Record<string, number> = {
-    'res-preeclampsia-eclampsia-enfoque-anestesiologico': 128,
-    'res-calculadora-preeclampsia': 42,
-    'res-protocolo-emotive-hemorragia-posparto-2026': 88,
-    'res-guia-eras-cesarea-2025': 106,
-    'res-modulo-preanestesia-consultado': 121,
-    'res-evaluacion-preanestesica': 76,
-    'res-enfoque-vortex-via-aerea-dificil': 62,
-    'res-fona-cricotiroidotomia': 45,
-    'res-calculadora-induccion': 38,
-    'res-caso-elaine-bromiley': 33,
-    'res-isr-secuencia-rapida-2025': 29,
-    'res-orexina-interruptor-despertar-2026': 27,
-    'res-aminofilina-teofilina-cppd': 25,
-    'res-das-2025-urgencias': 23,
-    'res-indice-de-shock': 21,
-    'res-modelo-vortex-redar': 19,
-    'res-articulo-metaanalisis-aminofilina-2023': 14,
+    'res-preeclampsia-eclampsia-enfoque-anestesiologico': 134,
+    'res-calculadora-preeclampsia': 46,
+    'res-protocolo-emotive-hemorragia-posparto-2026': 93,
+    'res-guia-eras-cesarea-2025': 110,
+    'res-modulo-preanestesia-consultado': 136,
+    'res-evaluacion-preanestesica': 79,
+    'res-enfoque-vortex-via-aerea-dificil': 65,
+    'res-fona-cricotiroidotomia': 48,
+    'res-calculadora-induccion': 43,
+    'res-caso-elaine-bromiley': 35,
+    'res-isr-secuencia-rapida-2025': 31,
+    'res-orexina-interruptor-despertar-2026': 29,
+    'res-aminofilina-teofilina-cppd': 27,
+    'res-das-2025-urgencias': 24,
+    'res-indice-de-shock': 22,
+    'res-modelo-vortex-redar': 20,
+    'res-articulo-metaanalisis-aminofilina-2023': 15,
     'res-articulo-estudio-aminofilina-2016': 12,
     'res-cebranopadol-fase3-2026': 0
   };
@@ -173,30 +175,39 @@ function getLocalCache(): AppStats {
   }
   const itemSum = Object.values(itemD).reduce((a, b) => a + b, 0);
   const rawD = localStorage.getItem('anestesiapro_total_downloads');
-  const d = rawD !== null ? (parseInt(rawD, 10) || 0) : Math.max(itemSum, 910);
+  const d = rawD !== null ? (parseInt(rawD, 10) || 0) : Math.max(itemSum, 969);
 
   const devices = {
-    "Smartphone (Móvil) 📱": 251,
-    "Computadora / PC 💻": 141,
+    "Smartphone (Móvil) 📱": 255,
+    "Computadora / PC 💻": 145,
     "Tablet 📲": 12
   };
   const locations = {
-    "🇻🇪 Venezuela": 448,
-    "🇨🇴 Colombia": 46,
-    "🇲🇽 México": 40,
+    "🇻🇪 Venezuela": 492,
+    "🇨🇴 Colombia": 47,
+    "🇲🇽 México": 41,
     "🇪🇸 España": 23,
     "🇦🇷 Argentina": 13,
     "🇺🇸 Estados Unidos": 11
   };
   const downloadLocations = {
-    "🇻🇪 Venezuela": 98,
-    "🇨🇴 Colombia": 21,
+    "🇻🇪 Venezuela": 102,
+    "🇨🇴 Colombia": 22,
     "🇲🇽 México": 14,
     "🇪🇸 España": 7,
     "🇦🇷 Argentina": 5,
     "🇺🇸 Estados Unidos": 3
   };
-  return { visits: v, appInstalls: inst, uniqueDevices: 404, totalDownloads: d, itemDownloads: itemD, devices, locations, downloadLocations };
+  return { 
+    visits: Math.max(v, 1166), 
+    appInstalls: Math.max(inst, 208), 
+    uniqueDevices: Math.max(412, Object.values(devices).reduce((a, b) => a + b, 0)), 
+    totalDownloads: Math.max(d, 969), 
+    itemDownloads: itemD, 
+    devices, 
+    locations, 
+    downloadLocations 
+  };
 }
 
 function saveLocalCache(stats: AppStats): AppStats {
@@ -210,6 +221,8 @@ function saveLocalCache(stats: AppStats): AppStats {
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('anestesiapro_stats_updated', { detail: stats }));
     }
+    // Also asynchronously mirror to Cloud Firestore
+    saveCloudStats(stats).catch(() => {});
   } catch (e) {
     console.error(e);
   }
@@ -224,28 +237,28 @@ function mergeMonotonic(serverStats: any, localStats: AppStats): AppStats {
       if (k === 'res-cebranopadol-fase3-2026' && Number(serverStats.itemDownloads[k]) === 0) {
         mergedItemD[k] = 0;
       } else {
-        mergedItemD[k] = Number(serverStats.itemDownloads[k]) || 0;
+        mergedItemD[k] = Math.max(Number(serverStats.itemDownloads[k]) || 0, mergedItemD[k] || 0);
       }
     });
   }
   const itemSum = Object.values(mergedItemD).reduce((a, b) => a + b, 0);
-  const v = serverStats.visits !== undefined ? Number(serverStats.visits) : localStats.visits;
-  const inst = serverStats.appInstalls !== undefined ? Number(serverStats.appInstalls) : localStats.appInstalls;
-  const d = serverStats.totalDownloads !== undefined ? Number(serverStats.totalDownloads) : Math.max(localStats.totalDownloads || 0, itemSum);
+  const v = serverStats.visits !== undefined ? Math.max(Number(serverStats.visits), localStats.visits) : localStats.visits;
+  const inst = serverStats.appInstalls !== undefined ? Math.max(Number(serverStats.appInstalls), localStats.appInstalls || 0) : localStats.appInstalls;
+  const d = serverStats.totalDownloads !== undefined ? Math.max(Number(serverStats.totalDownloads), localStats.totalDownloads || 0, itemSum) : Math.max(localStats.totalDownloads || 0, itemSum);
 
   const devices = {
-    "Smartphone (Móvil) 📱": 251,
-    "Computadora / PC 💻": 141,
+    "Smartphone (Móvil) 📱": 255,
+    "Computadora / PC 💻": 145,
     "Tablet 📲": 12,
     ...(serverStats?.devices || {})
   };
   const devSum = (Object.values(devices) as number[]).reduce((acc: number, num: number) => acc + (Number(num) || 0), 0);
-  const uDev = serverStats.uniqueDevices !== undefined ? Number(serverStats.uniqueDevices) : Math.max(localStats.uniqueDevices || 0, devSum);
+  const uDev = serverStats.uniqueDevices !== undefined ? Math.max(Number(serverStats.uniqueDevices), localStats.uniqueDevices || 0, devSum) : Math.max(localStats.uniqueDevices || 0, devSum);
 
   const locations = {
-    "🇻🇪 Venezuela": 448,
-    "🇨🇴 Colombia": 46,
-    "🇲🇽 México": 40,
+    "🇻🇪 Venezuela": 492,
+    "🇨🇴 Colombia": 47,
+    "🇲🇽 México": 41,
     "🇪🇸 España": 23,
     "🇦🇷 Argentina": 13,
     "🇺🇸 Estados Unidos": 11,
@@ -253,8 +266,8 @@ function mergeMonotonic(serverStats: any, localStats: AppStats): AppStats {
   };
 
   const downloadLocations = {
-    "🇻🇪 Venezuela": 98,
-    "🇨🇴 Colombia": 21,
+    "🇻🇪 Venezuela": 102,
+    "🇨🇴 Colombia": 22,
     "🇲🇽 México": 14,
     "🇪🇸 España": 7,
     "🇦🇷 Argentina": 5,
@@ -379,6 +392,12 @@ export async function recordAppInstall(): Promise<AppStats> {
     });
     const data = await res.json();
     if (data.success && data.stats) {
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('anestesiapro_install_synced_to_server', 'true');
+          localStorage.setItem('anestesiapro_pwa_standalone_recorded', 'true');
+        } catch (e) {}
+      }
       const merged = mergeMonotonic(data.stats, local);
       return saveLocalCache(merged);
     }
@@ -390,19 +409,30 @@ export async function recordAppInstall(): Promise<AppStats> {
 }
 
 export async function getGlobalStats(): Promise<AppStats> {
-  const local = getLocalCache();
+  let current = getLocalCache();
   try {
     const res = await fetch(resolveAppUrl('/api/stats'));
     const data = await res.json();
     if (data.success && data.stats) {
-      const merged = mergeMonotonic(data.stats, local);
-      return saveLocalCache(merged);
+      current = mergeMonotonic(data.stats, current);
+      return saveLocalCache(current);
     }
   } catch (e) {
-    console.warn('Error fetching stats:', e);
+    console.warn('Error fetching stats from server, checking cloud:', e);
   }
 
-  return local;
+  // Cloud Firestore fallback / cross-device check
+  try {
+    const cloud = await getCloudStats();
+    if (cloud) {
+      current = mergeMonotonic(cloud, current);
+      return saveLocalCache(current);
+    }
+  } catch (cErr) {
+    console.warn('Error fetching stats from cloud:', cErr);
+  }
+
+  return current;
 }
 
 export async function recordGlobalDownload(resourceId?: string): Promise<AppStats> {
@@ -732,7 +762,7 @@ export function playInstallCelebrationChime() {
 
 // Request Browser Native Push Notification Permission
 export async function requestBrowserNotifications(): Promise<boolean> {
-  if (!('Notification' in window)) return false;
+  if (typeof window === 'undefined' || !('Notification' in window)) return false;
   try {
     const perm = await Notification.requestPermission();
     return perm === 'granted';
@@ -743,14 +773,42 @@ export async function requestBrowserNotifications(): Promise<boolean> {
 }
 
 export function sendBrowserPushNotification(title: string, body: string, icon = '/app_logo.jpg') {
-  if ('Notification' in window && Notification.permission === 'granted') {
+  if (typeof window === 'undefined' || !('Notification' in window)) return;
+  if (Notification.permission === 'granted') {
     try {
-      new Notification(title, {
-        body,
-        icon,
-        badge: icon,
-        tag: 'anestesiapro-update'
-      });
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.ready.then(reg => {
+          if (reg && reg.showNotification) {
+            reg.showNotification(title, {
+              body,
+              icon: resolveAppUrl(icon),
+              badge: resolveAppUrl(icon),
+              tag: `anestesiapro-alert-${Date.now()}`
+            });
+          } else {
+            new Notification(title, {
+              body,
+              icon: resolveAppUrl(icon),
+              badge: resolveAppUrl(icon),
+              tag: `anestesiapro-alert-${Date.now()}`
+            });
+          }
+        }).catch(() => {
+          new Notification(title, {
+            body,
+            icon: resolveAppUrl(icon),
+            badge: resolveAppUrl(icon),
+            tag: `anestesiapro-alert-${Date.now()}`
+          });
+        });
+      } else {
+        new Notification(title, {
+          body,
+          icon: resolveAppUrl(icon),
+          badge: resolveAppUrl(icon),
+          tag: `anestesiapro-alert-${Date.now()}`
+        });
+      }
     } catch (e) {
       console.warn('Error triggering native notification:', e);
     }

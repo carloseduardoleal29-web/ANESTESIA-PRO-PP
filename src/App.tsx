@@ -11,13 +11,25 @@ import { VademecumModule } from './components/VademecumModule';
 import { EducationModule } from './components/EducationModule';
 import { ShockIndexModule } from './components/ShockIndexModule';
 import { OfflineIndicator } from './components/OfflinePWAControls';
+import { GlobalNotificationBanner } from './components/GlobalNotificationBanner';
+import { ViewportFramingAssistant } from './components/ViewportFramingAssistant';
+import { AnimatedBanner } from './components/AnimatedBanner';
 import { forceAppUpdate } from './registerServiceWorker';
+import { syncEducationResourcesWithServer } from './lib/educationStorage';
+import { lockViewportFraming } from './lib/viewportManager';
 import { RefreshCw, Sparkles, X } from 'lucide-react';
+import { DeveloperFooter } from './components/DeveloperFooter';
+import { DeveloperModal } from './components/DeveloperModal';
+import { ContactModal } from './components/ContactModal';
+import { ShareModal } from './components/ShareModal';
 
 export default function App() {
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [updateRegistration, setUpdateRegistration] = useState<ServiceWorkerRegistration | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [showDeveloperModal, setShowDeveloperModal] = useState(false);
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -74,8 +86,58 @@ export default function App() {
   //recordSectionVisit(activeTab);
   }, [activeTab]);
 
+  // Global background sync to ensure all devices see uploaded resources in real-time
+  useEffect(() => {
+    let lastGlobalSync = 0;
+    const runGlobalSync = (force: boolean = false) => {
+      const now = Date.now();
+      if (!force && now - lastGlobalSync < 30000) return;
+      lastGlobalSync = now;
+      try {
+        const isAdmin = localStorage.getItem('anestesiapro_admin_mode') === 'true' ||
+                        sessionStorage.getItem('anestesiapro_author_session') === 'true';
+        syncEducationResourcesWithServer(isAdmin).catch(() => {});
+      } catch {}
+    };
+
+    // Initial sync
+    runGlobalSync(true);
+
+    // Periodic sync every 60 seconds
+    const interval = setInterval(() => runGlobalSync(false), 60000);
+
+    // Sync when device reconnects or tab regains focus
+    const onFocusOrOnline = () => runGlobalSync(false);
+    const onNewPublish = () => runGlobalSync(true);
+
+    window.addEventListener('focus', onFocusOrOnline);
+    window.addEventListener('online', onFocusOrOnline);
+    window.addEventListener('anestesiapro_new_resource_published', onNewPublish);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', onFocusOrOnline);
+      window.removeEventListener('online', onFocusOrOnline);
+      window.removeEventListener('anestesiapro_new_resource_published', onNewPublish);
+    };
+  }, []);
+
+  // Auto-frame lock viewport on load and screen resize
+  useEffect(() => {
+    lockViewportFraming();
+    window.addEventListener('resize', lockViewportFraming, { passive: true });
+    window.addEventListener('orientationchange', lockViewportFraming, { passive: true });
+    return () => {
+      window.removeEventListener('resize', lockViewportFraming);
+      window.removeEventListener('orientationchange', lockViewportFraming);
+    };
+  }, []);
+
   return (
-    <div className="min-h-screen min-h-[100dvh] bg-slate-950 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-slate-950 antialiased">
+    <div className="min-h-screen min-h-[100dvh] w-full max-w-full overflow-x-hidden bg-slate-950 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-slate-950 antialiased">
+      {/* Mobile Viewport & Auto-Framing Assistant */}
+      <ViewportFramingAssistant />
+
       {/* Top Header */}
    <Header 
         setActiveTab={setActiveTab} 
@@ -84,6 +146,8 @@ export default function App() {
           setActiveTab('educacion');
         }} 
       />
+
+      <AnimatedBanner onOpenDeveloperModal={() => setShowDeveloperModal(true)} />
 
       {/* PWA Update Banner */}
       {updateAvailable && (
@@ -119,8 +183,19 @@ export default function App() {
       {/* Navigation Bar - Sticky at top */}
       <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
 
+      {/* Global Clinical Update & Notification Banner */}
+      <GlobalNotificationBanner
+        onOpenResource={(resId) => {
+          setSelectedEducationId(resId);
+          setActiveTab('educacion');
+        }}
+        onNavigateToEducation={() => {
+          setActiveTab('educacion');
+        }}
+      />
+
       {/* Main Content Area */}
-      <main className="flex-1 max-w-5xl w-full mx-auto p-4 md:p-6 pb-28 md:pb-12">
+      <main className="flex-1 max-w-5xl w-full mx-auto px-2.5 py-3 sm:px-4 sm:py-4 md:p-6 pb-28 md:pb-12 min-w-0 overflow-x-hidden">
         {activeTab === 'inicio' && (
           <HomeModule 
             setActiveTab={setActiveTab} 
@@ -141,13 +216,41 @@ export default function App() {
         )}
       </main>
 
-      {/* Footer */}
-      <footer className="bg-slate-900 border-t border-slate-800 py-4 px-4 text-center text-xs text-slate-500 hidden md:block">
-        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>AnestesiaPro &bull; Dr. Carlos Leal &bull; Especialista en Anestesiología y Reanimación</span>
-          <span>Maracay, Venezuela &bull; 2026</span>
-        </div>
-      </footer>
+      {/* Developer & Clinical Author Showcase Footer */}
+      <DeveloperFooter 
+        onOpenDeveloperModal={() => setShowDeveloperModal(true)}
+        onOpenContactModal={() => setShowContactModal(true)}
+        onOpenShareModal={() => setShowShareModal(true)}
+      />
+
+      {/* Developer Showcase Profile Modal */}
+      <DeveloperModal
+        isOpen={showDeveloperModal}
+        onClose={() => setShowDeveloperModal(false)}
+        onOpenContact={() => setShowContactModal(true)}
+        onOpenShare={() => setShowShareModal(true)}
+      />
+
+      {/* Contact Direct Modal */}
+      {showContactModal && (
+        <ContactModal
+          isOpen={showContactModal}
+          onClose={() => setShowContactModal(false)}
+        />
+      )}
+
+      {/* Share Modal */}
+      {showShareModal && (
+        <ShareModal
+          isOpen={showShareModal}
+          onClose={() => setShowShareModal(false)}
+          shareData={{
+            title: 'AnestesiaPro • Suite Clínica para Anestesiólogos',
+            description: 'Suite médica creada por el Dr. Carlos Leal (C.E. LEAL studio). Evaluación preanestésica con informe en PDF, predicción de vía aérea, calculadoras farmacológicas y protocolos.',
+            url: typeof window !== 'undefined' ? window.location.origin : 'https://anestesiapro.lat'
+          }}
+        />
+      )}
 
       {/* Persistent Offline & Quirófano Status Indicator */}
       <OfflineIndicator />

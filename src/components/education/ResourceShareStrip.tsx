@@ -24,15 +24,15 @@ export const ResourceShareStrip: React.FC<ResourceShareStripProps> = ({
   const shareUrl = `${origin}/?tab=educacion&recurso=${encodeURIComponent(id)}`;
 
   const cleanTitle = title.replace(/[^\w\s\(\)\-\.\,\:\/áéíóúÁÉÍÓÚñÑüÜ💊🩸🧬🌀🧠]/gi, '').trim();
-  const shareMessage = `🩺 *${cleanTitle}* [${category || 'Educación Continua'}]\n${summary ? summary.slice(0, 140) + '...' : 'Material clínico oficial en AnestesiaPro'}\n\n👉 Accede al recurso completo aquí:\n${shareUrl}`;
+  
+  // Structured clinical notification message in Spanish as requested
+  const shareMessage = `🩺 *Se publicó en Educación Continua de AnestesiaPro:* ${cleanTitle}\n` +
+    `${category ? `📌 *Categoría:* ${category}\n` : ''}` +
+    `${summary ? `📝 ${summary.slice(0, 140)}...\n` : ''}` +
+    `\n👉 Te comparto el enlace para consultarlo directamente en AnestesiaPro:\n${shareUrl}`;
 
-  const handleWhatsAppShare = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    const encoded = encodeURIComponent(shareMessage);
-    const url = isMobile ? `whatsapp://send?text=${encoded}` : `https://api.whatsapp.com/send?text=${encoded}`;
-    window.open(url, '_blank');
-  };
+  // Official universal WhatsApp URL that works on mobile (iOS/Android app) and desktop (web/app) without download redirect loops
+  const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareMessage)}`;
 
   const handleNativeShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -40,7 +40,7 @@ export const ResourceShareStrip: React.FC<ResourceShareStripProps> = ({
       try {
         await navigator.share({
           title: cleanTitle,
-          text: `Revisa este recurso clínico en AnestesiaPro: ${cleanTitle}`,
+          text: `Se publicó en Educación Continua de AnestesiaPro: ${cleanTitle}`,
           url: shareUrl
         });
         return;
@@ -81,16 +81,18 @@ export const ResourceShareStrip: React.FC<ResourceShareStripProps> = ({
       </div>
 
       <div className="flex items-center gap-1.5">
-        {/* WhatsApp Direct Share Button */}
-        <button
-          type="button"
-          onClick={handleWhatsAppShare}
+        {/* WhatsApp Direct Universal Link */}
+        <a
+          href={whatsappUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
           className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-extrabold text-[11px] px-2.5 py-1.5 rounded-lg shadow-sm transition-all cursor-pointer hover:scale-105"
           title="Compartir directo por WhatsApp"
         >
           <MessageCircle className="w-3.5 h-3.5 fill-current" />
           <span className="hidden sm:inline">WhatsApp</span>
-        </button>
+        </a>
 
         {/* Native Mobile Share (Instagram, Telegram, X, Email) */}
         <button
