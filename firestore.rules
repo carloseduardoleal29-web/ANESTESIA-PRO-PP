@@ -12,6 +12,10 @@ service cloud.firestore {
     match /notifications/{notificationId} {
       allow read, write: if true;
     }
+    // Registered Users collection
+    match /registered_users/{userId} {
+      allow read, write: if true;
+    }
     // App configuration, tombstones & metadata
     match /app_meta/{metaId} {
       allow read, write: if true;

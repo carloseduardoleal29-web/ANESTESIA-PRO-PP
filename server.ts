@@ -104,6 +104,8 @@ async function startServer() {
   const feedbackFile = path.join(publicDir, "user_feedback.json");
   const emotiveImagesFile = path.join(publicDir, "emotive_images.json");
   const emotiveBackupFile = path.join(process.cwd(), "src", "data", "emotive_images_backup.json");
+  const registeredUsersFile = path.join(publicDir, "registered_users.json");
+  const registeredUsersBackupFile = path.join(process.cwd(), "src", "data", "registered_users_backup.json");
 
   // Helper to get deleted IDs across public and backup stores
   const getDeletedIds = (): string[] => {
@@ -1787,6 +1789,9 @@ async function startServer() {
       if (currentEvents.length > 300) currentEvents.length = 300;
       writeJsonFile(adminEventsFile, currentEvents);
 
+      // Trigger automatic background email alert to Dr. Carlos Leal
+      notifyAdminNewInstall(dev, loc, current.appInstalls).catch(e => console.warn("Background notification install error:", e));
+
       res.json({ success: true, stats: current });
     } catch (e) {
       res.json({ success: true, stats: getCleanStats() });
@@ -1939,6 +1944,426 @@ async function startServer() {
     }
   });
 
+  // ==========================================
+  // REGISTERED USERS & ELITE SUBSCRIPTIONS API
+  // ==========================================
+  const readRegisteredUsers = (): any[] => {
+    const list = readJsonFile<any[]>(registeredUsersFile, []);
+    const backup = readJsonFile<any[]>(registeredUsersBackupFile, []);
+    const map = new Map<string, any>();
+    if (Array.isArray(backup)) backup.forEach(u => { if (u && u.id) map.set(u.id, u); });
+    if (Array.isArray(list)) list.forEach(u => { if (u && u.id) map.set(u.id, { ...(map.get(u.id) || {}), ...u }); });
+    return Array.from(map.values());
+  };
+
+  app.get("/api/users", async (req, res) => {
+    try {
+      if (!isAuthorizedAuthor(req)) {
+        return res.status(403).json({ error: "Acceso denegado. Solo el Dr. Carlos Leal (Administrador) puede ver la lista de usuarios." });
+      }
+
+      let users = readRegisteredUsers();
+
+      // Dynamically fetch and merge from Cloud Firestore if available
+      if (db) {
+        try {
+          const colRef = collection(db, "registered_users");
+          const snap = await getDocs(colRef);
+          if (!snap.empty) {
+            const map = new Map<string, any>();
+            users.forEach(u => map.set(u.id, u));
+            snap.forEach(d => {
+              const data = d.data();
+              if (data && data.id) {
+                map.set(data.id, { ...(map.get(data.id) || {}), ...data });
+              }
+            });
+            users = Array.from(map.values());
+            writeJsonFile(registeredUsersFile, users);
+            writeJsonFile(registeredUsersBackupFile, users);
+          }
+        } catch (fbErr) {
+          console.warn("[AnestesiaPro Server] Firestore users query notice:", fbErr);
+        }
+      }
+
+      // Sort by latest registration
+      users.sort((a, b) => new Date(b.registeredAt || 0).getTime() - new Date(a.registeredAt || 0).getTime());
+
+      // Compute statistics summary
+      const activeElite = users.filter(u => u.elitePlan?.status === 'active').length;
+      const pendingElite = users.filter(u => u.elitePlan?.status === 'pending').length;
+      const inactiveElite = users.filter(u => u.elitePlan?.status === 'inactive').length;
+      
+      const countriesCount: Record<string, number> = {};
+      const specialtiesCount: Record<string, number> = {};
+
+      users.forEach(u => {
+        if (u.country) {
+          countriesCount[u.country] = (countriesCount[u.country] || 0) + 1;
+        }
+        if (u.specialty) {
+          specialtiesCount[u.specialty] = (specialtiesCount[u.specialty] || 0) + 1;
+        }
+      });
+
+      return res.json({
+        success: true,
+        users,
+        stats: {
+          totalUsers: users.length,
+          activeElite,
+          pendingElite,
+          inactiveElite,
+          countriesCount,
+          specialtiesCount
+        }
+      });
+    } catch (e: any) {
+      return res.status(500).json({ success: false, error: e?.message || "Error al obtener usuarios" });
+    }
+  });
+
+  const ADMIN_NOTIFICATION_CONFIG = {
+    email: "carloseduardoleal29@gmail.com",
+    phone: "04243291438",
+    phoneInt: "+584243291438",
+    authorName: "Dr. Carlos Leal"
+  };
+
+  async function notifyAdminNewInstall(dev: string, loc: string, total: number) {
+    try {
+      const subject = `📲 ¡NUEVA INSTALACIÓN DE ANESTESIAPRO! (Total: ${total})`;
+      const dateStr = new Date().toLocaleString('es-VE', { timeZone: 'America/Caracas' });
+      
+      // Dispatch email notification to admin email (Dr. Carlos Leal)
+      try {
+        await fetch(`https://formsubmit.co/ajax/${ADMIN_NOTIFICATION_CONFIG.email}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          body: JSON.stringify({
+            _subject: subject,
+            _template: "table",
+            "Evento": "Nueva instalación confirmada",
+            "Dispositivo": dev,
+            "Ubicación": loc,
+            "Total Instalaciones": `${total} activas`,
+            "Fecha y Hora (Vzla)": dateStr,
+            "_captcha": "false"
+          })
+        });
+        console.log(`[Admin Alert] Install email notification dispatched to ${ADMIN_NOTIFICATION_CONFIG.email}`);
+      } catch (mailErr) {
+        console.warn("[Admin Alert] Install email dispatch warning:", mailErr);
+      }
+    } catch (err) {
+      console.error("[Admin Alert] Error notifying admin of install:", err);
+    }
+  }
+
+  async function notifyAdminNewRegistration(user: any) {
+    try {
+      const subject = `🚨 ¡Nuevo Colega Registrado en AnestesiaPro: Dr(a). ${user.fullName}!`;
+      const dateStr = new Date().toLocaleString('es-VE', { timeZone: 'America/Caracas' });
+      
+      // 1. Dispatch email notification to admin email (Dr. Carlos Leal)
+      try {
+        await fetch(`https://formsubmit.co/ajax/${ADMIN_NOTIFICATION_CONFIG.email}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          body: JSON.stringify({
+            _subject: subject,
+            _template: "table",
+            "Nombre Completo": user.fullName,
+            "Especialidad Médica": user.specialty || "No especificada",
+            "Cédula / DNI": user.idNumber,
+            "Correo Electrónico": user.email,
+            "Teléfono / WhatsApp": user.phone || "No especificado",
+            "País": user.country,
+            "Hospital / Clínica": user.workplace || "No especificado",
+            "Dispositivo": user.device,
+            "Fecha y Hora (Vzla)": dateStr,
+            "Plan": user.elitePlan?.status === 'active' ? 'ÉLITE VIP' : 'Estándar',
+            "_captcha": "false"
+          })
+        });
+        console.log(`[Admin Alert] Email notification dispatched to ${ADMIN_NOTIFICATION_CONFIG.email}`);
+      } catch (mailErr) {
+        console.warn("[Admin Alert] Email dispatch warning:", mailErr);
+      }
+
+      // 2. Dispatch official Welcome Email to the registered Colleague
+      if (user.email && user.email.includes("@")) {
+        try {
+          const userWelcomeSubject = `🩺 ¡Bienvenido(a) a AnestesiaPro, Dr(a). ${user.fullName}! (Carnet Digital Activo)`;
+          await fetch(`https://formsubmit.co/ajax/${user.email}`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Accept": "application/json"
+            },
+            body: JSON.stringify({
+              _subject: userWelcomeSubject,
+              _template: "box",
+              "Bienvenida": `Estimado(a) colega Dr(a). ${user.fullName}, le damos la más cordial bienvenida a AnestesiaPro.`,
+              "Estado de Carnet": "ACTIVO Y VINCULADO ✓",
+              "Especialidad": user.specialty || "Médico Especialista en Anestesiología",
+              "Identificación": user.idNumber,
+              "País": user.country,
+              "Beneficios Habilitados": "1. Personalización de membretes en Evaluaciones Preanestésicas en PDF.\n2. Acceso 100% Offline para quirófano.\n3. Calculadoras de Dosis, TIVA, Índices de Shock y Manejo de Crisis.",
+              "Dirección Médica": "Dr. Carlos Leal (Especialista en Anestesiología y Reanimación)",
+              "Contacto y Sugerencias": "carloseduardoleal29@gmail.com / WhatsApp: 04243291438",
+              "_captcha": "false"
+            })
+          });
+          console.log(`[User Welcome] Welcome email dispatched to colleague: ${user.email}`);
+        } catch (uErr) {
+          console.warn("[User Welcome] Email dispatch warning:", uErr);
+        }
+      }
+    } catch (err) {
+      console.error("[Admin Alert] Error notifying admin and user:", err);
+    }
+  }
+
+  // Admin endpoint to test notifications
+  app.post("/api/admin/send-test-alert", async (req, res) => {
+    try {
+      if (!isAuthorizedAuthor(req)) {
+        return res.status(403).json({ success: false, error: "Acceso denegado." });
+      }
+      const testUser = {
+        fullName: "Dr(a). Usuario de Prueba",
+        specialty: "Médico Especialista en Anestesiología",
+        idNumber: "V-12345678",
+        email: "prueba@anestesiapro.lat",
+        phone: "04243291438",
+        country: "🇻🇪 Venezuela",
+        workplace: "Hospital Central de Prueba",
+        device: "Smartphone Android 📱",
+        elitePlan: { status: 'pending', planType: 'trial' }
+      };
+      await notifyAdminNewRegistration(testUser);
+      return res.json({
+        success: true,
+        message: `Alerta de prueba enviada exitosamente a ${ADMIN_NOTIFICATION_CONFIG.email} y configurada para WhatsApp ${ADMIN_NOTIFICATION_CONFIG.phoneInt}.`
+      });
+    } catch (e: any) {
+      return res.status(500).json({ success: false, error: e?.message || "Error al enviar alerta de prueba" });
+    }
+  });
+
+  app.post("/api/users/register", async (req, res) => {
+    try {
+      const data = req.body || {};
+      if (!data.fullName || !data.email || !data.idNumber) {
+        return res.status(400).json({ success: false, error: "Nombre, Correo y Cédula/DNI son obligatorios." });
+      }
+
+      let users = readRegisteredUsers();
+      const existingIdx = users.findIndex(u => 
+        u.id === data.id || 
+        u.email.toLowerCase() === data.email.toLowerCase() ||
+        (u.idNumber && u.idNumber.toUpperCase() === data.idNumber.toUpperCase())
+      );
+
+      const userId = existingIdx !== -1 ? users[existingIdx].id : (data.id || `usr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`);
+      const isNewUser = existingIdx === -1;
+
+      const updatedUser = {
+        ...(existingIdx !== -1 ? users[existingIdx] : {}),
+        ...data,
+        id: userId,
+        fullName: data.fullName.trim(),
+        email: data.email.trim().toLowerCase(),
+        idNumber: data.idNumber.trim().toUpperCase(),
+        country: data.country || "🇻🇪 Venezuela",
+        specialty: data.specialty || "Médico Especialista en Anestesiología",
+        phone: data.phone?.trim() || "",
+        workplace: data.workplace?.trim() || "",
+        device: data.device || (data.platform === 'android' ? 'Smartphone Android 📱' : 'Dispositivo Web'),
+        registeredAt: existingIdx !== -1 ? users[existingIdx].registeredAt : (data.registeredAt || new Date().toISOString()),
+        lastActiveAt: new Date().toISOString(),
+        elitePlan: {
+          status: (existingIdx !== -1 && users[existingIdx].elitePlan?.status) || data.elitePlan?.status || 'pending',
+          planType: (existingIdx !== -1 && users[existingIdx].elitePlan?.planType) || data.elitePlan?.planType || 'trial',
+          activatedAt: (existingIdx !== -1 && users[existingIdx].elitePlan?.activatedAt) || data.elitePlan?.activatedAt || new Date().toISOString(),
+          expiresAt: (existingIdx !== -1 && users[existingIdx].elitePlan?.expiresAt) || data.elitePlan?.expiresAt || 'Periodo de Lanzamiento',
+          ...(data.elitePlan || {})
+        }
+      };
+
+      if (existingIdx !== -1) {
+        users[existingIdx] = updatedUser;
+      } else {
+        users.unshift(updatedUser);
+      }
+
+      writeJsonFile(registeredUsersFile, users);
+      writeJsonFile(registeredUsersBackupFile, users);
+
+      // Save to Cloud Firestore
+      if (db) {
+        try {
+          const docRef = doc(db, "registered_users", userId);
+          await setDoc(docRef, updatedUser, { merge: true });
+        } catch (fbErr) {
+          console.warn("[AnestesiaPro Server] Error saving user to Firestore:", fbErr);
+        }
+      }
+
+      // Generate instant Admin Activity & Notification alert for Dr. Carlos Leal
+      if (isNewUser) {
+        const notifTitle = `👤 ¡NUEVO COLEGA REGISTRADO: ${updatedUser.fullName}!`;
+        const notifDetail = `El Dr(a). ${updatedUser.fullName} (${updatedUser.country}, C.I: ${updatedUser.idNumber}, ${updatedUser.specialty}) se ha registrado en AnestesiaPro desde ${updatedUser.device}. Tel: ${updatedUser.phone || 'No especificado'}.`;
+        
+        // Add to admin events
+        const events = readJsonFile<any[]>(adminEventsFile, []);
+        events.unshift({
+          id: `evt-user-${Date.now()}`,
+          type: "install",
+          title: notifTitle,
+          detail: notifDetail,
+          device: updatedUser.device,
+          location: updatedUser.country,
+          timestamp: new Date().toISOString(),
+          timeMs: Date.now()
+        });
+        if (events.length > 300) events.length = 300;
+        writeJsonFile(adminEventsFile, events);
+
+        // Add to notifications
+        const notifs = readJsonFile<any[]>(notificationsFile, []);
+        notifs.unshift({
+          id: `notif-user-${userId}`,
+          title: notifTitle,
+          message: notifDetail,
+          date: new Date().toISOString().split("T")[0],
+          badge: "NUEVO REGISTRO 👤",
+          resourceId: "",
+          author: "Sistema AnestesiaPro"
+        });
+        writeJsonFile(notificationsFile, notifs.slice(0, 15));
+        writeJsonFile(notificationsBackupFile, notifs.slice(0, 15));
+
+        // Send email alert to Dr. Carlos Leal (carloseduardoleal29@gmail.com)
+        notifyAdminNewRegistration(updatedUser).catch(e => console.warn("Background notification error:", e));
+      }
+
+      return res.json({ success: true, user: updatedUser, isNewUser });
+    } catch (e: any) {
+      console.error("[AnestesiaPro Server] Error in /api/users/register:", e);
+      return res.status(500).json({ success: false, error: e?.message || "Error al registrar usuario" });
+    }
+  });
+
+  app.put("/api/users/:id/elite-plan", async (req, res) => {
+    try {
+      if (!isAuthorizedAuthor(req)) {
+        return res.status(403).json({ error: "Acceso denegado. Solo el administrador puede modificar planes." });
+      }
+
+      const { id } = req.params;
+      const { elitePlan } = req.body || {};
+
+      let users = readRegisteredUsers();
+      const idx = users.findIndex(u => u.id === id);
+      if (idx === -1) {
+        return res.status(404).json({ success: false, error: "Usuario no encontrado" });
+      }
+
+      users[idx].elitePlan = {
+        ...users[idx].elitePlan,
+        ...elitePlan,
+        activatedAt: elitePlan.status === 'active' ? (users[idx].elitePlan?.activatedAt || new Date().toISOString()) : users[idx].elitePlan?.activatedAt,
+        activatedBy: "Dr. Carlos Leal (Admin)"
+      };
+      users[idx].lastActiveAt = new Date().toISOString();
+
+      writeJsonFile(registeredUsersFile, users);
+      writeJsonFile(registeredUsersBackupFile, users);
+
+      if (db) {
+        try {
+          const docRef = doc(db, "registered_users", id);
+          await setDoc(docRef, { elitePlan: users[idx].elitePlan, lastActiveAt: users[idx].lastActiveAt }, { merge: true });
+        } catch (fbErr) {
+          console.warn("[AnestesiaPro Server] Error updating user plan in Firestore:", fbErr);
+        }
+      }
+
+      // Log event
+      const events = readJsonFile<any[]>(adminEventsFile, []);
+      events.unshift({
+        id: `evt-plan-${Date.now()}`,
+        type: "explore",
+        title: `⭐ Plan Élite Actualizado: ${users[idx].fullName}`,
+        detail: `Estado: ${users[idx].elitePlan.status.toUpperCase()} (${users[idx].elitePlan.planType}) • Vence: ${users[idx].elitePlan.expiresAt || 'Ilimitado'}`,
+        device: users[idx].device,
+        location: users[idx].country,
+        timestamp: new Date().toISOString(),
+        timeMs: Date.now()
+      });
+      writeJsonFile(adminEventsFile, events);
+
+      return res.json({ success: true, user: users[idx] });
+    } catch (e: any) {
+      return res.status(500).json({ success: false, error: e?.message || "Error al actualizar plan" });
+    }
+  });
+
+  app.delete("/api/users/:id", async (req, res) => {
+    try {
+      if (!isAuthorizedAuthor(req)) {
+        return res.status(403).json({ error: "Acceso denegado" });
+      }
+
+      const { id } = req.params;
+      let users = readRegisteredUsers();
+      users = users.filter(u => u.id !== id);
+
+      writeJsonFile(registeredUsersFile, users);
+      writeJsonFile(registeredUsersBackupFile, users);
+
+      if (db) {
+        try {
+          const docRef = doc(db, "registered_users", id);
+          await deleteDoc(docRef);
+        } catch (fbErr) {}
+      }
+
+      return res.json({ success: true, remaining: users.length });
+    } catch (e: any) {
+      return res.status(500).json({ success: false, error: e?.message || "Error al eliminar usuario" });
+    }
+  });
+
+  app.get("/api/users/status/:identifier", (req, res) => {
+    try {
+      const { identifier } = req.params;
+      const clean = decodeURIComponent(identifier).trim().toLowerCase();
+      const users = readRegisteredUsers();
+      const user = users.find(u => 
+        u.id === identifier || 
+        u.email.toLowerCase() === clean || 
+        (u.idNumber && u.idNumber.toLowerCase() === clean)
+      );
+
+      if (user) {
+        return res.json({ success: true, exists: true, user });
+      }
+      return res.json({ success: true, exists: false });
+    } catch (e: any) {
+      return res.status(500).json({ success: false, error: e?.message });
+    }
+  });
+
   // Endpoint to save custom official images (FONA, CPPD, etc.) permanently
   app.post("/api/admin/save-official-image", (req, res) => {
     try {
@@ -2013,6 +2438,116 @@ async function startServer() {
       return res.json({ success: true, assets: {} });
     } catch {
       return res.json({ success: true, assets: {} });
+    }
+  });
+
+  // =========================================================================
+  // PREANESTHESIA PDF HOSTING AND SENDING API
+  // =========================================================================
+  app.post("/api/preanesthesia/save-pdf", async (req, res) => {
+    try {
+      const { pdfBase64, patientName, patientCedula, doctorName } = req.body;
+      if (!pdfBase64) {
+        return res.status(400).json({ success: false, error: "Missing pdfBase64 content" });
+      }
+
+      // Convert Base64 data to Buffer
+      const cleanBase64 = pdfBase64.replace(/^data:application\/pdf;base64,/, "");
+      const buffer = Buffer.from(cleanBase64, "base64");
+
+      // Generate secure unique filename
+      const cleanPatientName = (patientName || "paciente")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "") // remove accents
+        .replace(/[^a-z0-9]/g, "_")      // replace non-alphanumeric with underscores
+        .substring(0, 20);
+
+      const uniqueId = `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      const fileName = `preanestesia_${cleanPatientName}_${uniqueId}.pdf`;
+
+      // Define paths
+      const publicDir = path.join(process.cwd(), "public");
+      const uploadsDir = path.join(publicDir, "uploads");
+      const preanestesiaDir = path.join(uploadsDir, "preanestesia");
+
+      // Create folders if they don't exist
+      if (!fs.existsSync(preanestesiaDir)) {
+        fs.mkdirSync(preanestesiaDir, { recursive: true });
+      }
+
+      // Write file to public
+      const filePath = path.join(preanestesiaDir, fileName);
+      fs.writeFileSync(filePath, buffer);
+
+      // Mirror to dist folder if it exists
+      const distDir = path.join(process.cwd(), "dist");
+      const distUploads = path.join(distDir, "uploads");
+      const distPreanestesiaDir = path.join(distUploads, "preanestesia");
+      if (fs.existsSync(distDir)) {
+        if (!fs.existsSync(distPreanestesiaDir)) {
+          try { fs.mkdirSync(distPreanestesiaDir, { recursive: true }); } catch (e) {}
+        }
+        const distFilePath = path.join(distPreanestesiaDir, fileName);
+        try { fs.writeFileSync(distFilePath, buffer); } catch (e) {}
+      }
+
+      const relativeUrl = `/uploads/preanestesia/${fileName}`;
+      console.log(`[AnestesiaPro] Preanesthesia PDF saved permanently: ${relativeUrl} (${buffer.length} bytes)`);
+
+      return res.json({
+        success: true,
+        url: relativeUrl,
+        fileName
+      });
+    } catch (err: any) {
+      console.error("[AnestesiaPro] Error saving preanesthesia PDF:", err);
+      return res.status(500).json({ success: false, error: err?.message || "Error al guardar el PDF" });
+    }
+  });
+
+  app.post("/api/preanesthesia/send-email", async (req, res) => {
+    try {
+      const { patientName, patientCedula, doctorName, pdfUrl, recipientEmail, subject } = req.body;
+      if (!recipientEmail || !pdfUrl) {
+        return res.status(400).json({ success: false, error: "Missing recipientEmail or pdfUrl" });
+      }
+
+      const cleanRecipient = recipientEmail.trim().toLowerCase();
+      const emailSubject = subject || `🩺 EVALUACIÓN PREANESTÉSICA: ${patientName || "Paciente"} - C.I: ${patientCedula || "N/A"}`;
+      
+      // Determine host for absolute URL
+      const host = req.get('host');
+      const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+      const absolutePdfUrl = `${protocol}://${host}${pdfUrl}`;
+
+      // Set up parameters for formsubmit.co
+      const postBody: Record<string, string> = {
+        _subject: emailSubject,
+        _template: "table",
+        "Paciente": patientName || "N/A",
+        "Cédula Paciente": patientCedula || "N/A",
+        "Anestesiólogo Evaluador": doctorName || "N/A",
+        "Documento Clínico": "Evaluación Preanestésica Digital",
+        "Descargar PDF Oficial": absolutePdfUrl,
+        "Nota": "Este es un informe clínico oficial de AnestesiaPro firmado digitalmente por el anestesiólogo. Listo para imprimir y archivar en el expediente clínico.",
+        "_captcha": "false"
+      };
+
+      await fetch(`https://formsubmit.co/ajax/${cleanRecipient}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify(postBody)
+      });
+
+      console.log(`[AnestesiaPro] Preanesthesia email sent automatically to ${cleanRecipient} with link: ${absolutePdfUrl}`);
+      return res.json({ success: true, url: absolutePdfUrl });
+    } catch (err: any) {
+      console.error("[AnestesiaPro] Error sending preanesthesia email:", err);
+      return res.status(500).json({ success: false, error: err?.message || "Error al enviar correo" });
     }
   });
 

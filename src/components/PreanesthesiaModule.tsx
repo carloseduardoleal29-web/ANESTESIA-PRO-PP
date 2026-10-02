@@ -5,7 +5,8 @@ import {
   RotateCcw, Sparkles, Eye, Share2, ExternalLink, X, BarChart2, KeyRound,
   HeartPulse, Activity, Thermometer, Pill, Clock, Droplets, ShieldCheck, 
   PlusCircle, Check, Trash2, Zap, Printer, ShieldAlert, FileDown,
-  Save, Building2, Copy, ChevronDown, ChevronUp, Search, ListChecks
+  Save, Building2, Copy, ChevronDown, ChevronUp, Search, ListChecks,
+  MessageCircle, Mail, Send
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { recordGlobalDownload, recordPreanesthesiaUsage, getGlobalStats, AppStats } from '../lib/statsService';
@@ -26,6 +27,7 @@ import {
   saveDoctorCredentials,
   isLetterheadConfigured
 } from '../lib/preanesthesiaStorage';
+import { getStoredUserProfile } from '../lib/userRegistrationService';
 import { LOGO_SHIELD_BASE64 } from '../lib/logoData';
 
 const getCurrentTimeString = () => {
@@ -120,14 +122,16 @@ const initialFormData: PreanesthesiaData = {
 
 export const PreanesthesiaModule: React.FC = () => {
   const [formData, setFormData] = useState<PreanesthesiaData>(() => {
-    const creds = typeof window !== 'undefined' ? getSavedDoctorCredentials() : { doctorName: '', doctorCedula: '', doctorLicense: '', doctorPhone: '' };
+    const creds = typeof window !== 'undefined' ? getSavedDoctorCredentials() : { doctorName: '', doctorCedula: '', doctorLicense: '', doctorPhone: '', doctorSignatureDataUrl: null };
+    const userProfile = typeof window !== 'undefined' ? getStoredUserProfile() : null;
     const letterhead = typeof window !== 'undefined' ? getActiveLetterhead() : null;
     return {
       ...initialFormData,
-      anestesio: creds.doctorName || '',
-      cedula: creds.doctorCedula || '',
+      anestesio: creds.doctorName || userProfile?.fullName || '',
+      cedula: creds.doctorCedula || userProfile?.idNumber || '',
       matricula: creds.doctorLicense || '',
-      telefono: creds.doctorPhone || '',
+      telefono: creds.doctorPhone || userProfile?.phone || '',
+      doctorSignatureDataUrl: userProfile?.digitalSignatureUrl || creds.doctorSignatureDataUrl || null,
       ...(letterhead ? {
         hospitalName: letterhead.hospitalName,
         hospitalDepartment: letterhead.department,
@@ -137,7 +141,10 @@ export const PreanesthesiaModule: React.FC = () => {
         hospitalLogoBase64: letterhead.hospitalLogoBase64,
         specialistLogoBase64: letterhead.specialistLogoBase64,
         themeColor: letterhead.themeColor
-      } : {})
+      } : (userProfile?.workplace ? {
+        hospitalName: userProfile.workplace,
+        hospitalCityCountry: userProfile.country || ''
+      } : {}))
     };
   });
   const [riskScore, setRiskScore] = useState<number>(0);
@@ -159,6 +166,18 @@ export const PreanesthesiaModule: React.FC = () => {
   const [planSearchQuery, setPlanSearchQuery] = useState<string>('');
   const currentDocRef = useRef<jsPDF | null>(null);
 
+  // States for server-hosted PDF sharing and automated delivery
+  const [sharePhone, setSharePhone] = useState<string>(() => {
+    const profile = typeof window !== 'undefined' ? getStoredUserProfile() : null;
+    return profile?.autoSendConfig?.defaultRecipientPhone || '';
+  });
+  const [shareEmail, setShareEmail] = useState<string>(() => {
+    const profile = typeof window !== 'undefined' ? getStoredUserProfile() : null;
+    return profile?.autoSendConfig?.defaultRecipientEmail || '';
+  });
+  const [isUploadingAndSharing, setIsUploadingAndSharing] = useState<boolean>(false);
+  const [shareSuccessNotice, setShareSuccessNotice] = useState<string | null>(null);
+
   // Sync letterhead and saved doctor credentials on mount
   useEffect(() => {
     const creds = getSavedDoctorCredentials();
@@ -170,6 +189,7 @@ export const PreanesthesiaModule: React.FC = () => {
       cedula: prev.cedula || creds.doctorCedula || '',
       matricula: prev.matricula || creds.doctorLicense || 'MP-84920 / CM-4521',
       telefono: prev.telefono || creds.doctorPhone || '04243291438',
+      doctorSignatureDataUrl: prev.doctorSignatureDataUrl || creds.doctorSignatureDataUrl || null,
       hospitalName: isCustom ? letterhead.hospitalName : 'FORMATO DE EVALUACIÓN PREANESTÉSICA',
       hospitalDepartment: isCustom ? letterhead.department : 'ANESTESIA PRO',
       hospitalAddress: isCustom ? letterhead.address : 'Fundador Dr. Carlos Leal',
@@ -179,6 +199,40 @@ export const PreanesthesiaModule: React.FC = () => {
       specialistLogoBase64: letterhead.specialistLogoBase64 || (LOGO_SHIELD_BASE64 || null),
       themeColor: letterhead.themeColor || 'navy'
     }));
+  }, []);
+
+  // Listen for real-time user profile registration or edits
+  useEffect(() => {
+    const handleProfileUpdate = (e: CustomEvent<any>) => {
+      const profile = e.detail;
+      if (profile) {
+        const licenseStr = profile.medicalLicenseNumber || profile.idNumber || 'MP-REGISTRADO';
+        const fullLicense = profile.collegeRegistration 
+          ? `${licenseStr} | Col. ${profile.collegeRegistration}`
+          : licenseStr;
+        
+        setFormData(prev => ({
+          ...prev,
+          anestesio: profile.fullName || prev.anestesio,
+          cedula: profile.idNumber || prev.cedula,
+          matricula: fullLicense || prev.matricula,
+          telefono: profile.phone || prev.telefono,
+          doctorSignatureDataUrl: profile.digitalSignatureUrl || prev.doctorSignatureDataUrl || null,
+          hospitalName: prev.hospitalName || profile.workplace || '',
+          hospitalCityCountry: prev.hospitalCityCountry || profile.country || ''
+        }));
+
+        if (profile.autoSendConfig) {
+          setSharePhone(profile.autoSendConfig.defaultRecipientPhone || '');
+          setShareEmail(profile.autoSendConfig.defaultRecipientEmail || '');
+        }
+      }
+    };
+
+    window.addEventListener('anestesiapro_user_profile_updated', handleProfileUpdate as EventListener);
+    return () => {
+      window.removeEventListener('anestesiapro_user_profile_updated', handleProfileUpdate as EventListener);
+    };
   }, []);
 
   // Track module usage on mount and listen for real-time stats
@@ -741,14 +795,133 @@ export const PreanesthesiaModule: React.FC = () => {
     }
   };
 
-  const handleCopyFullWhatsAppSummary = () => {
-    const summaryMsg = generateWhatsAppFullPreanesthesiaMessage(formData, riskScore, riskCategory);
-    recordPreanesthesiaUsage('evaluation_shared', formData.nombre);
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(summaryMsg);
-      setCopiedSummary(true);
-      setTimeout(() => setCopiedSummary(false), 3500);
+  const handleUploadAndSharePreanesthesia = async () => {
+    setIsUploadingAndSharing(true);
+    setShareSuccessNotice(null);
+
+    try {
+      // 1. Generate the PDF
+      let docToSave = currentDocRef.current;
+      if (!docToSave) {
+        const result = generatePreanesthesiaPdfDocument(formData, riskScore, riskCategory);
+        docToSave = result.doc;
+        currentDocRef.current = result.doc;
+        setPdfBlobData(result.blob);
+        setPdfUrl(result.blobUrl);
+        setPdfFileName(result.fileName);
+      }
+
+      // Convert PDF to Base64
+      const pdfBlob = currentDocRef.current.output('blob');
+      const reader = new FileReader();
+      
+      const pdfBase64Promise = new Promise<string>((resolve, reject) => {
+        reader.onloadend = () => {
+          resolve(reader.result as string);
+        };
+        reader.onerror = reject;
+      });
+      reader.readAsDataURL(pdfBlob);
+      const pdfBase64 = await pdfBase64Promise;
+
+      // 2. Upload to backend
+      const uploadRes = await fetch('/api/preanesthesia/save-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          pdfBase64,
+          patientName: formData.nombre || 'Paciente',
+          patientCedula: formData.cedulaPaciente || 'N/A',
+          doctorName: formData.anestesio || 'Médico Anestesiólogo'
+        })
+      });
+
+      const uploadData = await uploadRes.json();
+      if (!uploadData.success || !uploadData.url) {
+        throw new Error(uploadData.error || 'No se pudo subir el PDF al servidor.');
+      }
+
+      const relativePdfUrl = uploadData.url;
+      const absolutePdfUrl = `${window.location.protocol}//${window.location.host}${relativePdfUrl}`;
+
+      // 3. Trigger Automated Email via backend if email provided
+      let emailSuccess = false;
+      if (shareEmail && shareEmail.includes('@')) {
+        try {
+          const emailRes = await fetch('/api/preanesthesia/send-email', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              patientName: formData.nombre || 'Paciente',
+              patientCedula: formData.cedulaPaciente || 'N/A',
+              doctorName: formData.anestesio || 'Médico Anestesiólogo',
+              pdfUrl: relativePdfUrl,
+              recipientEmail: shareEmail.trim(),
+              subject: `🩺 EVALUACIÓN PREANESTÉSICA OFICIAL: ${formData.nombre || 'Paciente'}`
+            })
+          });
+          const emailData = await emailRes.json();
+          emailSuccess = emailData.success;
+        } catch (emailErr) {
+          console.warn('Error sending automated email:', emailErr);
+        }
+      }
+
+      // 4. Trigger WhatsApp link with short professional text and direct PDF URL
+      const cleanPhone = sharePhone.replace(/[^0-9]/g, '');
+      const waMessage = `📋 *ANESTESIAPRO - EVALUACIÓN PREANESTÉSICA OFICIAL (PDF)*
+
+Se ha generado la evaluación clínica preoperatoria oficial para el expediente del paciente:
+• *Paciente:* ${formData.nombre || '---'}
+• *Cédula:* ${formData.cedulaPaciente || '---'}
+• *Anestesiólogo:* ${formData.anestesio || '---'}
+
+📲 *Ver y Descargar el Formato PDF Oficial Listo para Quirófano (Impresión y Archivo):*
+${absolutePdfUrl}
+
+----------------------------------------
+_AnestesiaPro: Suite Médica y Calculadoras de Quirófano_
+https://tinyurl.com/AnestesiaProApp`;
+
+      const waUrl = cleanPhone 
+        ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(waMessage)}` 
+        : `https://wa.me/?text=${encodeURIComponent(waMessage)}`;
+      
+      window.open(waUrl, '_blank', 'noopener,noreferrer');
+
+      // 5. Update notice
+      let noticeMsg = '✓ PDF guardado en la nube y abierto en WhatsApp.';
+      if (emailSuccess) {
+        noticeMsg = `✓ PDF guardado en la nube, enviado a ${shareEmail} y abierto en WhatsApp.`;
+      }
+      setShareSuccessNotice(noticeMsg);
+      setTimeout(() => setShareSuccessNotice(null), 8000);
+      recordPreanesthesiaUsage('evaluation_shared', formData.nombre);
+    } catch (err: any) {
+      console.error('Error sharing preanesthesia PDF:', err);
+      alert(`Error al procesar el envío de PDF: ${err.message || err}`);
+    } finally {
+      setIsUploadingAndSharing(false);
     }
+  };
+
+  const handleReloadSavedDoctorCredentials = () => {
+    const creds = getSavedDoctorCredentials();
+    const profile = getStoredUserProfile();
+    setFormData(prev => ({
+      ...prev,
+      anestesio: creds.doctorName || profile?.fullName || prev.anestesio,
+      cedula: creds.doctorCedula || profile?.idNumber || prev.cedula,
+      matricula: creds.doctorLicense || prev.matricula,
+      telefono: creds.doctorPhone || profile?.phone || prev.telefono,
+      doctorSignatureDataUrl: profile?.digitalSignatureUrl || creds.doctorSignatureDataUrl || prev.doctorSignatureDataUrl || null
+    }));
+    setDoctorSavedNotice(true);
+    setTimeout(() => setDoctorSavedNotice(false), 3000);
   };
 
   const handleSaveDoctorCreds = () => {
@@ -760,7 +933,8 @@ export const PreanesthesiaModule: React.FC = () => {
       doctorName: formData.anestesio,
       doctorCedula: formData.cedula,
       doctorLicense: formData.matricula,
-      doctorPhone: formData.telefono
+      doctorPhone: formData.telefono,
+      doctorSignatureDataUrl: formData.doctorSignatureDataUrl
     });
     setDoctorSavedNotice(true);
     setTimeout(() => setDoctorSavedNotice(false), 3000);
@@ -2921,21 +3095,29 @@ export const PreanesthesiaModule: React.FC = () => {
             {/* Guardar credenciales del anestesiólogo */}
             <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800/80">
               <span className="text-[11px] text-slate-400">
-                Los datos del anestesiólogo van en la ficha médica evaluadora (no en el membrete hospitalario fijo).
+                Los datos del anestesiólogo se vinculan automáticamente desde tu perfil médico registrado.
               </span>
               <div className="flex items-center gap-2">
                 {doctorSavedNotice && (
                   <span className="text-[11px] font-bold text-emerald-400 flex items-center gap-1">
-                    <Check className="w-3.5 h-3.5" /> ¡Guardado en este equipo!
+                    <Check className="w-3.5 h-3.5" /> ¡Credenciales Cargadas!
                   </span>
                 )}
+                <button
+                  type="button"
+                  onClick={handleReloadSavedDoctorCredentials}
+                  className="px-3 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <UserCheck className="w-3.5 h-3.5 text-purple-400" />
+                  <span>Cargar mis credenciales de perfil</span>
+                </button>
                 <button
                   type="button"
                   onClick={handleSaveDoctorCreds}
                   className="px-3 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
                 >
                   <Save className="w-3.5 h-3.5" />
-                  <span>Recordar mis datos en este equipo</span>
+                  <span>Recordar datos en este equipo</span>
                 </button>
               </div>
             </div>
@@ -2944,34 +3126,24 @@ export const PreanesthesiaModule: React.FC = () => {
 
         {/* Action button bar */}
         <div className="flex flex-col items-center justify-center gap-3 pt-2">
-          <div className="w-full flex flex-col sm:flex-row items-center justify-center gap-3">
-            <button
-              type="button"
-              onClick={handleCopyFullWhatsAppSummary}
-              className="w-full sm:w-auto flex items-center justify-center gap-2.5 bg-emerald-700 hover:bg-emerald-600 border border-emerald-500/40 text-white font-black py-4 px-6 rounded-2xl shadow-xl shadow-emerald-700/20 transition-all text-sm md:text-base cursor-pointer transform active:scale-95"
-              title="Copiar informe clínico en texto"
-            >
-              <Copy className="w-5 h-5 text-emerald-200" />
-              <span>{copiedSummary ? '✓ ¡Texto Clínico Copiado!' : 'Copiar Texto Preanestésico'}</span>
-            </button>
-
+          <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl">
             <button
               type="button"
               onClick={handleDirectDownload}
               disabled={isDownloading}
-              className="w-full sm:w-auto flex items-center justify-center gap-2.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 disabled:opacity-50 text-white font-black py-4 px-7 rounded-2xl shadow-xl shadow-blue-600/30 transition-all text-sm md:text-base cursor-pointer transform active:scale-95"
+              className="flex items-center justify-center gap-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-white font-black py-4 px-6 rounded-2xl shadow-xl shadow-blue-900/40 transition-all text-sm sm:text-base cursor-pointer transform active:scale-95"
             >
-              <Download className="w-5 h-5 text-cyan-200" />
-              <span>{isDownloading ? 'Generando PDF...' : 'Descargar PDF en el Teléfono'}</span>
+              <Download className="w-5 h-5 text-cyan-200 shrink-0" />
+              <span>{isDownloading ? 'Generando PDF Oficial...' : 'Descargar PDF Oficial (Firma y Logos)'}</span>
             </button>
 
             <button
               type="button"
               onClick={generatePDF}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold py-4 px-6 rounded-2xl transition-all text-sm md:text-base cursor-pointer transform active:scale-95"
+              className="flex items-center justify-center gap-2.5 bg-indigo-900/90 hover:bg-indigo-800 border border-indigo-700/60 text-white font-black py-4 px-6 rounded-2xl shadow-xl shadow-indigo-950/50 transition-all text-sm sm:text-base cursor-pointer transform active:scale-95"
             >
-              <Eye className="w-5 h-5 text-slate-300" />
-              <span>Previsualizar Hoja PDF</span>
+              <Eye className="w-5 h-5 text-indigo-300 shrink-0" />
+              <span>Previsualizar / Imprimir Ficha</span>
             </button>
           </div>
 
@@ -3030,7 +3202,7 @@ export const PreanesthesiaModule: React.FC = () => {
               </button>
             </div>
 
-            {/* Barra de Acciones: Descargar PDF, Enviar por WhatsApp, Imprimir y Cerrar */}
+            {/* Barra de Acciones: Descargar PDF, Imprimir y Cerrar */}
             <div className="p-3 bg-slate-800/90 border-b border-slate-700 flex flex-col gap-2">
               <div className="flex flex-wrap items-center justify-between gap-2.5">
                 <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
@@ -3041,26 +3213,16 @@ export const PreanesthesiaModule: React.FC = () => {
                     className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-white font-black text-xs px-4 py-2.5 rounded-xl transition-all cursor-pointer shadow-lg shadow-blue-600/20 active:scale-95"
                   >
                     <Download className="w-4 h-4 text-cyan-200" />
-                    <span>{isDownloading ? 'Descargando...' : 'Descargar PDF en el Teléfono'}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleCopyFullWhatsAppSummary}
-                    className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-emerald-700 hover:bg-emerald-600 border border-emerald-600/50 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all cursor-pointer active:scale-95 shadow-md shadow-emerald-700/20"
-                    title="Copiar texto del formato clínico"
-                  >
-                    <Copy className="w-4 h-4 text-emerald-200" />
-                    <span>{copiedSummary ? '✓ ¡Texto Copiado!' : 'Copiar Texto'}</span>
+                    <span>{isDownloading ? 'Descargando...' : 'Descargar PDF Oficial'}</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={handlePrintPdf}
-                    className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-white font-bold text-xs px-3.5 py-2.5 rounded-xl transition-all cursor-pointer"
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-slate-100 font-bold text-xs px-4 py-2.5 rounded-xl transition-all cursor-pointer border border-slate-600"
                   >
                     <Printer className="w-4 h-4 text-slate-300" />
-                    <span>Imprimir</span>
+                    <span>Imprimir Ficha</span>
                   </button>
                 </div>
 
@@ -3080,6 +3242,68 @@ export const PreanesthesiaModule: React.FC = () => {
                 <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/20 border border-emerald-500/40 rounded-xl text-emerald-300 text-xs font-bold animate-fadeIn">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                   <span>{downloadSuccessMsg}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Panel de Envío Automatizado por WhatsApp y Correo */}
+            <div className="p-4 bg-slate-950/80 border-b border-slate-800 space-y-3.5">
+              <div className="flex items-center gap-1.5 text-cyan-400">
+                <Send className="w-4 h-4 text-cyan-400" />
+                <span className="text-[11px] font-black uppercase tracking-wider text-cyan-400">⚡ Panel de Envío Automatizado de PDF Oficial (Paciente / Colega)</span>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-extrabold text-slate-400 uppercase mb-1">Número de WhatsApp del Destinatario (Ej: 584243291438)</label>
+                  <input
+                    type="text"
+                    value={sharePhone}
+                    onChange={(e) => setSharePhone(e.target.value)}
+                    placeholder="Número con código de país (sin + ni espacios)"
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none placeholder-slate-600 font-semibold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-extrabold text-slate-400 uppercase mb-1">Correo Electrónico de Destino (Para Envío Directo de PDF)</label>
+                  <input
+                    type="email"
+                    value={shareEmail}
+                    onChange={(e) => setShareEmail(e.target.value)}
+                    placeholder="correo@paciente.com"
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none placeholder-slate-600 font-semibold"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={handleUploadAndSharePreanesthesia}
+                  disabled={isUploadingAndSharing}
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 text-white font-black text-xs px-5 py-2.5 rounded-xl transition-all cursor-pointer shadow-lg active:scale-95"
+                >
+                  {isUploadingAndSharing ? (
+                    <>
+                      <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-white border-t-transparent" />
+                      <span>Subiendo y Despachando PDF Oficial...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="w-4 h-4 text-emerald-200 fill-emerald-200" />
+                      <span>Enviar PDF Oficial por WhatsApp y Correo</span>
+                    </>
+                  )}
+                </button>
+                <span className="text-[10px] text-slate-400 leading-normal max-w-lg block">
+                  Al presionar, el informe médico en PDF se hospeda en la nube de AnestesiaPro de forma confidencial. Se abrirá tu WhatsApp listo para enviar, y se despachará un correo automático al destinatario con el enlace limpio de descarga.
+                </span>
+              </div>
+
+              {shareSuccessNotice && (
+                <div className="p-3 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold animate-fadeIn flex items-center gap-2">
+                  <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>{shareSuccessNotice}</span>
                 </div>
               )}
             </div>

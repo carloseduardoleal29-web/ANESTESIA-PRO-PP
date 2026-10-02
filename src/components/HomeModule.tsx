@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { TabType } from '../types';
-import { FileText, Wind, BarChart2, Calculator, BookOpen, GraduationCap, Sparkles, ArrowRight, ShieldCheck, Stethoscope, Instagram, Activity, Zap, Flame, Clock, CheckCircle2, ChevronRight, BookMarked, Brain, Film, Compass, Play, LifeBuoy, Droplet, HeartHandshake, Syringe, Pill, Layers, Trophy, Download, Eye } from 'lucide-react';
+import { FileText, Wind, BarChart2, Calculator, BookOpen, GraduationCap, Sparkles, ArrowRight, ShieldCheck, Stethoscope, Instagram, Activity, Zap, Flame, Clock, CheckCircle2, ChevronRight, BookMarked, Brain, Film, Compass, Play, LifeBuoy, Droplet, HeartHandshake, Syringe, Pill, Layers, Trophy, Download, Eye, User, Star, Award } from 'lucide-react';
 import { LOGO_SHIELD_BASE64, LOGO_FALLBACK_SVG } from '../lib/logoData';
 import { getCanonicalAppOrigin, getGlobalStats, getModuleVisits } from '../lib/statsService';
+import { getStoredUserProfile, RegisteredUser } from '../lib/userRegistrationService';
 import { HomeNotificationBanner } from './HomeNotificationBanner';
 
 interface HomeModuleProps {
@@ -11,6 +12,16 @@ interface HomeModuleProps {
 }
 
 export const HomeModule: React.FC<HomeModuleProps> = ({ setActiveTab, onSelectEducationResource }) => {
+  const [currentUserProfile, setCurrentUserProfile] = useState<RegisteredUser | null>(() => getStoredUserProfile());
+
+  useEffect(() => {
+    const handleUserUpdate = (e: any) => {
+      setCurrentUserProfile(e.detail || getStoredUserProfile());
+    };
+    window.addEventListener('anestesiapro_user_profile_updated', handleUserUpdate);
+    return () => window.removeEventListener('anestesiapro_user_profile_updated', handleUserUpdate);
+  }, []);
+
   // Real-time Community Top Ranking Data (Compact)
   const [statsData, setStatsData] = useState<{
     topDownloads: { id: string; title: string; count: number; category: string; tab?: TabType; educationId?: string }[];
@@ -283,6 +294,74 @@ export const HomeModule: React.FC<HomeModuleProps> = ({ setActiveTab, onSelectEd
           </div>
         </div>
       </div>
+
+      {/* REGISTRATION / DIGITAL MEDICAL CREDENTIAL CALLOUT CARD */}
+      {!currentUserProfile ? (
+        <div className="bg-gradient-to-r from-slate-900 via-[#0a1f33] to-slate-900 border-2 border-cyan-500/50 rounded-2xl p-3.5 sm:p-4 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-3 text-slate-100 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-48 h-48 bg-cyan-500/10 rounded-full blur-2xl pointer-events-none" />
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-cyan-500/20 text-cyan-300 rounded-2xl border border-cyan-400/40 shrink-0">
+              <User className="w-6 h-6 text-cyan-400" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-wider bg-cyan-500/30 text-cyan-300 px-2 py-0.5 rounded border border-cyan-400/40">
+                  COMUNIDAD MÉDICA • 1 SOLA VEZ
+                </span>
+              </div>
+              <h4 className="text-sm sm:text-base font-black text-white mt-0.5">
+                ¡Registra tu perfil médico en AnestesiaPro!
+              </h4>
+              <p className="text-xs text-slate-300 max-w-xl">
+                Vincula este dispositivo de forma permanente para obtener tu <strong>Carnet Digital de Especialista</strong> y personalizar tus <strong>reportes preanestésicos en PDF</strong> con tu nombre, cédula y hospital.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('anestesiapro_open_registration_modal'))}
+            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-cyan-950/60 transition-all cursor-pointer shrink-0 active:scale-95"
+          >
+            <span>Registrarme Gratis</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+      ) : (
+        <div className="bg-slate-900/90 border border-cyan-500/30 rounded-2xl p-3 sm:p-3.5 flex flex-col sm:flex-row items-center justify-between gap-2.5 text-slate-200">
+          <div className="flex items-center gap-2.5">
+            <span className="p-2 bg-emerald-500/20 text-emerald-400 rounded-xl border border-emerald-500/30 shrink-0">
+              <CheckCircle2 className="w-4 h-4" />
+            </span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-black text-white truncate">
+                  Colega Verificado: {currentUserProfile.fullName}
+                </span>
+                <span className="text-xs font-bold text-cyan-300">{currentUserProfile.country}</span>
+                <span className={`text-[9px] font-black px-1.5 py-0.2 rounded border ${
+                  currentUserProfile.elitePlan?.status === 'active' 
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-400/50' 
+                    : 'bg-cyan-500/20 text-cyan-300 border-cyan-400/30'
+                }`}>
+                  {currentUserProfile.elitePlan?.status === 'active' ? '⭐ ÉLITE HABILITADO' : 'COLEGA REGISTRADO ✓'}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 truncate">
+                {currentUserProfile.specialty} &bull; C.I: {currentUserProfile.idNumber}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('anestesiapro_open_registration_modal'))}
+            className="text-xs font-bold text-cyan-300 hover:text-white bg-slate-950 hover:bg-slate-800 border border-cyan-500/40 px-3 py-1.5 rounded-xl transition-all cursor-pointer shrink-0 self-end sm:self-auto"
+          >
+            Ver Carnet Digital
+          </button>
+        </div>
+      )}
 
       {/* TOP DESCARGAS & TOP MÓDULOS (COMPACTO Y DISCRETO) */}
       <div className="bg-slate-900/95 border border-slate-800/90 hover:border-slate-700/80 rounded-2xl p-3 sm:p-3.5 shadow-md text-slate-200">

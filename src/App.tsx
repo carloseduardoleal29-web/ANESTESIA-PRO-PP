@@ -22,6 +22,7 @@ import { DeveloperFooter } from './components/DeveloperFooter';
 import { DeveloperModal } from './components/DeveloperModal';
 import { ContactModal } from './components/ContactModal';
 import { ShareModal } from './components/ShareModal';
+import { FloatingRegistrationPrompt } from './components/FloatingRegistrationPrompt';
 
 export default function App() {
   const [updateAvailable, setUpdateAvailable] = useState(false);
@@ -254,6 +255,9 @@ export default function App() {
 
       {/* Persistent Offline & Quirófano Status Indicator */}
       <OfflineIndicator />
+
+      {/* Floating Registration Prompt for Unregistered Users */}
+      <FloatingRegistrationPrompt />
     </div>
   );
 }

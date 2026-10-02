@@ -64,6 +64,27 @@
         "ids": { "type": "string" },
         "updatedAt": { "type": "string" }
       }
+    },
+    "RegisteredUser": {
+      "title": "RegisteredUser",
+      "description": "Perfil de especialista o colega registrado en AnestesiaPro y estado de membresía Élite",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "fullName": { "type": "string" },
+        "email": { "type": "string" },
+        "idNumber": { "type": "string" },
+        "country": { "type": "string" },
+        "specialty": { "type": "string" },
+        "phone": { "type": "string" },
+        "workplace": { "type": "string" },
+        "device": { "type": "string" },
+        "platform": { "type": "string" },
+        "isInstalledPWA": { "type": "boolean" },
+        "registeredAt": { "type": "string" },
+        "lastActiveAt": { "type": "string" }
+      },
+      "required": ["id", "fullName", "email", "idNumber"]
     }
   },
   "firestore": {
@@ -78,6 +99,10 @@
     "/notifications/{notificationId}": {
       "schema": "AppNotification",
       "description": "Notificaciones globales de novedades clínicas"
+    },
+    "/registered_users/{userId}": {
+      "schema": "RegisteredUser",
+      "description": "Colección de usuarios y especialistas registrados en AnestesiaPro"
     },
     "/app_meta/{metaId}": {
       "schema": "AppMeta",

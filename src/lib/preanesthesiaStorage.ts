@@ -1,5 +1,6 @@
 import { LetterheadConfig, PatientPreanesthesiaRecord } from '../types/preanesthesia';
 import { LOGO_SHIELD_BASE64 } from './logoData';
+import { getStoredUserProfile } from './userRegistrationService';
 
 const STORAGE_LETTERHEAD_KEY = 'anestesiapro_active_letterhead_config_v1';
 const STORAGE_PROFILES_KEY = 'anestesiapro_letterhead_profiles_v1';
@@ -27,6 +28,28 @@ export const DEFAULT_DOCTOR_CREDENTIALS: DoctorCredentials = {
 export function getSavedDoctorCredentials(): DoctorCredentials {
   if (typeof window === 'undefined') return DEFAULT_DOCTOR_CREDENTIALS;
   try {
+    // 1. Prioritize credentials from registered medical profile
+    const profile = getStoredUserProfile();
+    if (profile && profile.fullName) {
+      const license = profile.medicalLicenseNumber || profile.idNumber || 'MP-REGISTRADO';
+      const specialtyStr = profile.subspecialty
+        ? `${profile.specialty} — ${profile.subspecialty}`
+        : profile.specialty;
+
+      const fullLicense = profile.collegeRegistration
+        ? `${license} | Col. ${profile.collegeRegistration}`
+        : license;
+
+      return {
+        doctorName: profile.fullName,
+        doctorCedula: profile.idNumber || '',
+        doctorLicense: fullLicense,
+        doctorPhone: profile.phone || '',
+        doctorSpecialty: specialtyStr,
+        doctorSignatureDataUrl: profile.digitalSignatureUrl || null
+      };
+    }
+
     const raw = localStorage.getItem(STORAGE_DOCTOR_DEFAULTS_KEY);
     if (raw) {
       return { ...DEFAULT_DOCTOR_CREDENTIALS, ...JSON.parse(raw) };
@@ -326,8 +349,8 @@ export function createEmptyPreanesthesiaRecord(): PatientPreanesthesiaRecord {
     egriScore: 0,
     egriCategory: 'Vía Aérea Previsiblemente Fácil / Normal',
 
-    doctorSignatureDataUrl: null,
-    doctorSignedAt: null,
+    doctorSignatureDataUrl: savedCreds.doctorSignatureDataUrl || null,
+    doctorSignedAt: savedCreds.doctorSignatureDataUrl ? new Date().toISOString() : null,
     patientSignatureDataUrl: null,
     patientSignedAt: null,
     patientSignerName: '',

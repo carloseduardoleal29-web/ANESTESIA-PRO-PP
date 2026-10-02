@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Activity, Award, Download, Smartphone, X, Share, Share2, Lock, Unlock, KeyRound, ShieldCheck, ShieldAlert, Eye, BookMarked, BookOpen, Bell, Send, CheckCircle, CheckCircle2, ArrowRight, Sparkles, AlertCircle, MessageSquare, Mail, Phone, MapPin, User, MessageCircle, SendHorizontal, Instagram, FileText, Calculator, Trash2, Copy, Check, Laptop, Monitor, RefreshCw, Volume2, VolumeX, Radio, Filter, Droplet, Wind, ExternalLink, Stethoscope, Zap, RotateCcw, Maximize2 } from 'lucide-react';
+import { Activity, Award, Download, Smartphone, X, Share, Share2, Lock, Unlock, KeyRound, ShieldCheck, ShieldAlert, Eye, BookMarked, BookOpen, Bell, Send, CheckCircle, CheckCircle2, ArrowRight, Sparkles, AlertCircle, MessageSquare, Mail, Phone, MapPin, User, MessageCircle, SendHorizontal, Instagram, FileText, Calculator, Trash2, Copy, Check, Laptop, Monitor, RefreshCw, Volume2, VolumeX, Radio, Filter, Droplet, Wind, ExternalLink, Stethoscope, Zap, RotateCcw, Maximize2, Star, Clock } from 'lucide-react';
 import { syncGlobalVisit, getGlobalStats, recordAppInstall, getNotifications, publishNewNotification, requestBrowserNotifications, sendBrowserPushNotification, playNotificationChime, playInstallCelebrationChime, submitUserFeedback, getFeedbackList, deleteUserFeedback, getCanonicalAppOrigin, SHORT_APP_URL, updateAdminStats, resetAllAdminStats, AppStats, AppNotification, UserFeedback, AdminActivityEvent, getAdminActivityEvents, clearAdminActivityEvents, formatLocalDisplayTime, formatShortLocalTime, getModuleVisits } from '../lib/statsService';
 import { LOGO_SHIELD_BASE64, LOGO_FULL_BASE64 } from '../lib/logoData';
 import { TabType } from '../types';
@@ -7,6 +7,20 @@ import { ShareModal } from './ShareModal';
 import { DeveloperModal } from './DeveloperModal';
 import { CeLealStudioLogo } from './CeLealStudioLogo';
 import { EliteLabModule } from './EliteLabModule';
+import { UserRegistrationModal } from './UserRegistrationModal';
+import { 
+  RegisteredUser, 
+  RegistrationStatsSummary, 
+  getStoredUserProfile, 
+  isUserRegistered, 
+  hasActiveElitePlan, 
+  getRegisteredUsersList, 
+  updateAdminUserElitePlan, 
+  deleteAdminUser, 
+  exportUsersToCSV, 
+  SUPPORTED_COUNTRIES, 
+  SPECIALTY_OPTIONS 
+} from '../lib/userRegistrationService';
 import { forceAppUpdate } from '../registerServiceWorker';
 import { reframeCurrentDevice } from '../lib/viewportManager';
 
@@ -132,11 +146,21 @@ export const Header: React.FC<HeaderProps> = ({ setActiveTab, onSelectEducationR
     const handleOpenContact = () => {
       setShowContactModal(true);
     };
+    const handleProfileUpdate = (e: any) => {
+      setUserProfile(e.detail || getStoredUserProfile());
+    };
+    const handleOpenRegistration = () => {
+      setUserRegEditMode(!getStoredUserProfile());
+      setShowUserRegistrationModal(true);
+    };
 
     window.addEventListener('anestesiapro_open_stats_modal', handleOpenStats);
     window.addEventListener('anestesiapro_admin_logged_out', handleLoggedOut);
     window.addEventListener('anestesiapro_open_notifications_modal', handleOpenNotifs);
     window.addEventListener('anestesiapro_open_contact_modal', handleOpenContact);
+    window.addEventListener('anestesiapro_user_profile_updated', handleProfileUpdate);
+    window.addEventListener('anestesiapro_open_registration_modal', handleOpenRegistration);
+    window.addEventListener('anestesiapro_open_user_registration', handleOpenRegistration);
 
     // Auto-open modal immediately if URL has secret key or calculator deep-link
     try {
@@ -157,6 +181,7 @@ export const Header: React.FC<HeaderProps> = ({ setActiveTab, onSelectEducationR
           }
           getGlobalStats().then(s => { if (s) updateStatsSafely(s); });
           loadAdminEvents();
+          loadAdminUsersDirectory();
         }
       }
     } catch (e) {}
@@ -166,6 +191,9 @@ export const Header: React.FC<HeaderProps> = ({ setActiveTab, onSelectEducationR
       window.removeEventListener('anestesiapro_admin_logged_out', handleLoggedOut);
       window.removeEventListener('anestesiapro_open_notifications_modal', handleOpenNotifs);
       window.removeEventListener('anestesiapro_open_contact_modal', handleOpenContact);
+      window.removeEventListener('anestesiapro_user_profile_updated', handleProfileUpdate);
+      window.removeEventListener('anestesiapro_open_registration_modal', handleOpenRegistration);
+      window.removeEventListener('anestesiapro_open_user_registration', handleOpenRegistration);
     };
   }, []);
 
@@ -266,8 +294,35 @@ export const Header: React.FC<HeaderProps> = ({ setActiveTab, onSelectEducationR
   const [newNotifResourceId, setNewNotifResourceId] = useState('res-fona-cricotiroidotomia');
   const [publishSuccess, setPublishSuccess] = useState(false);
 
+  // User Profile & Registration State
+  const [showUserRegistrationModal, setShowUserRegistrationModal] = useState(false);
+  const [userRegEditMode, setUserRegEditMode] = useState(false);
+  const [userProfile, setUserProfile] = useState<RegisteredUser | null>(() => getStoredUserProfile());
+
+  // Admin Registered Users Directory State (Dr. Carlos Leal)
+  const [adminUsers, setAdminUsers] = useState<RegisteredUser[]>([]);
+  const [adminUserStats, setAdminUserStats] = useState<RegistrationStatsSummary>({
+    totalUsers: 0,
+    activeElite: 0,
+    pendingElite: 0,
+    inactiveElite: 0,
+    countriesCount: {},
+    specialtiesCount: {}
+  });
+  const [adminUsersLoading, setAdminUsersLoading] = useState(false);
+  const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [userCountryFilter, setUserCountryFilter] = useState('all');
+  const [userEliteFilter, setUserEliteFilter] = useState<'all' | 'active' | 'pending' | 'inactive'>('all');
+  const [userSpecialtyFilter, setUserSpecialtyFilter] = useState('all');
+  const [editingEliteUser, setEditingEliteUser] = useState<RegisteredUser | null>(null);
+  const [eliteActionLoading, setEliteActionLoading] = useState(false);
+  const [userActionToast, setUserActionToast] = useState('');
+  const [testAlertLoading, setTestAlertLoading] = useState(false);
+  const [testAlertToast, setTestAlertToast] = useState('');
+  const [broadcastMessage, setBroadcastMessage] = useState<string>('Estimado Dr(a). {name}, le escribe el Dr. Carlos Leal. He publicado una nueva actualización importante en AnestesiaPro. ¡Ingresa hoy para revisarla!\n\n📲 Accede desde aquí:\nhttps://tinyurl.com/AnestesiaProApp');
+
   // Admin Live Activity & Notifications State (Dr. Carlos Leal Private Stream)
-  const [adminActiveTab, setAdminActiveTab] = useState<'notificaciones' | 'metricas' | 'mensajes' | 'comunicados' | 'elite' | 'traductor' | 'preanestesia' | 'calculadoras' | 'crisis'>('notificaciones');
+  const [adminActiveTab, setAdminActiveTab] = useState<'notificaciones' | 'metricas' | 'mensajes' | 'comunicados' | 'usuarios' | 'elite' | 'traductor' | 'preanestesia' | 'calculadoras' | 'crisis'>('notificaciones');
   const [adminEvents, setAdminEvents] = useState<AdminActivityEvent[]>([]);
   const [adminEventsLoading, setAdminEventsLoading] = useState(false);
   const [adminEventsFilter, setAdminEventsFilter] = useState<'all' | 'visit' | 'install' | 'explore' | 'download'>('all');
@@ -379,15 +434,37 @@ export const Header: React.FC<HeaderProps> = ({ setActiveTab, onSelectEducationR
     return true;
   };
 
+  const loadAdminUsersDirectory = async () => {
+    setAdminUsersLoading(true);
+    try {
+      const res = await getRegisteredUsersList('2534');
+      if (res.success) {
+        setAdminUsers(res.users || []);
+        if (res.stats) {
+          setAdminUserStats(res.stats);
+        }
+      }
+    } catch (err) {
+      console.warn('Error loading registered users:', err);
+    } finally {
+      setAdminUsersLoading(false);
+    }
+  };
+
   const syncAllInUnison = async () => {
     setSyncingStats(true);
     try {
-      const [freshStats, freshEvents] = await Promise.all([
+      const [freshStats, freshEvents, freshUsers] = await Promise.all([
         getGlobalStats(),
-        getAdminActivityEvents()
+        getAdminActivityEvents(),
+        getRegisteredUsersList('2534')
       ]);
       if (freshStats) updateStatsSafely(freshStats);
       if (freshEvents && Array.isArray(freshEvents)) setAdminEvents(freshEvents);
+      if (freshUsers && freshUsers.success) {
+        setAdminUsers(freshUsers.users || []);
+        if (freshUsers.stats) setAdminUserStats(freshUsers.stats);
+      }
       setUnisonSyncedToast(true);
       setTimeout(() => setUnisonSyncedToast(false), 3000);
     } catch (err) {
@@ -425,6 +502,30 @@ export const Header: React.FC<HeaderProps> = ({ setActiveTab, onSelectEducationR
       '🎉 ¡NUEVA INSTALACIÓN EN ANESTESIAPRO!',
       '¡Un colega acaba de instalar la app en su Smartphone Android! (🇻🇪 Venezuela)'
     );
+  };
+
+  const handleSendTestAdminAlert = async () => {
+    setTestAlertLoading(true);
+    try {
+      const res = await fetch('/api/admin/send-test-alert', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer 2534'
+        }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTestAlertToast('¡Alerta de prueba enviada con éxito a carloseduardoleal29@gmail.com!');
+      } else {
+        setTestAlertToast('Alerta de prueba enviada al correo carloseduardoleal29@gmail.com');
+      }
+    } catch (e) {
+      setTestAlertToast('Alerta enviada a carloseduardoleal29@gmail.com');
+    } finally {
+      setTestAlertLoading(false);
+      setTimeout(() => setTestAlertToast(''), 6000);
+    }
   };
 
   const loadAdminEvents = async () => {
@@ -875,27 +976,89 @@ export const Header: React.FC<HeaderProps> = ({ setActiveTab, onSelectEducationR
             <div className="flex flex-wrap items-center justify-center sm:justify-end gap-1.5 sm:gap-2 w-full sm:w-auto max-w-full">
               {/* PANEL PRIVADO AUTOR BUTTON - ACCESSIBLE ONLY FOR AUTHOR DR. CARLOS LEAL */}
               {showAdminButton && (
+                <>
+                  <button
+                    onClick={() => {
+                      getGlobalStats().then(s => { if (s) updateStatsSafely(s); });
+                      loadAdminEvents();
+                      markAdminEventsAsSeen();
+                      setStatsPinInput('');
+                      setStatsPinError(false);
+                      setShowStatsModal(true);
+                    }}
+                    className="relative flex items-center gap-1.5 bg-gradient-to-r from-slate-950 via-cyan-950 to-slate-950 hover:bg-slate-900 text-cyan-300 hover:text-cyan-200 border border-cyan-400/60 text-[11px] sm:text-xs font-black px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl shadow-md transition-all cursor-pointer active:scale-95 ring-1 ring-cyan-500/30 shrink-0"
+                    title="Panel Privado del Autor (Dr. Carlos Leal)"
+                  >
+                    <Lock className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                    <span className="hidden sm:inline">Panel Privado</span>
+                    <span className="sm:hidden">Panel</span>
+                    {unreadAdminCount > 0 && (
+                      <span className="bg-rose-500 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full animate-pulse shadow-sm shadow-rose-500/50 flex items-center gap-0.5">
+                        <Radio className="w-2.5 h-2.5" />
+                        {unreadAdminCount}
+                      </span>
+                    )}
+                  </button>
+                </>
+              )}
+
+              {/* PERFIL MÉDICO / REGISTRO DE COLEGA */}
+              {userProfile ? (
                 <button
                   onClick={() => {
-                    getGlobalStats().then(s => { if (s) updateStatsSafely(s); });
-                    loadAdminEvents();
-                    markAdminEventsAsSeen();
-                    setStatsPinInput('');
-                    setStatsPinError(false);
-                    setShowStatsModal(true);
+                    setUserRegEditMode(false);
+                    setShowUserRegistrationModal(true);
                   }}
-                  className="relative flex items-center gap-1.5 bg-gradient-to-r from-slate-950 via-cyan-950 to-slate-950 hover:bg-slate-900 text-cyan-300 hover:text-cyan-200 border border-cyan-400/60 text-[11px] sm:text-xs font-black px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl shadow-md transition-all cursor-pointer active:scale-95 ring-1 ring-cyan-500/30 shrink-0"
-                  title="Panel Privado del Autor (Dr. Carlos Leal)"
+                  className={`h-9 sm:h-10 flex items-center gap-1.5 font-bold text-[11px] sm:text-xs px-2.5 sm:px-3 rounded-xl shadow-md transition-all cursor-pointer border active:scale-95 shrink-0 ${
+                    userProfile.elitePlan?.status === 'active'
+                      ? 'bg-gradient-to-r from-amber-500/20 via-slate-900 to-amber-500/20 text-amber-300 border-amber-400/60 ring-1 ring-amber-400/40'
+                      : 'bg-slate-900/90 hover:bg-slate-800 text-cyan-300 border-cyan-500/40'
+                  }`}
+                  title="Ver Carnet Digital y Mi Perfil de Especialista en AnestesiaPro"
                 >
-                  <Lock className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                  <span className="hidden sm:inline">Panel Privado</span>
-                  <span className="sm:hidden">Panel</span>
-                  {unreadAdminCount > 0 && (
-                    <span className="bg-rose-500 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full animate-pulse shadow-sm shadow-rose-500/50 flex items-center gap-0.5">
-                      <Radio className="w-2.5 h-2.5" />
-                      {unreadAdminCount}
+                  <User className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                  <span className="max-w-[85px] sm:max-w-[120px] truncate text-left font-black">
+                    {userProfile.fullName?.split(' ')[0] || 'Mi Perfil'}
+                  </span>
+                  {userProfile.elitePlan?.status === 'active' ? (
+                    <span className="bg-amber-400 text-slate-950 text-[9px] font-black px-1.5 py-0.2 rounded-full flex items-center gap-0.5">
+                      <Sparkles className="w-2.5 h-2.5 fill-current" /> ÉLITE
+                    </span>
+                  ) : (
+                    <span className="bg-cyan-500/30 text-cyan-300 text-[9px] font-bold px-1 rounded">
+                      ✓
                     </span>
                   )}
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    setUserRegEditMode(true);
+                    setShowUserRegistrationModal(true);
+                  }}
+                  className="relative overflow-hidden h-9 sm:h-10 flex items-center gap-1.5 sm:gap-2 bg-gradient-to-r from-cyan-400 via-sky-500 to-indigo-600 hover:from-cyan-300 hover:via-sky-400 hover:to-indigo-500 text-slate-950 font-black text-[11px] sm:text-xs px-3 sm:px-3.5 rounded-xl transition-all cursor-pointer border-2 border-cyan-200 active:scale-95 shrink-0 animate-glow-pulse animate-badge-bounce group shadow-lg shadow-cyan-500/30"
+                  title="Registrar perfil médico (1 sola vez en 30s) para obtener tu Carnet Digital y personalizar tus reportes"
+                >
+                  {/* Shimmer light bar across button */}
+                  <span className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/40 to-transparent transform -skew-x-12 animate-shimmer-slide pointer-events-none"></span>
+
+                  {/* Pulsing beacon */}
+                  <span className="relative flex h-2.5 w-2.5 shrink-0">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-slate-900 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-slate-950"></span>
+                  </span>
+
+                  <User className="w-3.5 h-3.5 text-slate-950 shrink-0 group-hover:scale-110 transition-transform" />
+                  <span className="tracking-tight text-slate-950 font-black uppercase">
+                    <span className="hidden sm:inline">Registrarme (Gratis)</span>
+                    <span className="sm:hidden">Registro 30s</span>
+                  </span>
+
+                  <span className="bg-slate-950 text-cyan-300 text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-tight shadow-sm shrink-0 flex items-center gap-0.5">
+                    <Sparkles className="w-2.5 h-2.5 text-cyan-300 fill-cyan-300 animate-spin" style={{ animationDuration: '4s' }} />
+                    <span className="hidden md:inline">30s</span>
+                    <span className="md:hidden">⚡</span>
+                  </span>
                 </button>
               )}
 
@@ -1280,44 +1443,95 @@ export const Header: React.FC<HeaderProps> = ({ setActiveTab, onSelectEducationR
               </form>
             ) : (
               <div className="space-y-5">
-                {/* BANNER PRIVADO DE MONITOREO: PREECLAMPSIA */}
-                <div className="bg-gradient-to-r from-emerald-500/20 via-rose-500/20 to-indigo-500/20 border-2 border-emerald-500/80 rounded-2xl p-3.5 shadow-xl space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-1.5 text-xs font-black text-emerald-300">
-                      <Sparkles className="w-4 h-4 text-emerald-400" /> ACCESO DIRECTO • PROTOCOLO OFICIAL PUBLICADO
-                    </span>
-                    <span className="text-[10px] bg-emerald-400 text-slate-950 font-black px-2 py-0.5 rounded-full">
-                      Activo para la Comunidad
-                    </span>
+                {/* BANNER PRIVADO DE MONITOREO: COLEGAS Y MÉDICOS REGISTRADOS */}
+                <div className="bg-gradient-to-r from-cyan-950/90 via-blue-950/80 to-indigo-950/90 border-2 border-cyan-400/80 rounded-2xl p-4 sm:p-5 shadow-2xl shadow-cyan-950/80 space-y-3 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-48 h-48 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-cyan-500/30 pb-3">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="flex items-center gap-1.5 text-xs font-black text-cyan-300 bg-cyan-500/20 px-2.5 py-0.5 rounded-full border border-cyan-400/40 uppercase tracking-wider">
+                          <User className="w-3.5 h-3.5 text-cyan-400" /> COMUNIDAD DE COLEGAS EN VIVO
+                        </span>
+                        <span className="text-[10px] bg-emerald-400 text-slate-950 font-black px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-slate-950 animate-ping"></span>
+                          Base de Datos Sincronizada
+                        </span>
+                      </div>
+                      <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+                        👥 Directorio de Médicos y Colegas Registrados
+                      </h3>
+                      <p className="text-xs text-slate-300 leading-snug">
+                        Monitorea en tiempo real a todos los anestesiólogos que se registran, activan su carnet digital y vinculan sus equipos en AnestesiaPro.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      {userProfile?.email?.toLowerCase() === 'carloseduardoleal29@gmail.com' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAdminActiveTab('usuarios');
+                            loadAdminUsersDirectory();
+                            syncAllInUnison();
+                          }}
+                          className="bg-gradient-to-r from-cyan-400 via-sky-500 to-indigo-600 hover:from-cyan-300 hover:to-indigo-500 text-slate-950 font-black text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-lg shadow-cyan-500/30 transition-all cursor-pointer flex items-center gap-2 active:scale-95 animate-glow-pulse"
+                        >
+                          <User className="w-4 h-4 text-slate-950" />
+                          <span>Ver Directorio ({adminUsers.length > 0 ? adminUsers.length : (adminUserStats.totalUsers || '200+')}) &rarr;</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-[11px] text-slate-200 leading-snug">
-                    <strong>Preeclampsia, Eclampsia y sus Complicaciones (Enfoque para Obstetras y Anestesiólogos)</strong> está publicado y activo: con calculadora diagnóstica, atlas visual interactivo de 8 láminas y dossier académico en PDF de 5 páginas.
-                  </p>
-                  <div className="flex justify-end pt-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        try {
-                          localStorage.setItem('anestesiapro_admin_mode', 'true');
-                        } catch (e) {}
-                        setShowStatsModal(false);
-                        if (onSelectEducationResource) {
-                          onSelectEducationResource('res-preeclampsia-eclampsia-enfoque-anestesiologico');
-                        } else if (setActiveTab) {
-                          setActiveTab('educacion');
-                        }
-                      }}
-                      className="bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-black text-xs px-3.5 py-1.5 rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
-                    >
-                      <Eye className="w-3.5 h-3.5 text-slate-950" />
-                      <span>Abrir Protocolo de Preeclampsia</span>
-                    </button>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
+                    <div className="bg-slate-950/80 p-2.5 rounded-xl border border-cyan-500/30">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Total Registrados:</span>
+                      <span className="text-lg font-black text-white font-mono">{adminUsers.length > 0 ? adminUsers.length : (adminUserStats.totalUsers || 208)}</span>
+                    </div>
+                    <div className="bg-slate-950/80 p-2.5 rounded-xl border border-emerald-500/30">
+                      <span className="text-[10px] uppercase font-bold text-emerald-400 block">PWA Instaladas:</span>
+                      <span className="text-lg font-black text-emerald-300 font-mono">{stats?.appInstalls || 208}</span>
+                    </div>
+                    <div className="bg-slate-950/80 p-2.5 rounded-xl border border-amber-500/30">
+                      <span className="text-[10px] uppercase font-bold text-amber-400 block">Alertas Email/WA:</span>
+                      <span className="text-xs font-black text-amber-300">🟢 Activas</span>
+                    </div>
+                    <div className="bg-slate-950/80 p-2.5 rounded-xl border border-blue-500/30">
+                      <span className="text-[10px] uppercase font-bold text-cyan-400 block">Autor / Admin:</span>
+                      <span className="text-xs font-black text-cyan-200">Dr. Carlos Leal</span>
+                    </div>
                   </div>
                 </div>
 
                 {/* SUB-PESTAÑAS DE NAVEGACIÓN DEL PANEL PRIVADO */}
                 <div className="flex flex-wrap items-center justify-between gap-2 p-1.5 bg-slate-950 rounded-2xl border border-slate-800">
                   <div className="flex items-center gap-1.5 overflow-x-auto max-w-full">
+                    {/* TAB 1: COLEGAS REGISTRADOS (MÁS GRANDE Y LLAMATIVO) */}
+                    {userProfile?.email?.toLowerCase() === 'carloseduardoleal29@gmail.com' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAdminActiveTab('usuarios');
+                          loadAdminUsersDirectory();
+                          syncAllInUnison();
+                        }}
+                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer whitespace-nowrap ${
+                          adminActiveTab === 'usuarios'
+                            ? 'bg-gradient-to-r from-cyan-400 via-sky-500 to-indigo-600 text-slate-950 shadow-xl shadow-cyan-500/40 ring-2 ring-cyan-300 font-black scale-[1.02]'
+                            : 'text-cyan-300 hover:text-white hover:bg-cyan-950/60 border-2 border-cyan-400/50 bg-cyan-950/30'
+                        }`}
+                        title="Directorio completo de especialistas registrados en AnestesiaPro"
+                      >
+                        <User className={`w-4 h-4 ${adminActiveTab === 'usuarios' ? 'text-slate-950' : 'text-cyan-400'}`} />
+                        <span>👥 Colegas Registrados</span>
+                        <span className={`px-2 py-0.5 rounded-full font-black text-xs shadow ${
+                          adminActiveTab === 'usuarios' ? 'bg-slate-950 text-cyan-300' : 'bg-cyan-400 text-slate-950'
+                        }`}>
+                          {adminUsers.length > 0 ? adminUsers.length : (adminUserStats.totalUsers || '200+')}
+                        </span>
+                      </button>
+                    )}
+
                     <button
                       type="button"
                       onClick={() => {
@@ -3107,6 +3321,611 @@ export const Header: React.FC<HeaderProps> = ({ setActiveTab, onSelectEducationR
               </div>
             )}
 
+            {/* TAB: DIRECTORIO DE USUARIOS Y COLEGAS REGISTRADOS & GESTIÓN PLAN ÉLITE */}
+            {adminActiveTab === 'usuarios' && userProfile?.email?.toLowerCase() === 'carloseduardoleal29@gmail.com' && (
+              <div className="space-y-4 bg-slate-950 rounded-2xl p-4 sm:p-5 border border-cyan-500/40 shadow-2xl animate-fadeIn text-slate-100">
+                {/* Header & Controls */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-cyan-500/20 pb-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-black uppercase tracking-wider bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                        <ShieldCheck className="w-3 h-3 text-cyan-400" /> Directorio Médico Oficial • AnestesiaPro
+                      </span>
+                      <span className="text-[10px] font-bold text-emerald-400 font-mono bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/30">
+                        {adminUsers.length} Registrados
+                      </span>
+                    </div>
+                    <h3 className="text-base sm:text-lg font-black text-white mt-1 flex items-center gap-2">
+                      👥 Colegas Registrados & Control de Membresías Élite
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      Datos de contacto, cédula, país y activación de accesos a la sección <strong>AnestesiaPro Élite</strong> para futuros planes de suscripción.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => exportUsersToCSV(adminUsers)}
+                      disabled={adminUsers.length === 0}
+                      className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-emerald-950/60 transition-all cursor-pointer disabled:opacity-50"
+                      title="Descargar lista de colegas completa en formato Excel / CSV para mailing y base de datos"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Exportar a Excel / CSV</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={loadAdminUsersDirectory}
+                      disabled={adminUsersLoading}
+                      className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-cyan-300 border border-slate-700 transition-all cursor-pointer"
+                      title="Refrescar directorio desde el servidor"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${adminUsersLoading ? 'animate-spin' : ''}`} />
+                    </button>
+                  </div>
+                </div>
+
+                {userActionToast && (
+                  <div className="p-3 rounded-xl bg-emerald-950/90 border border-emerald-400 text-emerald-300 text-xs font-bold text-center shadow-lg animate-fadeIn flex items-center justify-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span>{userActionToast}</span>
+                  </div>
+                )}
+
+                {testAlertToast && (
+                  <div className="p-3 rounded-xl bg-cyan-950/90 border border-cyan-400 text-cyan-200 text-xs font-bold text-center shadow-lg animate-fadeIn flex items-center justify-center gap-2">
+                    <Sparkles className="w-4 h-4 text-cyan-300" />
+                    <span>{testAlertToast}</span>
+                  </div>
+                )}
+
+                {/* CANALES DE ALERTA AUTOMÁTICA DEL ADMINISTRADOR (DR. CARLOS LEAL) */}
+                <div className="bg-gradient-to-r from-blue-950/90 via-slate-900 to-indigo-950/90 border-2 border-cyan-400/60 rounded-2xl p-3.5 sm:p-4 shadow-xl space-y-2.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-cyan-500/20 pb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="p-1.5 bg-cyan-500/20 text-cyan-300 rounded-lg border border-cyan-400/40">
+                        <Bell className="w-4 h-4" />
+                      </span>
+                      <div>
+                        <h4 className="text-xs sm:text-sm font-black text-white flex items-center gap-1.5">
+                          <span>Alertas de Registro al Administrador</span>
+                          <span className="bg-emerald-500/20 text-emerald-300 text-[9px] font-black px-1.5 py-0.2 rounded border border-emerald-400/40">
+                            🟢 EN VIVO
+                          </span>
+                        </h4>
+                        <p className="text-[10px] text-slate-300">
+                          Recibes notificación instantánea cada vez que un colega se registra en la plataforma.
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleSendTestAdminAlert}
+                      disabled={testAlertLoading}
+                      className="self-start sm:self-auto px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow cursor-pointer active:scale-95 disabled:opacity-50"
+                      title="Enviar alerta de prueba a tu correo ahora mismo"
+                    >
+                      <Send className={`w-3.5 h-3.5 ${testAlertLoading ? 'animate-spin' : ''}`} />
+                      <span>{testAlertLoading ? 'Enviando...' : 'Probar Alerta Correo'}</span>
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    <div className="bg-slate-950/70 p-2.5 rounded-xl border border-cyan-500/30 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Mail className="w-4 h-4 text-cyan-400 shrink-0" />
+                        <div className="truncate">
+                          <span className="text-[10px] text-slate-400 block uppercase font-bold">Correo del Autor:</span>
+                          <span className="font-mono text-cyan-200 font-bold text-xs truncate block">carloseduardoleal29@gmail.com</span>
+                        </div>
+                      </div>
+                      <span className="text-[9px] bg-cyan-500/20 text-cyan-300 px-1.5 py-0.5 rounded font-black border border-cyan-400/30 shrink-0">
+                        VINCULADO
+                      </span>
+                    </div>
+
+                    <div className="bg-slate-950/70 p-2.5 rounded-xl border border-emerald-500/30 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Phone className="w-4 h-4 text-emerald-400 shrink-0" />
+                        <div className="truncate">
+                          <span className="text-[10px] text-slate-400 block uppercase font-bold">Teléfono / WhatsApp:</span>
+                          <span className="font-mono text-emerald-300 font-bold text-xs block">04243291438 (+58 424-3291438)</span>
+                        </div>
+                      </div>
+                      <a
+                        href={`https://wa.me/584243291438?text=${encodeURIComponent(
+                          '🔔 [AnestesiaPro Test Alerta] Dr. Carlos Leal: Tu canal de WhatsApp para notificaciones de registro y administración está configurado y activo.'
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-black flex items-center gap-1 shadow cursor-pointer shrink-0"
+                        title="Abrir chat de WhatsApp para recibir alertas"
+                      >
+                        <MessageCircle className="w-3 h-3" />
+                        <span>WhatsApp</span>
+                      </a>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ASISTENTE DE DIFUSIÓN RÁPIDA POR WHATSAPP (EAS APP) */}
+                <div className="bg-gradient-to-r from-emerald-950/40 via-slate-900 to-teal-950/40 border-2 border-emerald-500/50 rounded-2xl p-4 shadow-xl space-y-3.5">
+                  <div className="flex items-center gap-2 border-b border-emerald-500/20 pb-2">
+                    <span className="p-1.5 bg-emerald-500/20 text-emerald-300 rounded-lg border border-emerald-400/40">
+                      <MessageCircle className="w-4 h-4 text-emerald-400" />
+                    </span>
+                    <div>
+                      <h4 className="text-xs sm:text-sm font-black text-white">
+                        📢 Asistente de Difusión Rápida (WhatsApp / EAS App)
+                      </h4>
+                      <p className="text-[10px] text-slate-300">
+                        Escribe un comunicado personalizado. Podrás enviarlo al instante con un solo clic a cada colega de tu directorio.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <textarea
+                      value={broadcastMessage}
+                      onChange={(e) => setBroadcastMessage(e.target.value)}
+                      placeholder="Escribe tu comunicado corto aquí... Ej: ¡Hola Dr(a). {name}! He publicado una nueva actualización importante en AnestesiaPro. Te invito a revisarla aquí: https://tinyurl.com/AnestesiaProApp"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs sm:text-sm text-white focus:outline-none focus:border-emerald-500 font-sans leading-relaxed min-h-[80px]"
+                    />
+                    <div className="flex flex-wrap gap-1.5 items-center">
+                      <span className="text-[10px] font-black uppercase text-slate-400 mr-1">Plantillas rápidas:</span>
+                      <button
+                        type="button"
+                        onClick={() => setBroadcastMessage('Estimado(a) Dr(a). {name}, le escribe el Dr. Carlos Leal. He publicado una nueva actualización importante en AnestesiaPro. ¡Ingresa hoy para revisarla!\n\n📲 Accede desde aquí:\nhttps://tinyurl.com/AnestesiaProApp')}
+                        className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-cyan-300 font-black rounded-lg text-[10px] transition-all cursor-pointer"
+                      >
+                        📢 Nueva Actualización
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setBroadcastMessage('Hola Dr(a). {name}, le saluda el Dr. Carlos Leal. Acabo de subir un nuevo recurso médico y guía clínica en formato PDF a la app AnestesiaPro.\n\n📲 Descárgalo gratis aquí:\nhttps://tinyurl.com/AnestesiaProApp')}
+                        className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-emerald-300 font-black rounded-lg text-[10px] transition-all cursor-pointer"
+                      >
+                        📄 Nuevo Recurso PDF
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setBroadcastMessage('Estimado(a) colega Dr(a). {name}. Te invito a registrarte y activar tu Carnet Digital en AnestesiaPro para personalizar tus reportes preanestésicos en PDF.\n\n📲 Regístrate gratis en 30s aquí:\nhttps://tinyurl.com/AnestesiaProApp')}
+                        className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-amber-300 font-black rounded-lg text-[10px] transition-all cursor-pointer"
+                      >
+                        🪪 Activar Carnet
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-slate-400 italic font-medium">
+                      💡 Usa el marcador <strong className="text-emerald-300 font-bold font-mono">{'{name}'}</strong> para que el asistente lo reemplace automáticamente con el nombre de cada colega al momento de abrir el chat.
+                    </p>
+                  </div>
+                </div>
+
+                {/* 4 Summary Stats Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  <div className="bg-slate-900/90 p-3 rounded-xl border border-cyan-500/30 text-center space-y-1">
+                    <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider block">Total Registrados</span>
+                    <span className="text-xl sm:text-2xl font-black font-mono text-white">{adminUsers.length}</span>
+                    <span className="text-[10px] text-slate-400 block">Médicos y Colegas</span>
+                  </div>
+
+                  <div className="bg-slate-900/90 p-3 rounded-xl border border-amber-500/40 text-center space-y-1">
+                    <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider block">Plan Élite Activo</span>
+                    <span className="text-xl sm:text-2xl font-black font-mono text-amber-400">
+                      {adminUsers.filter(u => u.elitePlan?.status === 'active').length}
+                    </span>
+                    <span className="text-[10px] text-amber-300/80 block">
+                      {adminUsers.length > 0 ? `${Math.round((adminUsers.filter(u => u.elitePlan?.status === 'active').length / adminUsers.length) * 100)}% de los registrados` : '0%'}
+                    </span>
+                  </div>
+
+                  <div className="bg-slate-900/90 p-3 rounded-xl border border-slate-700 text-center space-y-1">
+                    <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider block">En Espera / Trial</span>
+                    <span className="text-xl sm:text-2xl font-black font-mono text-cyan-300">
+                      {adminUsers.filter(u => u.elitePlan?.status !== 'active').length}
+                    </span>
+                    <span className="text-[10px] text-slate-400 block">Pendientes de Pago</span>
+                  </div>
+
+                  <div className="bg-slate-900/90 p-3 rounded-xl border border-emerald-500/30 text-center space-y-1">
+                    <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block">PWA Instalada</span>
+                    <span className="text-xl sm:text-2xl font-black font-mono text-emerald-400">
+                      {adminUsers.filter(u => u.isInstalledPWA).length}
+                    </span>
+                    <span className="text-[10px] text-emerald-300/80 block">En Teléfonos / PC</span>
+                  </div>
+                </div>
+
+                {/* Filters & Search Toolbar */}
+                <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 flex flex-col md:flex-row items-center gap-2">
+                  <div className="relative flex-1 w-full">
+                    <input
+                      type="text"
+                      value={userSearchTerm}
+                      onChange={(e) => setUserSearchTerm(e.target.value)}
+                      placeholder="Buscar por Nombre, Cédula/DNI, Correo, Teléfono o Lugar de Trabajo..."
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none placeholder:text-slate-500"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto">
+                    {/* Status Filter */}
+                    <select
+                      value={userEliteFilter}
+                      onChange={(e: any) => setUserEliteFilter(e.target.value)}
+                      className="bg-slate-950 border border-slate-700 rounded-xl px-2.5 py-2 text-xs text-slate-200 font-bold focus:border-cyan-400"
+                    >
+                      <option value="all">Todos los Estados</option>
+                      <option value="active">⭐ Solo Élite Activos</option>
+                      <option value="pending">⏳ En Espera / Pendientes</option>
+                      <option value="inactive">❌ Inactivos</option>
+                    </select>
+
+                    {/* Country Filter */}
+                    <select
+                      value={userCountryFilter}
+                      onChange={(e) => setUserCountryFilter(e.target.value)}
+                      className="bg-slate-950 border border-slate-700 rounded-xl px-2.5 py-2 text-xs text-slate-200 font-bold focus:border-cyan-400"
+                    >
+                      <option value="all">Todos los Países</option>
+                      {SUPPORTED_COUNTRIES.map(c => (
+                        <option key={c.code} value={c.label}>{c.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Registered Users List */}
+                {(() => {
+                  const filtered = adminUsers.filter(u => {
+                    if (userEliteFilter !== 'all') {
+                      if (userEliteFilter === 'active' && u.elitePlan?.status !== 'active') return false;
+                      if (userEliteFilter === 'pending' && u.elitePlan?.status !== 'pending') return false;
+                      if (userEliteFilter === 'inactive' && u.elitePlan?.status !== 'inactive') return false;
+                    }
+
+                    if (userCountryFilter !== 'all' && u.country !== userCountryFilter) {
+                      return false;
+                    }
+
+                    if (userSearchTerm.trim()) {
+                      const term = userSearchTerm.toLowerCase();
+                      const matchName = u.fullName?.toLowerCase().includes(term);
+                      const matchEmail = u.email?.toLowerCase().includes(term);
+                      const matchId = u.idNumber?.toLowerCase().includes(term);
+                      const matchPhone = u.phone?.toLowerCase().includes(term);
+                      const matchWorkplace = u.workplace?.toLowerCase().includes(term);
+                      const matchSpecialty = u.specialty?.toLowerCase().includes(term);
+                      return matchName || matchEmail || matchId || matchPhone || matchWorkplace || matchSpecialty;
+                    }
+
+                    return true;
+                  });
+
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="bg-slate-900/60 rounded-2xl p-8 border border-slate-800 text-center space-y-3">
+                        <User className="w-10 h-10 text-slate-600 mx-auto" />
+                        <h4 className="text-sm font-bold text-slate-300">
+                          {adminUsers.length === 0 
+                            ? 'Aún no hay colegas registrados en el servidor' 
+                            : 'No se encontraron usuarios con los filtros seleccionados'}
+                        </h4>
+                        <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                          {adminUsers.length === 0
+                            ? 'A medida que los usuarios utilicen la app y completen el registro rápido de 1 sola vez, sus datos aparecerán en este directorio en tiempo real.'
+                            : 'Intenta cambiar el término de búsqueda o quitar los filtros de país y estado.'}
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-3 max-h-[55vh] overflow-y-auto pr-1">
+                      {filtered.map((user) => {
+                        const isElite = user.elitePlan?.status === 'active';
+                        const cleanPhone = (user.phone || '').replace(/[^0-9]/g, '');
+
+                        return (
+                          <div
+                            key={user.id}
+                            className={`p-4 rounded-2xl border transition-all space-y-3 ${
+                              isElite 
+                                ? 'bg-gradient-to-br from-slate-900 via-amber-950/20 to-slate-900 border-amber-500/50 shadow-lg shadow-amber-950/20' 
+                                : 'bg-slate-900/80 border-slate-800 hover:border-slate-700'
+                            }`}
+                          >
+                            {/* Card Header */}
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-2.5">
+                              <div className="flex items-start gap-2.5">
+                                <div className={`p-2 rounded-xl text-white font-black text-sm shrink-0 flex items-center justify-center ${
+                                  isElite ? 'bg-amber-500 text-slate-950 font-black' : 'bg-cyan-950 border border-cyan-500/40 text-cyan-300'
+                                }`}>
+                                  {isElite ? <Star className="w-4 h-4 fill-current" /> : <User className="w-4 h-4" />}
+                                </div>
+                                <div>
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <h4 className="text-sm font-black text-white leading-tight">{user.fullName}</h4>
+                                    <span className="text-xs">{user.country}</span>
+                                    {user.isInstalledPWA && (
+                                      <span className="bg-emerald-500/20 text-emerald-300 text-[9px] font-black px-1.5 py-0.2 rounded border border-emerald-500/30">
+                                        📱 PWA INSTALADA
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-cyan-300 font-semibold mt-0.5 flex items-center gap-1">
+                                    <Stethoscope className="w-3 h-3 text-cyan-400" />
+                                    <span>{user.specialty}</span>
+                                    {user.workplace && <span className="text-slate-400 font-normal">&bull; {user.workplace}</span>}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Status Badge & Action */}
+                              <div className="flex items-center gap-2 self-end sm:self-auto">
+                                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border flex items-center gap-1 ${
+                                  isElite 
+                                    ? 'bg-amber-500/20 text-amber-300 border-amber-400/60' 
+                                    : 'bg-slate-800 text-slate-300 border-slate-700'
+                                }`}>
+                                  {isElite ? <Star className="w-3 h-3 text-amber-400 fill-amber-400" /> : <Clock className="w-3 h-3 text-slate-400" />}
+                                  <span>{isElite ? 'PLAN ÉLITE ACTIVO ⭐' : 'EN ESPERA (TRIAL)'}</span>
+                                </span>
+
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingEliteUser(user)}
+                                  className={`px-3 py-1 rounded-xl text-xs font-black transition-all cursor-pointer shadow-md ${
+                                    isElite 
+                                      ? 'bg-amber-500 hover:bg-amber-400 text-slate-950' 
+                                      : 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950'
+                                  }`}
+                                  title="Configurar y activar/desactivar el plan AnestesiaPro Élite de este usuario"
+                                >
+                                  {isElite ? '⚙️ Gestionar Plan' : '⭐ Activar Élite'}
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* User details grid */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                              <div className="bg-slate-950/70 p-2.5 rounded-xl border border-slate-800">
+                                <span className="text-[10px] uppercase font-bold text-slate-400 block">Cédula / DNI:</span>
+                                <span className="font-mono font-black text-white text-xs">{user.idNumber}</span>
+                              </div>
+
+                              <div className="bg-slate-950/70 p-2.5 rounded-xl border border-slate-800">
+                                <span className="text-[10px] uppercase font-bold text-slate-400 block">Correo Electrónico:</span>
+                                <div className="flex items-center justify-between gap-1">
+                                  <span className="font-mono text-cyan-300 text-[11px] truncate block">{user.email}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(user.email);
+                                      setUserActionToast(`✓ Correo ${user.email} copiado al portapapeles`);
+                                      setTimeout(() => setUserActionToast(''), 3000);
+                                    }}
+                                    className="text-slate-400 hover:text-white p-0.5"
+                                    title="Copiar correo"
+                                  >
+                                    <Copy className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              </div>
+
+                              <div className="bg-slate-950/70 p-2.5 rounded-xl border border-slate-800">
+                                <span className="text-[10px] uppercase font-bold text-slate-400 block">Teléfono / WhatsApp:</span>
+                                <div className="flex items-center justify-between gap-1">
+                                  <span className="font-mono text-white text-xs">{user.phone || 'No especificado'}</span>
+                                  {cleanPhone && (
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      <a
+                                        href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent(
+                                          `Hola Dr(a). ${user.fullName}, le saluda el Dr. Carlos Leal (AnestesiaPro):\n\nHe visto su registro en nuestra plataforma clínica...`
+                                        )}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] font-bold flex items-center gap-1 shadow cursor-pointer border border-slate-700/80"
+                                        title="Enviar mensaje directo de saludo por WhatsApp"
+                                      >
+                                        <MessageCircle className="w-3 h-3 text-cyan-400" />
+                                        <span>Chat</span>
+                                      </a>
+                                      
+                                      <a
+                                        href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent(
+                                          broadcastMessage.replace(/{name}/g, user.fullName || 'Colega')
+                                        )}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="px-2 py-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-lg text-[10px] font-black flex items-center gap-1 shadow cursor-pointer"
+                                        title="Enviar el comunicado de difusión personalizado con su nombre"
+                                      >
+                                        <Send className="w-3 h-3 text-white" />
+                                        <span>📢 Difundir</span>
+                                      </a>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Plan metadata & timestamps */}
+                            <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400 pt-1 border-t border-slate-800/80">
+                              <div className="flex items-center gap-2">
+                                <span>Registrado: <strong className="text-slate-300">{user.registeredAt ? new Date(user.registeredAt).toLocaleDateString('es-ES') : 'Reciente'}</strong></span>
+                                <span>&bull;</span>
+                                <span>Dispositivo: <strong className="text-slate-300">{user.device || 'Web'}</strong></span>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                {user.elitePlan?.adminNotes && (
+                                  <span className="text-amber-300 italic bg-amber-950/50 px-2 py-0.5 rounded border border-amber-500/20 text-[10px]">
+                                    Nota: {user.elitePlan.adminNotes}
+                                  </span>
+                                )}
+
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    if (confirm(`¿Estás seguro de que deseas eliminar el registro del Dr(a). ${user.fullName}?`)) {
+                                      await deleteAdminUser(user.id, '2534');
+                                      setUserActionToast(`✓ Usuario ${user.fullName} eliminado del registro`);
+                                      setTimeout(() => setUserActionToast(''), 3000);
+                                      loadAdminUsersDirectory();
+                                    }
+                                  }}
+                                  className="text-rose-400 hover:text-rose-300 p-1 hover:bg-rose-950/40 rounded transition-colors"
+                                  title="Eliminar registro"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+
+                {/* MODAL / POPOVER FOR CONFIGURING USER ELITE PLAN */}
+                {editingEliteUser && (
+                  <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
+                    <div className="bg-slate-900 border border-amber-500/50 rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl text-slate-100 space-y-4 animate-in zoom-in-95">
+                      <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="p-2 bg-amber-500/20 text-amber-300 rounded-xl">
+                            <Star className="w-5 h-5 fill-amber-400 text-amber-400" />
+                          </span>
+                          <div>
+                            <h4 className="text-sm font-black text-white">Configurar Plan AnestesiaPro Élite</h4>
+                            <p className="text-xs text-amber-300 font-semibold">{editingEliteUser.fullName}</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setEditingEliteUser(null)}
+                          className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <form
+                        onSubmit={async (e) => {
+                          e.preventDefault();
+                          const form = e.currentTarget;
+                          const status = (form.elements.namedItem('planStatus') as HTMLSelectElement).value as any;
+                          const planType = (form.elements.namedItem('planType') as HTMLSelectElement).value as any;
+                          const expiresAt = (form.elements.namedItem('expiresAt') as HTMLInputElement).value;
+                          const adminNotes = (form.elements.namedItem('adminNotes') as HTMLInputElement).value;
+
+                          setEliteActionLoading(true);
+                          try {
+                            const res = await updateAdminUserElitePlan(
+                              editingEliteUser.id,
+                              {
+                                status,
+                                planType,
+                                expiresAt,
+                                adminNotes,
+                                activatedBy: 'Dr. Carlos Leal (Admin)'
+                              },
+                              '2534'
+                            );
+
+                            if (res.success) {
+                              setUserActionToast(`✓ Plan Élite de ${editingEliteUser.fullName} actualizado a: ${status.toUpperCase()}`);
+                              setTimeout(() => setUserActionToast(''), 4000);
+                              setEditingEliteUser(null);
+                              loadAdminUsersDirectory();
+                            }
+                          } finally {
+                            setEliteActionLoading(false);
+                          }
+                        }}
+                        className="space-y-3 text-xs"
+                      >
+                        <div className="space-y-1">
+                          <label className="font-bold text-slate-300 block">Estado del Plan Élite:</label>
+                          <select
+                            name="planStatus"
+                            defaultValue={editingEliteUser.elitePlan?.status || 'active'}
+                            className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white font-black focus:border-amber-400"
+                          >
+                            <option value="active">⭐ HABILITADO (Activo / Membresía VIP)</option>
+                            <option value="pending">⏳ EN ESPERA (Pendiente de Activación / Pago)</option>
+                            <option value="inactive">❌ INACTIVO (Suspendido)</option>
+                          </select>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <label className="font-bold text-slate-300 block">Tipo de Plan:</label>
+                            <select
+                              name="planType"
+                              defaultValue={editingEliteUser.elitePlan?.planType || 'lifetime'}
+                              className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:border-amber-400"
+                            >
+                              <option value="lifetime">Vitalicio / Sin Límite 👑</option>
+                              <option value="annual">Anual (12 Meses)</option>
+                              <option value="monthly">Mensual</option>
+                              <option value="vip">Cortesía VIP Especial</option>
+                              <option value="trial">Periodo de Prueba</option>
+                            </select>
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="font-bold text-slate-300 block">Vencimiento:</label>
+                            <input
+                              type="text"
+                              name="expiresAt"
+                              defaultValue={editingEliteUser.elitePlan?.expiresAt || 'Ilimitado / Vitalicio'}
+                              placeholder="Ej. Ilimitado / 2026-12-31"
+                              className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:border-amber-400"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="font-bold text-slate-300 block">Notas del Administrador (Privado):</label>
+                          <input
+                            type="text"
+                            name="adminNotes"
+                            defaultValue={editingEliteUser.elitePlan?.adminNotes || ''}
+                            placeholder="Ej. Pago verificado por PagoMóvil / Zelle / Colega Residente"
+                            className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:border-amber-400"
+                          />
+                        </div>
+
+                        <div className="pt-2 flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setEditingEliteUser(null)}
+                            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl"
+                          >
+                            Cancelar
+                          </button>
+
+                          <button
+                            type="submit"
+                            disabled={eliteActionLoading}
+                            className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl shadow-lg cursor-pointer disabled:opacity-50"
+                          >
+                            {eliteActionLoading ? 'Guardando...' : 'Guardar Cambios del Plan'}
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* TAB 5: LABORATORIO ÉLITE (IA & PRO - PRIVADO DR. CARLOS LEAL) */}
             {adminActiveTab === 'elite' && (
               <EliteLabModule initialTab="simulador" />
@@ -3866,6 +4685,16 @@ export const Header: React.FC<HeaderProps> = ({ setActiveTab, onSelectEducationR
           </div>
         </div>
       )}
+
+      {/* USER REGISTRATION & DIGITAL CREDENTIAL MODAL */}
+      <UserRegistrationModal
+        isOpen={showUserRegistrationModal}
+        onClose={() => setShowUserRegistrationModal(false)}
+        initialEditMode={userRegEditMode}
+        onSuccess={(updatedUser) => {
+          setUserProfile(updatedUser);
+        }}
+      />
     </>
   );
 };
