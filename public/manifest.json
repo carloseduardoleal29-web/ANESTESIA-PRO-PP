@@ -1,0 +1,27 @@
+{
+  "id": "/",
+  "short_name": "AnestesiaPro",
+  "name": "AnestesiaPro - Suite Clínica (Dr. Carlos Leal)",
+  "description": "Suite clínica integral para anestesiología y quirófano: preanestésica, calculadoras de dosis, escalas y protocolos 100% funcional offline.",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "scope": "/",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "display": "standalone",
+  "orientation": "portrait",
+  "categories": ["medical", "health", "education"]
+}
