@@ -1,0 +1,176 @@
+[
+  {
+    "fullName": "Dr. Carlos Manuel Silva",
+    "idNumber": "V-18992011",
+    "email": "carlos.silva.anest@gmail.com",
+    "phone": "+58 412 888 9900",
+    "country": "🇻🇪 Venezuela",
+    "specialty": "Anestesiología General",
+    "workplace": "Hospital Central de Maracay",
+    "id": "usr_1792080674460_na01d",
+    "device": "Dispositivo Web",
+    "registeredAt": "2026-10-15T16:11:14.461Z",
+    "lastActiveAt": "2026-10-15T16:11:14.461Z",
+    "elitePlan": {
+      "status": "inactive",
+      "planType": "standard",
+      "expiresAt": "Plan Estándar Gratuito"
+    }
+  },
+  {
+    "id": "usr_carlos_leal_admin",
+    "fullName": "Dr. Carlos Eduardo Leal",
+    "idNumber": "V-15.489.288",
+    "email": "carloseduardoleal29@gmail.com",
+    "country": "🇻🇪 Venezuela",
+    "specialty": "Médico Especialista en Anestesiología y Reanimación",
+    "subspecialty": "Anestesiología Cardiovascular y TIVA",
+    "workplace": "Maracay, Edo. Aragua",
+    "phone": "+584243291438",
+    "medicalLicenseNumber": "MPPS-84920",
+    "collegeRegistration": "CM-4521",
+    "role": "admin",
+    "isAdmin": true,
+    "device": "Smartphone / Web (Autor y Fundador)",
+    "registeredAt": "2026-10-01T00:00:00.000Z",
+    "lastActiveAt": "2026-10-15T16:11:14.460Z",
+    "elitePlan": {
+      "status": "active",
+      "planType": "lifetime",
+      "activatedAt": "2026-10-01T00:00:00.000Z",
+      "expiresAt": "Permanente (Autor y Fundador)"
+    }
+  },
+  {
+    "id": "usr_valentina_morales_2026",
+    "fullName": "Dra. Valentina Morales",
+    "idNumber": "V-19842105",
+    "email": "valentina.morales.anest@gmail.com",
+    "phone": "+58 414 123 4567",
+    "country": "🇻🇪 Venezuela",
+    "specialty": "Anestesiología Obstétrica",
+    "subspecialty": "Analgesia Neuroaxial y Parto Humanizado",
+    "workplace": "Hospital Universitario de Caracas",
+    "role": "user",
+    "isAdmin": false,
+    "device": "iPhone 15 Pro (Apple) 📱",
+    "registeredAt": "2026-10-04T14:20:00.000Z",
+    "lastActiveAt": "2026-10-15T16:11:14.460Z",
+    "elitePlan": {
+      "status": "active",
+      "planType": "lifetime",
+      "activatedAt": "2026-10-04T14:20:00.000Z",
+      "expiresAt": "Permanente"
+    }
+  },
+  {
+    "id": "usr_gabriel_perez_col_2026",
+    "fullName": "Dr. Gabriel A. Pérez",
+    "idNumber": "1020485912",
+    "email": "dr.gabrielperez.anest@outlook.com",
+    "phone": "+57 310 987 6543",
+    "country": "🇨🇴 Colombia",
+    "specialty": "Anestesiología e Cuidados Intensivos",
+    "subspecialty": "Reanimación Hemodinámica y PTM",
+    "workplace": "Hospital Universitario San Ignacio (Bogotá)",
+    "role": "user",
+    "isAdmin": false,
+    "device": "Smartphone Android 📱",
+    "registeredAt": "2026-10-06T10:15:00.000Z",
+    "lastActiveAt": "2026-10-15T16:11:14.460Z",
+    "elitePlan": {
+      "status": "active",
+      "planType": "lifetime",
+      "activatedAt": "2026-10-06T10:15:00.000Z",
+      "expiresAt": "Permanente"
+    }
+  },
+  {
+    "id": "usr_elena_rodriguez_2026",
+    "fullName": "Dra. Elena Rodríguez",
+    "idNumber": "V-17254890",
+    "email": "elena.rodriguez.anestesia@gmail.com",
+    "phone": "+58 424 555 8899",
+    "country": "🇻🇪 Venezuela",
+    "specialty": "Anestesiología Pedriátrica",
+    "subspecialty": "Vía Aérea Pedriátrica y Accesos Vasculares",
+    "workplace": "Ciudad Hospitalaria Dr. Enrique Tejera (Valencia)",
+    "role": "user",
+    "isAdmin": false,
+    "device": "Tablet / iPad 📲",
+    "registeredAt": "2026-10-08T18:45:00.000Z",
+    "lastActiveAt": "2026-10-15T16:11:14.460Z",
+    "elitePlan": {
+      "status": "active",
+      "planType": "lifetime",
+      "activatedAt": "2026-10-08T18:45:00.000Z",
+      "expiresAt": "Permanente"
+    }
+  },
+  {
+    "id": "usr_miguel_santos_2026",
+    "fullName": "Dr. Miguel Ángel Santos",
+    "idNumber": "71849203",
+    "email": "miguel.santos.anest@medellin.co",
+    "phone": "+57 300 444 1122",
+    "country": "🇨🇴 Colombia",
+    "specialty": "Anestesiología y Medicina del Dolor",
+    "subspecialty": "Anestesia Regional Ecoguiada",
+    "workplace": "Clínica Las Américas (Medellín)",
+    "role": "user",
+    "isAdmin": false,
+    "device": "Smartphone Android 📱",
+    "registeredAt": "2026-10-10T11:30:00.000Z",
+    "lastActiveAt": "2026-10-15T16:11:14.460Z",
+    "elitePlan": {
+      "status": "active",
+      "planType": "lifetime",
+      "activatedAt": "2026-10-10T11:30:00.000Z",
+      "expiresAt": "Permanente"
+    }
+  },
+  {
+    "id": "usr_sofia_benitez_2026",
+    "fullName": "Dra. Sofía Benítez",
+    "idNumber": "V-22104857",
+    "email": "sofia.benitez.res@gmail.com",
+    "phone": "+58 412 333 7711",
+    "country": "🇻🇪 Venezuela",
+    "specialty": "Residente de Anestesiología (R3)",
+    "subspecialty": "Anestesia General y TIVA",
+    "workplace": "Hospital Central de Maracaibo",
+    "role": "user",
+    "isAdmin": false,
+    "device": "Smartphone Android 📱",
+    "registeredAt": "2026-10-12T09:10:00.000Z",
+    "lastActiveAt": "2026-10-15T16:11:14.460Z",
+    "elitePlan": {
+      "status": "active",
+      "planType": "lifetime",
+      "activatedAt": "2026-10-12T09:10:00.000Z",
+      "expiresAt": "Permanente"
+    }
+  },
+  {
+    "id": "usr_roberto_mendoza_2026",
+    "fullName": "Dr. Roberto Mendoza",
+    "idNumber": "MX-9482015",
+    "email": "dr.roberto.mendoza.anest@gmail.com",
+    "phone": "+52 55 1234 5678",
+    "country": "🇲🇽 México",
+    "specialty": "Anestesiología Cardiovascular",
+    "subspecialty": "Ecocardiografía Transesofágica y Cirugía Cardíaca",
+    "workplace": "Instituto Nacional de Cardiología (CDMX)",
+    "role": "user",
+    "isAdmin": false,
+    "device": "Computadora PC (Windows) 💻",
+    "registeredAt": "2026-10-13T16:00:00.000Z",
+    "lastActiveAt": "2026-10-15T16:11:14.460Z",
+    "elitePlan": {
+      "status": "active",
+      "planType": "lifetime",
+      "activatedAt": "2026-10-13T16:00:00.000Z",
+      "expiresAt": "Permanente"
+    }
+  }
+]
