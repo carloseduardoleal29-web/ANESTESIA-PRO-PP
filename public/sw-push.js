@@ -1,21 +1,49 @@
-// Professional Native Push Service Worker for AnestesiaPro (Background & Closed App Delivery + PWA Installability Fetch Handler)
+// Professional Native Push & Auto-Updating PWA Service Worker for AnestesiaPro
+const CACHE_NAME = 'anestesiapro-pwa-v2026.2.0-rescue';
+
 self.addEventListener('install', (event) => {
+  // Force immediate takeover by waiting service worker on all 200 PWA installs
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
-});
-
-// Required by Google Chrome for PWA Installability (Beforeinstallprompt validation)
-self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    fetch(event.request).catch(() => {
-      return caches.match(event.request);
-    })
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames
+          .filter((name) => name !== CACHE_NAME)
+          .map((name) => caches.delete(name))
+      );
+    }).then(() => self.clients.claim())
   );
 });
 
+// Network-first with offline fallback fetch handler
+self.addEventListener('fetch', (event) => {
+  // Only handle GET requests
+  if (event.request.method !== 'GET') return;
+  
+  // Do not intercept Firestore / Firebase API calls
+  if (event.request.url.includes('firestore.googleapis.com') || event.request.url.includes('identitytoolkit')) {
+    return;
+  }
+
+  event.respondWith(
+    fetch(event.request)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+        }
+        return networkResponse;
+      })
+      .catch(() => caches.match(event.request))
+  );
+});
+
+// Push notification handling with absolute URLs
 self.addEventListener('push', function (event) {
   const origin = self.location ? self.location.origin : '';
   const appLogoUrl = origin ? origin + '/icon-192.png' : '/icon-192.png';
@@ -23,12 +51,12 @@ self.addEventListener('push', function (event) {
 
   let payload = {
     title: 'AnestesiaPro 🩺',
-    body: 'Nueva alerta clínica de alta prioridad disponible.',
+    body: 'Nueva actualización y alerta clínica disponible.',
     icon: appLogoUrl,
     badge: badgeUrl,
     image: origin ? origin + '/og_banner.jpg' : '/og_banner.jpg',
     url: '/?source=push_notification',
-    tag: 'anestesiapro-native-push-' + Date.now()
+    tag: 'anestesiapro-push-' + Date.now()
   };
 
   if (event.data) {
