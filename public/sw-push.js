@@ -1,4 +1,12 @@
-// Background Service Worker Script for AnestesiaPro Web Push Notifications via Push API
+// Professional Native Push Service Worker for AnestesiaPro (Background & Closed App Delivery)
+self.addEventListener('install', (event) => {
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
 self.addEventListener('push', function (event) {
   const origin = self.location ? self.location.origin : '';
   const appLogoUrl = origin ? origin + '/icon-192.png' : '/icon-192.png';
@@ -6,12 +14,12 @@ self.addEventListener('push', function (event) {
 
   let payload = {
     title: 'AnestesiaPro 🩺',
-    body: 'Nueva actualización de protocolo o material clínico oficial disponible.',
+    body: 'Nueva alerta clínica de alta prioridad disponible.',
     icon: appLogoUrl,
     badge: badgeUrl,
     image: origin ? origin + '/og_banner.jpg' : '/og_banner.jpg',
     url: '/?source=push_notification',
-    tag: 'anestesiapro-push-' + Date.now()
+    tag: 'anestesiapro-native-push-' + Date.now()
   };
 
   if (event.data) {
@@ -19,7 +27,10 @@ self.addEventListener('push', function (event) {
       const parsed = event.data.json();
       payload = { ...payload, ...parsed };
     } catch (e) {
-      payload.body = event.data.text() || payload.body;
+      try {
+        const textData = event.data.text();
+        if (textData) payload.body = textData;
+      } catch (err) {}
     }
   }
 
@@ -27,11 +38,17 @@ self.addEventListener('push', function (event) {
     body: payload.body,
     icon: payload.icon || appLogoUrl,
     badge: payload.badge || badgeUrl,
-    image: payload.image,
+    image: payload.image || origin + '/og_banner.jpg',
     requireInteraction: true,
-    vibrate: [200, 100, 200],
-    tag: payload.tag,
+    vibrate: [200, 100, 200, 100, 200],
+    tag: payload.tag || 'anestesiapro-push-' + Date.now(),
     renotify: true,
+    silent: false,
+    timestamp: Date.now(),
+    actions: [
+      { action: 'open_app', title: '🩺 Abrir AnestesiaPro' },
+      { action: 'dismiss', title: 'Cerrar' }
+    ],
     data: {
       url: payload.url || '/?source=push_notification'
     }
@@ -44,6 +61,10 @@ self.addEventListener('push', function (event) {
 
 self.addEventListener('notificationclick', function (event) {
   event.notification.close();
+  const action = event.action;
+  if (action === 'dismiss') {
+    return;
+  }
   const targetUrl = (event.notification.data && event.notification.data.url) ? event.notification.data.url : '/';
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (clientList) {
