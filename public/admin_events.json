@@ -1,5 +1,15 @@
 [
   {
+    "id": "evt-user-1792082975629",
+    "type": "install",
+    "title": "👤 ¡NUEVO COLEGA REGISTRADO: Dra. María Fernanda Gómez!",
+    "detail": "El Dr(a). Dra. María Fernanda Gómez (🇻🇪 Venezuela, C.I: V-20114890, Anestesiología Obstétrica) se ha registrado en AnestesiaPro desde Dispositivo Web. Tel: +58 412 777 6655.",
+    "device": "Dispositivo Web",
+    "location": "🇻🇪 Venezuela",
+    "timestamp": "2026-10-15T16:49:35.629Z",
+    "timeMs": 1792082975629
+  },
+  {
     "id": "evt-user-1792080674461",
     "type": "install",
     "title": "👤 ¡NUEVO COLEGA REGISTRADO: Dr. Carlos Manuel Silva!",
