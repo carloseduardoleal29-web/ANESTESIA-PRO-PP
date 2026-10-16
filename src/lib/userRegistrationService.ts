@@ -1,5 +1,5 @@
 import { RegisteredUser, ElitePlanConfig, RegistrationStatsSummary } from '../types/user';
-import { db, doc, setDoc, getDocs, collection, deleteDoc, getDoc } from './firebase';
+import { db, doc, setDoc, getDocs, collection, deleteDoc, getDoc, serverTimestamp } from './firebase';
 
 export type { RegisteredUser, ElitePlanConfig, RegistrationStatsSummary };
 
@@ -244,6 +244,7 @@ export async function autoRestoreRegistrationAsync(): Promise<RegisteredUser | n
   const current = getStoredUserProfile();
   if (current && current.fullName && current.fullName.trim().length >= 3) {
     saveStoredUserProfile(current);
+    syncLocalProfileToCloudFirestore(current).catch(() => {});
     return current;
   }
 
@@ -252,6 +253,7 @@ export async function autoRestoreRegistrationAsync(): Promise<RegisteredUser | n
     const idbProfile = await getFromIndexedDB(USER_STORAGE_KEY);
     if (idbProfile && idbProfile.fullName && (idbProfile.email || idbProfile.idNumber)) {
       saveStoredUserProfile(idbProfile as RegisteredUser);
+      syncLocalProfileToCloudFirestore(idbProfile as RegisteredUser).catch(() => {});
       return idbProfile as RegisteredUser;
     }
   } catch {}
@@ -269,6 +271,7 @@ export async function autoRestoreRegistrationAsync(): Promise<RegisteredUser | n
       if (data.success && data.exists && data.user) {
         const restoredUser = data.user as RegisteredUser;
         saveStoredUserProfile(restoredUser);
+        syncLocalProfileToCloudFirestore(restoredUser).catch(() => {});
         return restoredUser;
       }
     }
@@ -300,12 +303,25 @@ export async function syncLocalProfileToCloudFirestore(profile?: RegisteredUser 
       body: JSON.stringify(updatedUser)
     }).catch(() => {});
 
-    // 2. Upload directly to Cloud Firestore safely
+    // 2. Upload directly to Cloud Firestore safely (registered_users & medicos_registrados)
     if (db) {
       try {
-        const docRef = doc(db, 'registered_users', userId);
         const cleanPayload = JSON.parse(JSON.stringify(updatedUser));
-        await setDoc(docRef, cleanPayload, { merge: true });
+        const docRef1 = doc(db, 'registered_users', userId);
+        await setDoc(docRef1, cleanPayload, { merge: true });
+
+        const medicoRecord = {
+          id: userId,
+          fullName: updatedUser.fullName,
+          email: updatedUser.email || '',
+          phone: updatedUser.phone || '',
+          country: updatedUser.country || 'Venezuela',
+          registeredAt: updatedUser.registeredAt || new Date().toISOString(),
+          device: updatedUser.device || 'Dispositivo móvil',
+          createdAt: serverTimestamp ? serverTimestamp() : new Date().toISOString()
+        };
+        const docRef2 = doc(db, 'medicos_registrados', userId);
+        await setDoc(docRef2, medicoRecord, { merge: true });
       } catch (fbErr) {
         // Silent catch for Firestore quota limits
       }
@@ -547,10 +563,25 @@ export async function registerUserProfile(formData: {
   // 3. INTENTA GUARDAR EN CLOUD FIRESTORE (En segundo plano, tolerante a cuotas)
   try {
     const finalDocId = userPayload.id;
-    const docRef = doc(db, 'registered_users', finalDocId);
+    const docRef1 = doc(db, 'registered_users', finalDocId);
     const sanitizedPayload = JSON.parse(JSON.stringify(userPayload));
-    setDoc(docRef, sanitizedPayload, { merge: true }).catch((fbErr) => {
-      console.warn('[AnestesiaPro User] Aviso guardando en Firestore directo:', fbErr);
+    setDoc(docRef1, sanitizedPayload, { merge: true }).catch((fbErr) => {
+      console.warn('[AnestesiaPro User] Aviso guardando en registered_users:', fbErr);
+    });
+
+    const medicoRecord = {
+      id: finalDocId,
+      fullName: userPayload.fullName,
+      email: userPayload.email || '',
+      phone: userPayload.phone || '',
+      country: userPayload.country || 'Venezuela',
+      registeredAt: userPayload.registeredAt || new Date().toISOString(),
+      device: userPayload.device || 'Dispositivo móvil',
+      createdAt: serverTimestamp ? serverTimestamp() : new Date().toISOString()
+    };
+    const docRef2 = doc(db, 'medicos_registrados', finalDocId);
+    setDoc(docRef2, medicoRecord, { merge: true }).catch((fbErr) => {
+      console.warn('[AnestesiaPro User] Aviso guardando en medicos_registrados:', fbErr);
     });
   } catch (fbErr) {
     console.warn('[AnestesiaPro User] Aviso inicializando Firestore directo:', fbErr);
@@ -652,30 +683,31 @@ export function deduplicateClientUsers(rawUsers: RegisteredUser[]): RegisteredUs
       const exCedulaDigits = normalizeDigits(existing.idNumber);
       const exPhoneDigits = normalizePhoneDigits(existing.phone);
       const exEmail = normalizeEmail(existing.email);
+      const exNameClean = cleanDoctorName(existing.fullName);
 
-      const idMatch = Boolean(existing.id && user.id && existing.id === user.id);
+      const idMatch = existing.id && user.id && existing.id === user.id;
 
-      const cedulaMatch = Boolean(
-        userCedulaDigits.length >= 6 && 
-        exCedulaDigits.length >= 6 && 
-        !userCedulaDigits.includes('REGISTRADO') &&
-        userCedulaDigits === exCedulaDigits
+      const cedulaMatch = userCedulaDigits.length >= 5 && exCedulaDigits.length >= 5 && (
+        userCedulaDigits === exCedulaDigits ||
+        userCedulaDigits.endsWith(exCedulaDigits) ||
+        exCedulaDigits.endsWith(userCedulaDigits)
       );
 
-      const emailMatch = Boolean(
-        userEmail.length >= 5 && 
-        exEmail.length >= 5 && 
-        !userEmail.endsWith('@anestesiapro.app') && 
-        userEmail === exEmail
+      const emailMatch = userEmail.length >= 5 && exEmail.length >= 5 && userEmail === exEmail;
+
+      const phoneMatch = userPhoneDigits.length >= 7 && exPhoneDigits.length >= 7 && (
+        userPhoneDigits === exPhoneDigits ||
+        userPhoneDigits.endsWith(exPhoneDigits) ||
+        exPhoneDigits.endsWith(userPhoneDigits)
       );
 
-      const phoneMatch = Boolean(
-        userPhoneDigits.length >= 8 && 
-        exPhoneDigits.length >= 8 && 
-        userPhoneDigits === exPhoneDigits
+      const nameMatch = userNameClean.length >= 6 && exNameClean.length >= 6 && (
+        userNameClean === exNameClean ||
+        userNameClean.includes(exNameClean) ||
+        exNameClean.includes(userNameClean)
       );
 
-      return idMatch || cedulaMatch || emailMatch || phoneMatch;
+      return idMatch || cedulaMatch || emailMatch || phoneMatch || nameMatch;
     });
 
     if (existingIdx !== -1) {

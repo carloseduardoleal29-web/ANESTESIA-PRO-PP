@@ -18,12 +18,14 @@ interface DeveloperFooterProps {
   onOpenDeveloperModal: () => void;
   onOpenContactModal?: () => void;
   onOpenShareModal?: () => void;
+  onOpenAdminMedicos?: () => void;
 }
 
 export const DeveloperFooter: React.FC<DeveloperFooterProps> = ({
   onOpenDeveloperModal,
   onOpenContactModal,
-  onOpenShareModal
+  onOpenShareModal,
+  onOpenAdminMedicos
 }) => {
   const handleOpenContact = () => {
     if (onOpenContactModal) {
@@ -68,6 +70,18 @@ export const DeveloperFooter: React.FC<DeveloperFooterProps> = ({
               >
                 <Share2 className="w-4 h-4 text-emerald-400 shrink-0" />
                 <span>Compartir Suite</span>
+              </button>
+            )}
+
+            {/* PESTAÑA: PANEL DE ADMINISTRADOR DE MÉDICOS */}
+            {onOpenAdminMedicos && (
+              <button
+                onClick={onOpenAdminMedicos}
+                className="flex items-center gap-1.5 bg-gradient-to-r from-amber-950/90 to-slate-900 hover:from-amber-900 hover:to-slate-800 text-amber-300 hover:text-white border border-amber-500/50 text-xs font-bold px-3.5 py-2 rounded-xl shadow-md transition-all cursor-pointer active:scale-95"
+                title="Abrir Panel de Administrador en vivo de Médicos Registrados"
+              >
+                <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>Panel Admin Médicos</span>
               </button>
             )}
 

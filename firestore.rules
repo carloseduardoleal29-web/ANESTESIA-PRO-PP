@@ -1,29 +1,42 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Función auxiliar de validación de texto
-    function isValidString(val, minLen, maxLen) {
-      return val is string && val.size() >= minLen && val.size() <= maxLen;
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-\\.@]+$');
     }
 
-    // Colección central de médicos registrados
-    match /usuarios_anestesiapro/{userId} {
-      // Permitir lectura a la aplicación y panel de administración
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidMedico(data) {
+      return data.keys().hasAll(['id', 'fullName', 'email', 'registeredAt']) &&
+             data.keys().hasOnly(['id', 'fullName', 'email', 'phone', 'country', 'registeredAt', 'device', 'createdAt']) &&
+             data.id is string && data.id.size() <= 128 &&
+             data.fullName is string && data.fullName.size() >= 2 && data.fullName.size() <= 150 &&
+             data.email is string && data.email.size() <= 150 &&
+             (!('phone' in data) || (data.phone is string && data.phone.size() <= 50)) &&
+             (!('country' in data) || (data.country is string && data.country.size() <= 100)) &&
+             data.registeredAt is string && data.registeredAt.size() <= 50 &&
+             (!('device' in data) || (data.device is string && data.device.size() <= 150));
+    }
+
+    match /medicos_registrados/{medicoId} {
       allow read: if true;
-      
-      // Permitir creación de nuevo médico registrado
-      allow create: if request.resource.data.fullName is string
-                    && request.resource.data.email is string
-                    && request.resource.data.medicalId is string;
-                    
-      // Permitir actualización (ej: activación Plan Pro por el admin o actualización de rescate)
-      allow update: if true;
-      
-      allow delete: if false;
+      allow create: if isValidId(medicoId) && isValidMedico(incoming());
+      allow update: if isValidId(medicoId) && isValidMedico(incoming()) && incoming().id == existing().id;
+      allow delete: if isSignedIn();
     }
 
-    // Regla global por defecto
     match /{document=**} {
       allow read, write: if false;
     }

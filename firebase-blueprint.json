@@ -1,60 +1,54 @@
 {
   "entities": {
-    "UserAnestesiaPro": {
-      "title": "Médico Registrado AnestesiaPro",
-      "description": "Perfil profesional de médicos anestesiólogos y residentes registrados en la aplicación.",
+    "MedicoRegistrado": {
+      "title": "MedicoRegistrado",
+      "description": "Registered physician user profile in AnestesiaPro",
       "type": "object",
       "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-\\.@]+$"
+        },
         "fullName": {
           "type": "string",
-          "description": "Nombre completo del profesional de salud",
-          "minLength": 2,
-          "maxLength": 120
+          "maxLength": 150,
+          "minLength": 2
         },
         "email": {
           "type": "string",
-          "description": "Correo electrónico institucional o personal",
           "format": "email",
-          "maxLength": 120
+          "maxLength": 150
         },
-        "medicalId": {
+        "phone": {
           "type": "string",
-          "description": "Número de cédula, matrícula médica o ID profesional",
-          "minLength": 3,
-          "maxLength": 60
-        },
-        "specialty": {
-          "type": "string",
-          "description": "Especialidad médica (ej: Anestesiología, Residente Anestesia, Cuidados Intensivos)",
-          "maxLength": 100
+          "maxLength": 50
         },
         "country": {
           "type": "string",
-          "description": "País de residencia / práctica médica",
-          "maxLength": 80
+          "maxLength": 100
         },
         "registeredAt": {
           "type": "string",
-          "description": "Fecha y hora ISO de registro en la plataforma",
-          "maxLength": 40
+          "maxLength": 50
         },
-        "isPro": {
-          "type": "boolean",
-          "description": "Estado de suscripción / activación de Plan Pro"
-        },
-        "updatedAt": {
+        "device": {
           "type": "string",
-          "description": "Fecha de última actualización de datos o rescate",
-          "maxLength": 40
+          "maxLength": 150
+        },
+        "createdAt": {
+          "type": "string"
         }
       },
-      "required": ["fullName", "email", "medicalId", "specialty", "country", "registeredAt"]
+      "required": ["id", "fullName", "email", "registeredAt"]
     }
   },
   "firestore": {
-    "/usuarios_anestesiapro/{userId}": {
-      "schema": "UserAnestesiaPro",
-      "description": "Colección central con todos los registros de médicos en AnestesiaPro"
+    "/medicos_registrados/{medicoId}": {
+      "schema": {
+        "$ref": "MedicoRegistrado"
+      },
+      "description": "Collection of registered doctors/physicians"
     }
   }
 }
