@@ -10,34 +10,44 @@ interface ResourceShareStripProps {
   compact?: boolean;
 }
 
-export const ResourceShareStrip: React.FC<ResourceShareStripProps> = ({
-  id = '',
-  title = 'Recurso AnestesiaPro',
-  category,
-  summary,
-  compact = true
-}) => {
+export const ResourceShareStrip: React.FC<ResourceShareStripProps> = (props) => {
   const [copied, setCopied] = useState(false);
 
-  // Safe fallback values
-  const safeId = id || 'recurso-clinico';
-  const safeTitle = (title || 'Recurso AnestesiaPro').toString();
-  const safeSummary = (summary || '').toString();
+  // Safe fallback values against null/undefined or unexpected prop types
+  const safeId = props?.id ? String(props.id) : 'recurso-clinico';
+  const safeTitle = props?.title ? String(props.title) : 'Recurso AnestesiaPro';
+  const safeCategory = props?.category ? String(props.category) : undefined;
+  const safeSummary = props?.summary ? String(props.summary) : '';
+  const compact = props?.compact !== false;
 
-  // Generate deep-link to the exact resource
-  const origin = getCanonicalAppOrigin();
-  const shareUrl = `${origin}/?tab=educacion&recurso=${encodeURIComponent(safeId)}`;
+  // Generate deep-link to the exact resource safely
+  let shareUrl = 'https://anestesiapro.app';
+  try {
+    const origin = getCanonicalAppOrigin();
+    shareUrl = `${origin}/?tab=educacion&recurso=${encodeURIComponent(safeId)}`;
+  } catch (e) {
+    console.warn('Error generating canonical shareUrl:', e);
+  }
 
-  const cleanTitle = safeTitle.replace(/[^\w\s\(\)\-\.\,\:\/áéíóúÁÉÍÓÚñÑüÜ💊🩸🧬🌀🧠]/gi, '').trim() || 'Recurso AnestesiaPro';
-  
+  let cleanTitle = 'Recurso AnestesiaPro';
+  try {
+    cleanTitle = safeTitle.replace(/[^\w\s\(\)\-\.\,\:\/áéíóúÁÉÍÓÚñÑüÜ💊🩸🧬🌀🧠]/gi, '').trim() || 'Recurso AnestesiaPro';
+  } catch {
+    cleanTitle = safeTitle || 'Recurso AnestesiaPro';
+  }
+
   // Structured clinical notification message in Spanish as requested
-  const shareMessage = `🩺 *Se publicó en Educación Continua de AnestesiaPro:* ${cleanTitle}\n` +
-    `${category ? `📌 *Categoría:* ${category}\n` : ''}` +
+  let shareMessage = `🩺 *Se publicó en Educación Continua de AnestesiaPro:* ${cleanTitle}\n` +
+    `${safeCategory ? `📌 *Categoría:* ${safeCategory}\n` : ''}` +
     `${safeSummary ? `📝 ${safeSummary.slice(0, 140)}...\n` : ''}` +
     `\n👉 Te comparto el enlace para consultarlo directamente en AnestesiaPro:\n${shareUrl}`;
 
-  // Official universal WhatsApp URL that works on mobile (iOS/Android app) and desktop (web/app) without download redirect loops
-  const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareMessage)}`;
+  let whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareMessage)}`;
+  try {
+    whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareMessage)}`;
+  } catch {
+    whatsappUrl = 'https://api.whatsapp.com';
+  }
 
   const handleNativeShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
