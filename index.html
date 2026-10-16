@@ -87,12 +87,17 @@
     <div id="root"></div>
   <script>
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw-push.js').then(reg => {
-          console.log('[AnestesiaPro Push SW] Service Worker registrado exitosamente:', reg.scope);
-        }).catch(err => {
-          console.warn('[AnestesiaPro Push SW] Error al registrar Service Worker:', err);
+      if (window.caches) {
+        caches.keys().then(function(names) {
+          for (var i = 0; i < names.length; i++) {
+            caches.delete(names[i]);
+          }
         });
+      }
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for(let registration of registrations) {
+          registration.unregister();
+        }
       });
     }
   </script>

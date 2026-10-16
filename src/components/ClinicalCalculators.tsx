@@ -10,7 +10,8 @@ import {
   Sparkles,
   Award,
   AlertTriangle,
-  Stethoscope
+  Stethoscope,
+  Image as ImageIcon
 } from 'lucide-react';
 import { DoctorUser } from '../types/user';
 
@@ -24,6 +25,9 @@ export const ClinicalCalculators: React.FC<ClinicalCalculatorsProps> = ({ user, 
   const [asaClass, setAsaClass] = useState<string>('ASA I');
   const [activeTab, setActiveTab] = useState<'induction' | 'airway' | 'peds' | 'vortex'>('induction');
   const [preAnestheticGenerated, setPreAnestheticGenerated] = useState(false);
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
+
+  const uploadedPhoto = '/uploads/1790526098365_43438.jpg';
 
   // Dosis calculadas según peso corporal
   const propofolDose = (weight * 2).toFixed(1); // 2 mg/kg
@@ -38,9 +42,19 @@ export const ClinicalCalculators: React.FC<ClinicalCalculatorsProps> = ({ user, 
       {/* Top Header */}
       <header className="sticky top-0 z-30 border-b bg-slate-900/90 backdrop-blur-md border-slate-800 px-4 py-3 sm:px-8 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center font-black text-slate-950 text-xl shadow-lg shadow-cyan-500/20">
-            AP
+          
+          {/* Uploaded Photo / Logo Display */}
+          <div className="relative group cursor-pointer" onClick={() => setShowPhotoModal(true)}>
+            <img
+              src={uploadedPhoto}
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = '/app_logo.jpg';
+              }}
+              alt="AnestesiaPro Foto"
+              className="w-11 h-11 rounded-xl object-cover border-2 border-cyan-400 shadow-lg shadow-cyan-500/20 group-hover:scale-105 transition"
+            />
           </div>
+
           <div>
             <div className="flex items-center gap-2">
               <h1 className="font-bold text-slate-100 text-base sm:text-lg">AnestesiaPro</h1>
@@ -61,6 +75,14 @@ export const ClinicalCalculators: React.FC<ClinicalCalculatorsProps> = ({ user, 
 
         <div className="flex items-center gap-2">
           <button
+            onClick={() => setShowPhotoModal(true)}
+            className="px-3 py-1.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition flex items-center gap-1.5"
+          >
+            <ImageIcon className="w-4 h-4 text-cyan-400" />
+            <span className="hidden sm:inline">Ver Foto</span>
+          </button>
+
+          <button
             onClick={onOpenAdmin}
             className="px-3.5 py-1.5 rounded-xl border border-cyan-500/40 bg-cyan-950/40 hover:bg-cyan-900/50 text-cyan-300 text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-cyan-950/50"
           >
@@ -75,14 +97,25 @@ export const ClinicalCalculators: React.FC<ClinicalCalculatorsProps> = ({ user, 
         
         {/* Welcome Status Banner */}
         <div className="p-4 sm:p-6 rounded-2xl border border-slate-800 bg-slate-900/60 shadow-xl flex flex-wrap items-center justify-between gap-4">
-          <div className="space-y-1">
-            <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-              <Stethoscope className="w-5 h-5 text-cyan-400" />
-              <span>Evaluación Preanestésica & Calculadora de Inducción</span>
-            </h2>
-            <p className="text-xs text-slate-400">
-              Sincronización en la nube activa • Cédula/ID: <span className="text-slate-200 font-mono">{user.medicalId}</span> • País: <span className="text-slate-200">{user.country}</span>
-            </p>
+          <div className="flex items-center gap-4">
+            <img
+              src={uploadedPhoto}
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = '/app_logo.jpg';
+              }}
+              alt="Foto AnestesiaPro"
+              onClick={() => setShowPhotoModal(true)}
+              className="w-14 h-14 rounded-xl object-cover border border-cyan-500/40 shadow-md cursor-pointer hover:scale-105 transition"
+            />
+            <div className="space-y-1">
+              <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+                <Stethoscope className="w-5 h-5 text-cyan-400" />
+                <span>Evaluación Preanestésica & Calculadora de Inducción</span>
+              </h2>
+              <p className="text-xs text-slate-400">
+                Sincronización en la nube activa • Cédula/ID: <span className="text-slate-200 font-mono">{user.medicalId}</span> • País: <span className="text-slate-200">{user.country}</span>
+              </p>
+            </div>
           </div>
 
           <div className="flex items-center gap-3 bg-slate-950/80 px-4 py-2 rounded-xl border border-slate-800">
@@ -289,6 +322,27 @@ export const ClinicalCalculators: React.FC<ClinicalCalculatorsProps> = ({ user, 
         )}
 
       </main>
+
+      {/* Photo Modal */}
+      {showPhotoModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md" onClick={() => setShowPhotoModal(false)}>
+          <div className="relative max-w-xl w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
+              <h3 className="font-bold text-slate-100 text-sm">Foto Subida en AnestesiaPro</h3>
+              <button onClick={() => setShowPhotoModal(false)} className="text-slate-400 hover:text-slate-100 text-xs font-bold">✕ Cerrar</button>
+            </div>
+            <img
+              src={uploadedPhoto}
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = '/app_logo.jpg';
+              }}
+              alt="Foto AnestesiaPro"
+              className="w-full h-auto max-h-[70vh] object-contain rounded-xl border border-slate-800"
+            />
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

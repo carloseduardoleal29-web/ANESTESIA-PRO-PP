@@ -1,8 +1,7 @@
 // Professional Native Push & Auto-Updating PWA Service Worker for AnestesiaPro
-const CACHE_NAME = 'anestesiapro-pwa-v2026.2.0-rescue';
+const CACHE_NAME = 'anestesiapro-pwa-v2026.3.0-live';
 
 self.addEventListener('install', (event) => {
-  // Force immediate takeover by waiting service worker on all 200 PWA installs
   self.skipWaiting();
 });
 

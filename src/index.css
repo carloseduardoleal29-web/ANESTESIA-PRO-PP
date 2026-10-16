@@ -14,3 +14,18 @@ body {
 .animate-fadeIn {
   animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+@keyframes marqueeContinuous {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  display: flex;
+  width: max-content;
+  animation: marqueeContinuous 22s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
