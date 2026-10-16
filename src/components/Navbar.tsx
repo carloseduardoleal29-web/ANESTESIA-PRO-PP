@@ -1,77 +1,101 @@
 import React from 'react';
-import { TabType } from '../types';
-import { Home, FileText, Wind, BarChart2, Calculator, BookOpen, GraduationCap, Activity } from 'lucide-react';
-import { recordSectionVisit } from '../lib/statsService';
+import { Activity, BookOpen, Calculator, AlertTriangle, Shield, Bell } from 'lucide-react';
 
 interface NavbarProps {
-  activeTab: TabType;
-  setActiveTab: (tab: TabType) => void;
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
+  onOpenAdmin: () => void;
+  onOpenNotifications: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
-  const tabs = [
-    { id: 'inicio' as TabType, label: 'Inicio', icon: Home },
-    { id: 'preanestesia' as TabType, label: 'Preanestesia', icon: FileText, highlight: true },
-    { id: 'viaAerea' as TabType, label: 'Vía Aérea', icon: Wind },
-    { id: 'escalas' as TabType, label: 'Escalas', icon: BarChart2 },
-    { id: 'indiceShock' as TabType, label: 'Índice Shock', icon: Activity, superHighlight: true },
-    { id: 'calculadora' as TabType, label: 'Calculadora Inducción', fullLabel: 'Calculadora de Inducción Anestésica', icon: Calculator },
-    { id: 'vademecum' as TabType, label: 'Vademécum', fullLabel: 'Vademécum Farmacológico', icon: BookOpen },
-    { id: 'educacion' as TabType, label: 'Educación', icon: GraduationCap, highlight: true, badgeText: 'ERAS' },
-  ];
-
+export const Navbar: React.FC<NavbarProps> = ({
+  activeTab,
+  setActiveTab,
+  onOpenAdmin,
+  onOpenNotifications
+}) => {
   return (
-    <nav className="bg-slate-900/95 backdrop-blur-md border-b border-slate-800 sticky top-0 z-40 shadow-xl">
-      <div className="max-w-7xl mx-auto px-1 sm:px-3">
-        <div className="flex items-center justify-start lg:justify-center gap-1 sm:gap-1.5 py-1.5 overflow-x-auto scrollbar-none px-0.5">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            const isSuper = tab.superHighlight;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  recordSectionVisit(tab.id);
-                  setActiveTab(tab.id);
-                }}
-                className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 lg:px-3 py-1.5 rounded-xl transition-all duration-200 text-[11px] sm:text-xs font-bold cursor-pointer shrink-0 active:scale-95 select-none ${
-                  isActive
-                    ? isSuper 
-                      ? 'bg-gradient-to-r from-rose-600 via-indigo-600 to-cyan-600 text-white shadow-md shadow-rose-600/30 ring-2 ring-rose-400/50'
-                      : 'bg-blue-600 text-white shadow-md shadow-blue-600/30 ring-2 ring-blue-400/50'
-                    : isSuper
-                    ? 'text-rose-300 bg-rose-950/40 hover:bg-rose-900/60 border border-rose-500/40'
-                    : tab.highlight
-                    ? 'text-cyan-300 bg-cyan-950/40 hover:bg-cyan-900/50 border border-cyan-500/30'
-                    : 'text-slate-300 hover:text-white bg-slate-950/60 hover:bg-slate-800/80 border border-slate-800'
-                }`}
-                title={tab.fullLabel || tab.label}
-              >
-                <Icon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${isActive ? 'text-white' : isSuper ? 'text-rose-400 animate-pulse' : tab.highlight ? 'text-cyan-400' : 'text-slate-400'}`} />
-                {tab.fullLabel ? (
-                  <>
-                    <span className="whitespace-nowrap hidden 2xl:inline">{tab.fullLabel}</span>
-                    <span className="whitespace-nowrap 2xl:hidden">{tab.label}</span>
-                  </>
-                ) : (
-                  <span className="whitespace-nowrap">{tab.label}</span>
-                )}
-                {isSuper && !isActive && (
-                  <span className="text-[8px] font-black uppercase px-1 py-0.2 rounded-full bg-rose-500 text-slate-950 animate-pulse shrink-0">
-                    NUEVO
-                  </span>
-                )}
-                {tab.badgeText && !isActive && (
-                  <span className="text-[8px] font-black uppercase px-1 py-0.2 rounded-full bg-cyan-400 text-slate-950 animate-pulse shrink-0">
-                    {tab.badgeText}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+    <header className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 shadow-xl">
+      <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+        {/* Brand */}
+        <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveTab('preanesthesia')}>
+          <div className="w-10 h-10 bg-gradient-to-tr from-cyan-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-cyan-600/30">
+            <Activity className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+              AnestesiaPro <span className="text-[10px] bg-cyan-500/20 text-cyan-300 border border-cyan-400/30 px-2 py-0.5 rounded-full font-semibold">2026</span>
+            </h1>
+            <p className="text-xs text-slate-400 hidden sm:block">Plataforma Clínica y Educación Continua</p>
+          </div>
+        </div>
+
+        {/* Navigation Tabs */}
+        <nav className="hidden md:flex items-center gap-2 bg-slate-950 p-1.5 rounded-xl border border-slate-800">
+          <button
+            onClick={() => setActiveTab('preanesthesia')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
+              activeTab === 'preanesthesia'
+                ? 'bg-cyan-600 text-white shadow-md shadow-cyan-600/30'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+            }`}
+          >
+            <Activity className="w-4 h-4" /> Preanestesia
+          </button>
+
+          <button
+            onClick={() => setActiveTab('educacion')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
+              activeTab === 'educacion'
+                ? 'bg-cyan-600 text-white shadow-md shadow-cyan-600/30'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+            }`}
+          >
+            <BookOpen className="w-4 h-4" /> Educación Continua
+          </button>
+
+          <button
+            onClick={() => setActiveTab('calculators')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
+              activeTab === 'calculators'
+                ? 'bg-cyan-600 text-white shadow-md shadow-cyan-600/30'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+            }`}
+          >
+            <Calculator className="w-4 h-4" /> Calculadoras
+          </button>
+
+          <button
+            onClick={() => setActiveTab('crisis')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
+              activeTab === 'crisis'
+                ? 'bg-cyan-600 text-white shadow-md shadow-cyan-600/30'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+            }`}
+          >
+            <AlertTriangle className="w-4 h-4" /> Crisis
+          </button>
+        </nav>
+
+        {/* Actions */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onOpenNotifications}
+            className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors relative"
+            title="Notificaciones"
+          >
+            <Bell className="w-4 h-4" />
+            <span className="absolute top-1 right-1 w-2 h-2 bg-cyan-400 rounded-full animate-ping"></span>
+          </button>
+
+          <button
+            onClick={onOpenAdmin}
+            className="flex items-center gap-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors shadow-sm"
+          >
+            <Shield className="w-4 h-4 text-indigo-400" /> Admin
+          </button>
         </div>
       </div>
-    </nav>
+    </header>
   );
 };

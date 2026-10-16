@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { Share2, MessageCircle, Copy, Check, Sparkles, Send } from 'lucide-react';
-import { SHORT_APP_URL, getCanonicalAppOrigin } from '../../lib/statsService';
+import { Share2, Copy, Check, MessageSquare, Globe } from 'lucide-react';
 
 interface ResourceShareStripProps {
-  id: string;
-  title: string;
+  id?: string;
+  title?: string;
   category?: string;
   summary?: string;
   compact?: boolean;
@@ -13,133 +12,58 @@ interface ResourceShareStripProps {
 export const ResourceShareStrip: React.FC<ResourceShareStripProps> = (props) => {
   const [copied, setCopied] = useState(false);
 
-  // Safe fallback values against null/undefined or unexpected prop types
-  const safeId = props?.id ? String(props.id) : 'recurso-clinico';
+  const safeId = props?.id ? String(props.id) : 'recurso';
   const safeTitle = props?.title ? String(props.title) : 'Recurso AnestesiaPro';
-  const safeCategory = props?.category ? String(props.category) : undefined;
   const safeSummary = props?.summary ? String(props.summary) : '';
-  const compact = props?.compact !== false;
 
-  // Generate deep-link to the exact resource safely
-  let shareUrl = 'https://anestesiapro.app';
-  try {
-    const origin = getCanonicalAppOrigin();
-    shareUrl = `${origin}/?tab=educacion&recurso=${encodeURIComponent(safeId)}`;
-  } catch (e) {
-    console.warn('Error generating canonical shareUrl:', e);
-  }
+  const currentUrl = typeof window !== 'undefined' ? window.location.href.split('#')[0] + '#res=' + safeId : '';
+  const shareText = `📚 AnestesiaPro Educación Continua: "${safeTitle}"\n${safeSummary}\n🔗 ${currentUrl}`;
 
-  let cleanTitle = 'Recurso AnestesiaPro';
-  try {
-    cleanTitle = safeTitle.replace(/[^\w\s\(\)\-\.\,\:\/áéíóúÁÉÍÓÚñÑüÜ💊🩸🧬🌀🧠]/gi, '').trim() || 'Recurso AnestesiaPro';
-  } catch {
-    cleanTitle = safeTitle || 'Recurso AnestesiaPro';
-  }
-
-  // Structured clinical notification message in Spanish as requested
-  let shareMessage = `🩺 *Se publicó en Educación Continua de AnestesiaPro:* ${cleanTitle}\n` +
-    `${safeCategory ? `📌 *Categoría:* ${safeCategory}\n` : ''}` +
-    `${safeSummary ? `📝 ${safeSummary.slice(0, 140)}...\n` : ''}` +
-    `\n👉 Te comparto el enlace para consultarlo directamente en AnestesiaPro:\n${shareUrl}`;
-
-  let whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareMessage)}`;
-  try {
-    whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareMessage)}`;
-  } catch {
-    whatsappUrl = 'https://api.whatsapp.com';
-  }
-
-  const handleNativeShare = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: cleanTitle,
-          text: `Se publicó en Educación Continua de AnestesiaPro: ${cleanTitle}`,
-          url: shareUrl
-        });
-        return;
-      } catch (err) {
-        // User cancelled or share failed, fallback to copy
-        if ((err as Error).name !== 'AbortError') {
-          handleCopyLink(e);
-        }
-      }
-    } else {
-      handleCopyLink(e);
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(shareText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      // fallback
     }
   };
 
-  const handleCopyLink = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
-    }
+  const handleWhatsApp = () => {
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`, '_blank');
+  };
+
+  const handleWebShare = () => {
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`, '_blank');
   };
 
   return (
-    <div 
-      onClick={(e) => e.stopPropagation()}
-      className={`rounded-xl bg-gradient-to-r from-slate-900/95 via-cyan-950/40 to-slate-900/95 border border-cyan-500/30 p-2 sm:p-2.5 flex flex-wrap items-center justify-between gap-2 shadow-sm ${
-        compact ? 'text-xs' : 'text-sm'
-      }`}
-    >
-      <div className="flex items-center gap-1.5 text-cyan-200">
-        <div className="p-1 bg-cyan-500/20 rounded-lg text-cyan-300">
-          <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-        </div>
-        <span className="text-[11px] font-bold text-slate-200 tracking-wide">
-          Compartir con colegas:
-        </span>
-      </div>
-
-      <div className="flex items-center gap-1.5">
-        {/* WhatsApp Direct Universal Link */}
-        <a
-          href={whatsappUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={(e) => e.stopPropagation()}
-          className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-extrabold text-[11px] px-2.5 py-1.5 rounded-lg shadow-sm transition-all cursor-pointer hover:scale-105"
-          title="Compartir directo por WhatsApp"
-        >
-          <MessageCircle className="w-3.5 h-3.5 fill-current" />
-          <span className="hidden sm:inline">WhatsApp</span>
-        </a>
-
-        {/* Native Mobile Share (Instagram, Telegram, X, Email) */}
-        <button
-          type="button"
-          onClick={handleNativeShare}
-          className="inline-flex items-center gap-1 bg-cyan-700/80 hover:bg-cyan-600 text-white font-bold text-[11px] px-2 py-1.5 rounded-lg border border-cyan-500/40 transition-all cursor-pointer hover:scale-105"
-          title="Compartir en Redes (Instagram, Telegram, SMS)"
-        >
-          <Share2 className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Redes</span>
-        </button>
-
-        {/* Copy Link Button */}
-        <button
-          type="button"
-          onClick={handleCopyLink}
-          className="inline-flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-[11px] px-2 py-1.5 rounded-lg border border-slate-700 transition-all cursor-pointer hover:text-white"
-          title="Copiar enlace directo"
-        >
-          {copied ? (
-            <>
-              <Check className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="text-emerald-400 font-extrabold">¡Copiado!</span>
-            </>
-          ) : (
-            <>
-              <Copy className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Enlace</span>
-            </>
-          )}
-        </button>
-      </div>
+    <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-slate-700/60 mt-4 text-xs text-slate-300">
+      <span className="flex items-center gap-1 font-medium text-cyan-400">
+        <Share2 className="w-3.5 h-3.5" /> Compartir recurso:
+      </span>
+      <button
+        onClick={handleWhatsApp}
+        className="flex items-center gap-1 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 px-2.5 py-1 rounded-md transition-colors border border-emerald-500/30"
+        title="Compartir por WhatsApp"
+      >
+        <MessageSquare className="w-3 h-3" /> WhatsApp
+      </button>
+      <button
+        onClick={handleWebShare}
+        className="flex items-center gap-1 bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 px-2.5 py-1 rounded-md transition-colors border border-sky-500/30"
+        title="Compartir en Redes"
+      >
+        <Globe className="w-3 h-3" /> Redes
+      </button>
+      <button
+        onClick={handleCopy}
+        className="flex items-center gap-1 bg-slate-700/50 hover:bg-slate-700 text-slate-200 px-2.5 py-1 rounded-md transition-colors border border-slate-600 ml-auto"
+        title="Copiar enlace"
+      >
+        {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+        {copied ? '¡Copiado!' : 'Copiar'}
+      </button>
     </div>
   );
 };

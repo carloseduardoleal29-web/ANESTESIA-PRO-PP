@@ -3,7 +3,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-\\.@]+$');
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-\\.\\@]+$');
     }
 
     function incoming() {
@@ -19,26 +19,39 @@ service cloud.firestore {
     }
 
     function isValidMedico(data) {
-      return data.keys().hasAll(['id', 'fullName', 'email', 'registeredAt']) &&
-             data.keys().hasOnly(['id', 'fullName', 'email', 'phone', 'country', 'registeredAt', 'device', 'createdAt']) &&
+      return data.keys().hasAll(['id', 'fullName', 'email', 'country']) &&
+             data.keys().hasOnly(['id', 'fullName', 'email', 'phone', 'country', 'deviceInfo', 'createdAt']) &&
              data.id is string && data.id.size() <= 128 &&
-             data.fullName is string && data.fullName.size() >= 2 && data.fullName.size() <= 150 &&
-             data.email is string && data.email.size() <= 150 &&
+             data.fullName is string && data.fullName.size() <= 200 &&
+             data.email is string && data.email.size() <= 200 &&
+             data.country is string && data.country.size() <= 100 &&
              (!('phone' in data) || (data.phone is string && data.phone.size() <= 50)) &&
-             (!('country' in data) || (data.country is string && data.country.size() <= 100)) &&
-             data.registeredAt is string && data.registeredAt.size() <= 50 &&
-             (!('device' in data) || (data.device is string && data.device.size() <= 150));
+             (!('deviceInfo' in data) || (data.deviceInfo is string && data.deviceInfo.size() <= 200)) &&
+             (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 100));
     }
 
-    match /medicos_registrados/{medicoId} {
-      allow read: if true;
-      allow create: if isValidId(medicoId) && isValidMedico(incoming());
-      allow update: if isValidId(medicoId) && isValidMedico(incoming()) && incoming().id == existing().id;
-      allow delete: if isSignedIn();
+    function isValidResource(data) {
+      return data.keys().hasAll(['id', 'title', 'category']) &&
+             data.keys().hasOnly(['id', 'title', 'category', 'summary', 'type', 'date', 'videoUrl', 'imageUrl', 'content']) &&
+             data.id is string && data.id.size() <= 128 &&
+             data.title is string && data.title.size() <= 300 &&
+             data.category is string && data.category.size() <= 100;
     }
 
     match /{document=**} {
       allow read, write: if false;
+    }
+
+    match /medicos_registrados/{medicoId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(medicoId) && isValidMedico(incoming());
+      allow update: if isSignedIn() && isValidId(medicoId) && isValidMedico(incoming()) && incoming().id == existing().id;
+      allow delete: if isSignedIn();
+    }
+
+    match /education_resources/{resourceId} {
+      allow get, list: if true;
+      allow create, update, delete: if isSignedIn() && isValidId(resourceId);
     }
   }
 }
