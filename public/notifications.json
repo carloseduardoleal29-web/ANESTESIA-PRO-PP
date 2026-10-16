@@ -1,40 +1,57 @@
 [
   {
-    "id": "push-broadcast-1792083547815",
-    "title": "🚨 ALERTA PUSH A TODOS LOS MÉDICOS REGISTRADOS",
-    "message": "Estimados colegas, se ha actualizado la suite clínica AnestesiaPro con nuevo atlas anatómico y contadores en tiempo real. Toca para abrir.",
-    "date": "2026-10-15",
-    "badge": "DIFUSIÓN DPC",
+    "id": "notif-16-octubre-1792152834055",
+    "title": "🎉 ¡16 de Octubre: Feliz Día del Anestesiólogo!",
+    "message": "El Dr. Carlos Leal ha publicado un Carrusel Homenaje por el Día Mundial del Anestesiólogo. ¡Toca para verlo!",
+    "date": "2026-10-16",
+    "badge": "EFEMÉRIDE OFICIAL",
+    "resourceId": "res-dia-del-anestesiologo-16-octubre-2026",
     "author": "Dr. Carlos Leal (Autor)",
     "icon": "/pwa-192x192.png",
-    "appLogo": "/pwa-192x192.png",
-    "isPushBroadcast": true,
-    "url": "/?source=push_broadcast"
+    "appLogo": "/pwa-192x192.png"
   },
   {
-    "id": "notif-user-usr_1792082975628_gcgkq",
-    "title": "👤 ¡NUEVO COLEGA REGISTRADO: Dra. María Fernanda Gómez!",
-    "message": "El Dr(a). Dra. María Fernanda Gómez (🇻🇪 Venezuela, C.I: V-20114890, Anestesiología Obstétrica) se ha registrado en AnestesiaPro desde Dispositivo Web. Tel: +58 412 777 6655.",
-    "date": "2026-10-15",
+    "id": "notif-user-usr_1791667629992_sxjwm",
+    "title": "👤 ¡NUEVO COLEGA REGISTRADO: Dr. Test Verification!",
+    "message": "El Dr(a). Dr. Test Verification (🇻🇪 Venezuela, C.I: V-20111222, Médico Especialista en Anestesiología) se ha registrado en AnestesiaPro desde Dispositivo Web. Tel: +584141112233.",
+    "date": "2026-10-10",
     "badge": "NUEVO REGISTRO 👤",
     "resourceId": "",
     "author": "Sistema AnestesiaPro"
   },
   {
-    "id": "notif-1792082457834",
-    "title": "🩺 ¡ACTUALIZACIÓN SISTEMA ANESTESIAPRO v2.5.0!",
-    "message": "Se han optimizado los contadores globales en tiempo real, el carnet digital de anestesiólogo, las calculadoras de dosis y la sincronización con la nube para todos los dispositivos y quirófanos.",
-    "date": "2026-10-15",
-    "badge": "ACTUALIZACIÓN 🚀",
+    "id": "notif-user-usr_1791452342169_7pqwr",
+    "title": "👤 ¡NUEVO COLEGA REGISTRADO: Dra. Valentina Morales!",
+    "message": "El Dr(a). Dra. Valentina Morales (🇻🇪 Venezuela, C.I: V-19876543, Médico Especialista en Anestesiología y Reanimación) se ha registrado en AnestesiaPro desde Dispositivo Web. Tel: +584129876543.",
+    "date": "2026-10-08",
+    "badge": "NUEVO REGISTRO 👤",
     "resourceId": "",
-    "author": "Dr. Carlos Leal"
+    "author": "Sistema AnestesiaPro"
   },
   {
-    "id": "notif-user-usr_1792080674460_na01d",
-    "title": "👤 ¡NUEVO COLEGA REGISTRADO: Dr. Carlos Manuel Silva!",
-    "message": "El Dr(a). Dr. Carlos Manuel Silva (🇻🇪 Venezuela, C.I: V-18992011, Anestesiología General) se ha registrado en AnestesiaPro desde Dispositivo Web. Tel: +58 412 888 9900.",
-    "date": "2026-10-15",
-    "badge": "NUEVO REGISTRO 👤",
+    "id": "notif-1791117004646",
+    "title": "📋 Ficha Preanestésica Generada",
+    "message": "Se generó un nuevo informe PDF de Evaluación Preanestésica.",
+    "date": "2026-10-04",
+    "badge": "PREANESTESIA",
+    "resourceId": "res-evaluacion-preanestesica",
+    "author": "Sistema AnestesiaPro"
+  },
+  {
+    "id": "notif-install-1790070548000",
+    "title": "📲 ¡NUEVA INSTALACIÓN DE ANESTESIAPRO!",
+    "message": "Un nuevo colega ha instalado exitosamente la app en su Computadora PC (Windows) 💻 (🇻🇪 Venezuela). Total acumulado: 208 instalaciones activas.",
+    "date": "2026-09-21",
+    "badge": "NUEVA INSTALACIÓN 📲",
+    "resourceId": "",
+    "author": "Sistema AnestesiaPro"
+  },
+  {
+    "id": "notif-install-1789815235546",
+    "title": "📲 ¡NUEVA INSTALACIÓN DE ANESTESIAPRO!",
+    "message": "Un nuevo colega ha instalado exitosamente la app en su Smartphone Android 📱 (🇻🇪 Venezuela). Total acumulado: 207 instalaciones activas.",
+    "date": "2026-09-19",
+    "badge": "NUEVA INSTALACIÓN 📲",
     "resourceId": "",
     "author": "Sistema AnestesiaPro"
   }

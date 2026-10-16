@@ -1,0 +1,134 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 100" width="100%" height="100%">
+  <defs>
+    <!-- Metallic Chrome Cyan Gradients for CE Emblem -->
+    <linearGradient id="hdrChromeCyan" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e0f2fe" />
+      <stop offset="25%" stop-color="#bae6fd" />
+      <stop offset="50%" stop-color="#38bdf8" />
+      <stop offset="75%" stop-color="#0284c7" />
+      <stop offset="100%" stop-color="#0369a1" />
+    </linearGradient>
+
+    <linearGradient id="hdrArrowGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0284c7" />
+      <stop offset="35%" stop-color="#38bdf8" />
+      <stop offset="70%" stop-color="#7dd3fc" />
+      <stop offset="100%" stop-color="#e0f2fe" />
+    </linearGradient>
+
+    <linearGradient id="hdrTextGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="60%" stop-color="#cbd5e1" />
+      <stop offset="100%" stop-color="#94a3b8" />
+    </linearGradient>
+
+    <filter id="hdrDropShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000000" flood-opacity="0.6" />
+    </filter>
+
+    <filter id="hdrGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="6" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Ambient Glow Behind Emblem -->
+  <ellipse cx="55" cy="50" rx="45" ry="35" fill="#0284c7" opacity="0.35" filter="url(#hdrGlow)" />
+
+  <!-- 3D METALLIC EMBLEM ON LEFT (SCALE ~0.4, CENTER 55, 50) -->
+  <g transform="translate(55, 48) scale(0.38)" filter="url(#hdrDropShadow)" text-anchor="middle">
+    <!-- Back Glow Contour -->
+    <g opacity="0.4" filter="url(#hdrGlow)">
+      <path d="M -20 -70 C -75 -70 -120 -25 -120 20 C -120 65 -75 110 -20 110 C 15 110 40 95 55 75 L 25 55 C 15 70 -3 82 -20 82 C -55 82 -88 52 -88 20 C -88 -12 -55 -42 -20 -42 C 0 -42 20 -30 32 -15 L 62 -35 C 40 -58 12 -70 -20 -70 Z" fill="#38bdf8" />
+      <path d="M -5 -65 L 85 -65 L 85 -37 L 25 -37 L 25 -10 L 75 -10 L 75 18 L 25 18 L 25 78 L 90 78 L 90 106 L -5 106 Z" fill="#0284c7" />
+    </g>
+
+    <!-- Main Solid 3D Base: Letter E -->
+    <path d="M 0 -62 L 95 -62 L 95 -34 L 32 -34 L 32 -6 L 82 -6 L 82 20 L 32 20 L 32 78 L 98 78 L 98 106 L 0 106 Z" 
+          fill="url(#hdrChromeCyan)" 
+          stroke="#0369a1" 
+          stroke-width="3" 
+          stroke-linejoin="round" />
+
+    <!-- Top Highlight Line on E -->
+    <path d="M 2 -60 L 93 -60 L 93 -36 L 34 -36 L 34 -4 L 80 -4 L 80 18 L 34 18 L 34 80 L 96 80 L 96 104 L 2 104 Z" 
+          fill="none" 
+          stroke="#e0f2fe" 
+          stroke-width="1.5" 
+          opacity="0.75" />
+
+    <!-- Main Solid 3D Base: Letter C -->
+    <path d="M -15 -68 C -70 -68 -118 -25 -118 20 C -118 65 -70 108 -15 108 C 22 108 55 88 68 62 L 40 44 C 28 62 8 78 -15 78 C -52 78 -86 48 -86 20 C -86 -8 -52 -38 -15 -38 C 5 -38 25 -25 38 -10 L 68 -28 C 50 -52 18 -68 -15 -68 Z" 
+          fill="url(#hdrChromeCyan)" 
+          stroke="#bae6fd" 
+          stroke-width="3.5" 
+          stroke-linejoin="round" />
+
+    <!-- Inner Metallic Sheen Arc on C -->
+    <path d="M -15 -62 C -65 -62 -110 -20 -110 20 C -110 60 -65 100 -15 100 C 18 100 48 82 60 58" 
+          fill="none" 
+          stroke="#ffffff" 
+          stroke-width="2" 
+          opacity="0.85" />
+
+    <!-- Dynamic Ascending Swoosh & Arrowhead -->
+    <path d="M -45 52 C -20 62 10 50 35 15 C 55 -15 80 -45 110 -68" 
+          fill="none" 
+          stroke="url(#hdrArrowGrad)" 
+          stroke-width="12" 
+          stroke-linecap="round" />
+
+    <path d="M -42 52 C -18 61 10 50 35 15 C 55 -15 80 -45 106 -66" 
+          fill="none" 
+          stroke="#ffffff" 
+          stroke-width="4" 
+          stroke-linecap="round" 
+          opacity="0.95" />
+
+    <polygon points="112,-88 126,-50 92,-64" 
+             fill="url(#hdrArrowGrad)" 
+             stroke="#ffffff" 
+             stroke-width="2.5" 
+             stroke-linejoin="round" />
+  </g>
+
+  <!-- TYPOGRAPHY: C.E. LEAL studio + SOFTWARE & MEDICAL APPS -->
+  <g text-anchor="start">
+    <!-- C.E. LEAL -->
+    <text x="115" y="44" 
+          fill="#ffffff" 
+          font-family="system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" 
+          font-size="34" 
+          font-weight="900" 
+          letter-spacing="3"
+          filter="drop-shadow(0 2px 6px rgba(0,0,0,0.6))">
+      C.E. LEAL
+    </text>
+
+    <!-- studio -->
+    <text x="312" y="44" 
+          fill="url(#hdrTextGrad)" 
+          font-family="system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" 
+          font-size="28" 
+          font-weight="400" 
+          letter-spacing="2"
+          filter="drop-shadow(0 2px 6px rgba(0,0,0,0.5))">
+      studio
+    </text>
+
+    <!-- Divider Accent Line -->
+    <line x1="115" y1="56" x2="445" y2="56" stroke="#38bdf8" stroke-width="1.8" opacity="0.6" stroke-linecap="round" />
+    <circle cx="280" cy="56" r="2.5" fill="#38bdf8" opacity="0.9" />
+
+    <!-- SOFTWARE & MEDICAL APPS -->
+    <text x="115" y="78" 
+          fill="#94a3b8" 
+          font-family="system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" 
+          font-size="14.5" 
+          font-weight="800" 
+          letter-spacing="4.5"
+          filter="drop-shadow(0 1px 3px rgba(0,0,0,0.5))">
+      SOFTWARE &amp; MEDICAL APPS
+    </text>
+  </g>
+</svg>
