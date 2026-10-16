@@ -28,6 +28,22 @@ export function App() {
         // ignore
       }
     }
+
+    try {
+      const hash = window.location.hash;
+      if (hash && hash.includes('#res=')) {
+        const resId = hash.split('#res=')[1];
+        if (resId) {
+          try {
+            setSelectedEducationId(decodeURIComponent(resId));
+          } catch {
+            setSelectedEducationId(resId);
+          }
+        }
+      }
+    } catch {
+      // ignore URI errors
+    }
   }, []);
 
   const handleVerified = (verifiedMedico: MedicoRegistrado) => {

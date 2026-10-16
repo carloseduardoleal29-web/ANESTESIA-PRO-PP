@@ -16,7 +16,13 @@ export const ResourceShareStrip: React.FC<ResourceShareStripProps> = (props) => 
   const safeTitle = props?.title ? String(props.title) : 'Recurso AnestesiaPro';
   const safeSummary = props?.summary ? String(props.summary) : '';
 
-  const currentUrl = typeof window !== 'undefined' ? window.location.href.split('#')[0] + '#res=' + safeId : '';
+  let currentUrl = '';
+  try {
+    currentUrl = typeof window !== 'undefined' ? window.location.href.split('#')[0] + '#res=' + safeId : '';
+  } catch {
+    currentUrl = '#res=' + safeId;
+  }
+
   const shareText = `📚 AnestesiaPro Educación Continua: "${safeTitle}"\n${safeSummary}\n🔗 ${currentUrl}`;
 
   const handleCopy = async () => {
@@ -30,11 +36,19 @@ export const ResourceShareStrip: React.FC<ResourceShareStripProps> = (props) => 
   };
 
   const handleWhatsApp = () => {
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`, '_blank');
+    try {
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`, '_blank');
+    } catch {
+      // ignore
+    }
   };
 
   const handleWebShare = () => {
-    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`, '_blank');
+    try {
+      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`, '_blank');
+    } catch {
+      // ignore
+    }
   };
 
   return (
@@ -61,7 +75,7 @@ export const ResourceShareStrip: React.FC<ResourceShareStripProps> = (props) => 
         className="flex items-center gap-1 bg-slate-700/50 hover:bg-slate-700 text-slate-200 px-2.5 py-1 rounded-md transition-colors border border-slate-600 ml-auto"
         title="Copiar enlace"
       >
-        {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+        {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
         {copied ? '¡Copiado!' : 'Copiar'}
       </button>
     </div>
