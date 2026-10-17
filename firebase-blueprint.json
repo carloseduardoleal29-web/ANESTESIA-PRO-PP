@@ -1,0 +1,135 @@
+{
+  "entities": {
+    "UserAnestesiaPro": {
+      "title": "Médico Registrado AnestesiaPro",
+      "description": "Perfil profesional de médicos anestesiólogos y residentes registrados en la aplicación.",
+      "type": "object",
+      "properties": {
+        "fullName": {
+          "type": "string",
+          "description": "Nombre completo del profesional de salud",
+          "minLength": 2,
+          "maxLength": 120
+        },
+        "email": {
+          "type": "string",
+          "description": "Correo electrónico institucional o personal",
+          "format": "email",
+          "maxLength": 120
+        },
+        "medicalId": {
+          "type": "string",
+          "description": "Número de cédula, matrícula médica o ID profesional",
+          "minLength": 3,
+          "maxLength": 60
+        },
+        "specialty": {
+          "type": "string",
+          "description": "Especialidad médica (ej: Anestesiología, Residente Anestesia, Cuidados Intensivos)",
+          "maxLength": 100
+        },
+        "country": {
+          "type": "string",
+          "description": "País de residencia / práctica médica",
+          "maxLength": 80
+        },
+        "registeredAt": {
+          "type": "string",
+          "description": "Fecha y hora ISO de registro en la plataforma",
+          "maxLength": 40
+        },
+        "isPro": {
+          "type": "boolean",
+          "description": "Estado de suscripción / activación de Plan Pro"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Fecha de última actualización de datos o rescate",
+          "maxLength": 40
+        }
+      },
+      "required": ["fullName", "email", "medicalId", "specialty", "country", "registeredAt"]
+    },
+    "NotificationAnestesiaPro": {
+      "title": "Notificación y Difusión AnestesiaPro",
+      "description": "Mensajes y alertas push emitidos para el cuerpo médico de anestesiología.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Título de la notificación",
+          "minLength": 2,
+          "maxLength": 150
+        },
+        "message": {
+          "type": "string",
+          "description": "Contenido del mensaje de difusión",
+          "minLength": 2,
+          "maxLength": 1000
+        },
+        "date": {
+          "type": "string",
+          "description": "Fecha ISO o formato AAAA-MM-DD",
+          "maxLength": 40
+        },
+        "badge": {
+          "type": "string",
+          "description": "Insignia o etiqueta de la alerta",
+          "maxLength": 50
+        },
+        "author": {
+          "type": "string",
+          "description": "Autor o remitente de la alerta",
+          "maxLength": 100
+        },
+        "isPushBroadcast": {
+          "type": "boolean",
+          "description": "Indica si es una alerta push global emitida a todos los médicos"
+        }
+      },
+      "required": ["title", "message", "date"]
+    },
+    "EventAnestesiaPro": {
+      "title": "Evento de Auditoría AnestesiaPro",
+      "description": "Registro de eventos de instalación, rescate y registros en la plataforma.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Título descriptivo del evento",
+          "maxLength": 150
+        },
+        "detail": {
+          "type": "string",
+          "description": "Detalle técnico o clínico del evento",
+          "maxLength": 500
+        },
+        "device": {
+          "type": "string",
+          "description": "Dispositivo o entorno de ejecución",
+          "maxLength": 80
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Marca de tiempo ISO del evento",
+          "maxLength": 40
+        }
+      },
+      "required": ["title", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/usuarios_anestesiapro/{userId}": {
+      "schema": "UserAnestesiaPro",
+      "description": "Colección central con todos los registros de médicos en AnestesiaPro"
+    },
+    "/notificaciones_anestesiapro/{notifId}": {
+      "schema": "NotificationAnestesiaPro",
+      "description": "Colección con las notificaciones y alertas push emitidas por los médicos administradores"
+    },
+    "/eventos_anestesiapro/{eventId}": {
+      "schema": "EventAnestesiaPro",
+      "description": "Colección con los registros de auditoría y eventos de actividad reciente"
+    }
+  }
+}

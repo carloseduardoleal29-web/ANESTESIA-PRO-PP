@@ -1,0 +1,168 @@
+@import "tailwindcss";
+
+/* 
+ * ANESTESIAPRO - RESPONSIVE & MOBILE-FIRST ENGINE
+ * Ensures 100% fluid scaling across mobile phones, tablets, and desktops
+ * without requiring manual desktop-site toggling or forced zoom.
+ */
+
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+  overflow-x: hidden !important;
+  touch-action: manipulation;
+}
+
+body {
+  width: 100%;
+  max-width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: clip;
+  overflow-x: hidden !important;
+  overscroll-behavior-x: none;
+  position: relative;
+  margin: 0;
+  padding: 0;
+  padding-top: var(--sat);
+  padding-bottom: var(--sab);
+  padding-left: var(--sal);
+  padding-right: var(--sar);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+  overflow-x: hidden !important;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Fluid graphics and media */
+img, picture, video, canvas, svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Typography overflow protection */
+p, h1, h2, h3, h4, h5, h6, span, a, label, li, td, th {
+  overflow-wrap: break-word;
+}
+
+/* Tables and data grids */
+table {
+  width: 100%;
+  max-width: 100%;
+  border-collapse: collapse;
+}
+
+.table-responsive, .table-container {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Code and preformatted blocks */
+pre, code {
+  max-width: 100%;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Form controls fluid layout */
+input, textarea, select, button {
+  max-width: 100%;
+}
+
+/* Prevent unwanted iOS auto-zoom on input focus (requires >= 16px font-size) */
+@media screen and (max-width: 640px) {
+  input[type="text"],
+  input[type="number"],
+  input[type="search"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="password"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Clean scrollbar styling for touch devices */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ==========================================================
+ * ANESTESIAPRO - CLINICAL LOGO & MEDICAL VITALITY ANIMATIONS
+ * ========================================================== */
+@keyframes cardiac-pulse {
+  0% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(56, 189, 248, 0)); }
+  12% { transform: scale(1.07); filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.75)); }
+  22% { transform: scale(1.01); filter: drop-shadow(0 0 4px rgba(56, 189, 248, 0.3)); }
+  34% { transform: scale(1.10); filter: drop-shadow(0 0 14px rgba(56, 189, 248, 0.9)); }
+  55% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(56, 189, 248, 0)); }
+  100% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(56, 189, 248, 0)); }
+}
+
+@keyframes specular-sweep {
+  0% { transform: translateX(-180%) skewX(-22deg); opacity: 0; }
+  15% { opacity: 0.75; }
+  35% { transform: translateX(220%) skewX(-22deg); opacity: 0; }
+  100% { transform: translateX(220%) skewX(-22deg); opacity: 0; }
+}
+
+@keyframes aura-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes vital-glow {
+  0%, 100% { opacity: 0.4; transform: scale(0.96); }
+  50% { opacity: 0.9; transform: scale(1.06); }
+}
+
+.animate-cardiac-logo {
+  animation: cardiac-pulse 2.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  transform-origin: center;
+}
+
+.animate-specular-sweep {
+  animation: specular-sweep 4.5s ease-in-out infinite;
+}
+
+.animate-aura-spin {
+  animation: aura-spin 8s linear infinite;
+}
+
+.animate-vital-glow {
+  animation: vital-glow 2.8s ease-in-out infinite;
+}
+
+

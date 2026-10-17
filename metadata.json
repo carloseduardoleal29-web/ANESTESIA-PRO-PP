@@ -1,6 +1,6 @@
 {
-  "name": "AnestesiaPro",
-  "description": "Aplicación médica de anestesiología: evaluación preanestésica, vía aérea, escalas clínicas, calculadora de dosis y vademécum farmacológico.",
+  "name": "Knyeega",
+  "description": "Aplicación Knyeega - Suite médica y clínica.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
