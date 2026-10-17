@@ -1,0 +1,41 @@
+[
+  {
+    "id": "push-broadcast-1792083547815",
+    "title": "🚨 ALERTA PUSH A TODOS LOS MÉDICOS REGISTRADOS",
+    "message": "Estimados colegas, se ha actualizado la suite clínica AnestesiaPro con nuevo atlas anatómico y contadores en tiempo real. Toca para abrir.",
+    "date": "2026-10-15",
+    "badge": "DIFUSIÓN DPC",
+    "author": "Dr. Carlos Leal (Autor)",
+    "icon": "/pwa-192x192.png",
+    "appLogo": "/pwa-192x192.png",
+    "isPushBroadcast": true,
+    "url": "/?source=push_broadcast"
+  },
+  {
+    "id": "notif-user-usr_1792082975628_gcgkq",
+    "title": "👤 ¡NUEVO COLEGA REGISTRADO: Dra. María Fernanda Gómez!",
+    "message": "El Dr(a). Dra. María Fernanda Gómez (🇻🇪 Venezuela, C.I: V-20114890, Anestesiología Obstétrica) se ha registrado en AnestesiaPro desde Dispositivo Web. Tel: +58 412 777 6655.",
+    "date": "2026-10-15",
+    "badge": "NUEVO REGISTRO 👤",
+    "resourceId": "",
+    "author": "Sistema AnestesiaPro"
+  },
+  {
+    "id": "notif-1792082457834",
+    "title": "🩺 ¡ACTUALIZACIÓN SISTEMA ANESTESIAPRO v2.5.0!",
+    "message": "Se han optimizado los contadores globales en tiempo real, el carnet digital de anestesiólogo, las calculadoras de dosis y la sincronización con la nube para todos los dispositivos y quirófanos.",
+    "date": "2026-10-15",
+    "badge": "ACTUALIZACIÓN 🚀",
+    "resourceId": "",
+    "author": "Dr. Carlos Leal"
+  },
+  {
+    "id": "notif-user-usr_1792080674460_na01d",
+    "title": "👤 ¡NUEVO COLEGA REGISTRADO: Dr. Carlos Manuel Silva!",
+    "message": "El Dr(a). Dr. Carlos Manuel Silva (🇻🇪 Venezuela, C.I: V-18992011, Anestesiología General) se ha registrado en AnestesiaPro desde Dispositivo Web. Tel: +58 412 888 9900.",
+    "date": "2026-10-15",
+    "badge": "NUEVO REGISTRO 👤",
+    "resourceId": "",
+    "author": "Sistema AnestesiaPro"
+  }
+]
