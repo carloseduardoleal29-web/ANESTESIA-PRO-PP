@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="100%" height="100%">
+  <rect width="800" height="500" fill="#020617" rx="14"/>
+  <text x="400" y="35" fill="#0ea5e9" font-size="18" font-weight="900" text-anchor="middle" font-family="sans-serif">GLOMÉRULO RENAL: ENDOTELIOSIS Y PODOCITOPATÍA</text>
+  <g transform="translate(40, 60)">
+    <rect width="720" height="400" rx="10" fill="#0f172a" stroke="#0284c7" stroke-width="2"/>
+    <!-- Glomerular capillary loops -->
+    <circle cx="360" cy="180" r="120" fill="#1e293b" stroke="#38bdf8" stroke-width="4"/>
+    <circle cx="360" cy="180" r="85" fill="#450a0a" stroke="#f43f5e" stroke-width="14"/>
+    <!-- Swollen endothelial cells (endotheliosis) -->
+    <circle cx="320" cy="160" r="28" fill="#ef4444" opacity="0.8"/>
+    <circle cx="400" cy="160" r="26" fill="#ef4444" opacity="0.8"/>
+    <circle cx="360" cy="205" r="30" fill="#ef4444" opacity="0.8"/>
+    <text x="360" y="185" fill="#ffffff" font-size="11" font-weight="900" text-anchor="middle">Luz Colapsada</text>
+    <!-- Foot processes -->
+    <path d="M 230 110 Q 260 140 280 130 M 440 130 Q 470 110 500 120" stroke="#f59e0b" stroke-width="6" fill="none"/>
+    <text x="170" y="105" fill="#fbbf24" font-size="12" font-weight="bold">Podocito</text>
+    <!-- Explanations -->
+    <text x="360" y="325" fill="#f87171" font-size="14" font-weight="bold" text-anchor="middle" font-family="sans-serif">Secuestro de VEGF por sFlt-1 ➔ Hinchazón y tumefacción endotelial</text>
+    <text x="360" y="350" fill="#fca5a5" font-size="12" text-anchor="middle" font-family="sans-serif">Borramiento de pedicelos (Podocituria) ➔ Pérdida masiva de albúmina (&gt; 300 mg/24h)</text>
+    <text x="360" y="375" fill="#94a3b8" font-size="11" text-anchor="middle" font-family="sans-serif">Cae la Tasa de Filtración Glomerular (Oliguria &lt; 30 mL/h, Elevación de Creatinina)</text>
+  </g>
+</svg>

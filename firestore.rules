@@ -2,48 +2,62 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Función auxiliar de validación de texto
-    function isValidString(val, minLen, maxLen) {
-      return val is string && val.size() >= minLen && val.size() <= maxLen;
-    }
-
     function incoming() {
       return request.resource.data;
     }
 
-    // Colección central de médicos registrados en AnestesiaPro
+    // Colecciones de médicos registrados en AnestesiaPro
     match /usuarios_anestesiapro/{userId} {
       allow read: if true;
-      
-      // Permitir registro inicial de médico con validación de campos obligatorios
-      allow create: if incoming().fullName is string && incoming().fullName.size() >= 2 && incoming().fullName.size() <= 120
-                    && incoming().email is string && incoming().email.size() <= 120
-                    && (incoming().medicalId is string || incoming().idNumber is string);
-                    
-      // Permitir actualización de perfil o estado Pro
-      allow update: if true;
-      
+      allow create, update: if true;
       allow delete: if false;
+    }
+
+    match /registered_users/{userId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if false;
+    }
+
+    match /medicos_registrados/{userId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if false;
+    }
+
+    // Colección de recursos de educación continua sincronizados
+    match /education_resources/{resId} {
+      allow read: if true;
+      allow create, update, delete: if true;
+
+      match /media_chunks/{chunkId} {
+        allow read, write: if true;
+      }
     }
 
     // Colección de notificaciones y difusiones push
     match /notificaciones_anestesiapro/{notifId} {
       allow read: if true;
-      
-      allow create: if incoming().title is string && incoming().title.size() <= 150
-                    && incoming().message is string && incoming().message.size() <= 1000;
-                    
-      allow update: if true;
+      allow create, update: if true;
       allow delete: if false;
     }
 
-    // Colección de eventos de auditoría y registros
+    match /notifications/{notifId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if false;
+    }
+
+    // Colección de eventos de auditoría y actividad
     match /eventos_anestesiapro/{eventId} {
       allow read: if true;
-      
-      allow create: if incoming().title is string && incoming().title.size() <= 150;
-      allow update: if false;
-      allow delete: if false;
+      allow create: if true;
+      allow update, delete: if false;
+    }
+
+    // Metadatos globales y estadísticas
+    match /app_meta/{metaId} {
+      allow read, write: if true;
     }
 
     // Regla global por defecto: denegar cualquier otra ruta

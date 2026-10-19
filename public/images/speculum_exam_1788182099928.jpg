@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
+  <rect width="800" height="600" fill="#090d16" rx="16"/>
+
+  <rect x="40" y="25" width="720" height="50" rx="10" fill="#111827" stroke="#334155" stroke-width="1.5"/>
+  <text x="60" y="56" fill="#a855f7" font-size="16" font-weight="900" font-family="system-ui, sans-serif" letter-spacing="1.5">EXAMEN CON ESPÉCULO Y REGLA DE LAS 4T EN HEMORRAGIA</text>
+  <rect x="620" y="37" width="120" height="26" rx="13" fill="#581c87" stroke="#a855f7" stroke-width="1"/>
+  <text x="680" y="54" fill="#f3e8ff" font-size="11" font-weight="bold" text-anchor="middle" font-family="monospace">DIAGNÓSTICO ETIOLÓGICO</text>
+
+  <g transform="translate(50, 95)">
+    <!-- 4Ts Diagnostic Grid -->
+    <!-- T1: Tono (70%) -->
+    <g transform="translate(0, 0)">
+      <rect width="335" height="180" rx="12" fill="#2e1065" stroke="#a855f7" stroke-width="2"/>
+      <rect width="335" height="35" rx="10" fill="#3b0764"/>
+      <text x="15" y="23" fill="#e9d5ff" font-size="13" font-weight="900" font-family="sans-serif">1. TONO: ATONÍA UTERINA (70%)</text>
+      <text x="15" y="60" fill="#ffffff" font-size="12" font-weight="bold">Fondo uterino blando, supraumbilical, no contraído.</text>
+      <text x="15" y="85" fill="#cbd5e1" font-size="11">Factores: Sobredistensión, sulfato de magnesio, corioamnionitis.</text>
+      <text x="15" y="115" fill="#d8b4fe" font-size="11" font-weight="bold">Tratamiento Inmediato:</text>
+      <text x="15" y="135" fill="#e9d5ff" font-size="11">• Masaje uterino bimanual</text>
+      <text x="15" y="155" fill="#e9d5ff" font-size="11">• Uterotónicos de 1ª línea (Oxitocina, Carbetocina)</text>
+    </g>
+
+    <!-- T2: Trauma (20%) -->
+    <g transform="translate(365, 0)">
+      <rect width="335" height="180" rx="12" fill="#3b0712" stroke="#f43f5e" stroke-width="2"/>
+      <rect width="335" height="35" rx="10" fill="#4c0519"/>
+      <text x="15" y="23" fill="#fecdd3" font-size="13" font-weight="900" font-family="sans-serif">2. TRAUMA: DESGARROS / CANAL (20%)</text>
+      <text x="15" y="60" fill="#ffffff" font-size="12" font-weight="bold">Útero FIRME pero continúa sangrado rojo rutilante activo.</text>
+      <text x="15" y="85" fill="#cbd5e1" font-size="11">Sospecha inmediata: Desgarro cervical, vaginal o perineal.</text>
+      <text x="15" y="115" fill="#fda4af" font-size="11" font-weight="bold">Conducta Quirúrgica:</text>
+      <text x="15" y="135" fill="#fecdd3" font-size="11">• Colocación de valvas vaginales y buena iluminación</text>
+      <text x="15" y="155" fill="#fecdd3" font-size="11">• Sutura hemostática bajo analgesia/anestesia</text>
+    </g>
+
+    <!-- T3: Tejido (10%) -->
+    <g transform="translate(0, 205)">
+      <rect width="335" height="180" rx="12" fill="#142c1c" stroke="#10b981" stroke-width="2"/>
+      <rect width="335" height="35" rx="10" fill="#064e3b"/>
+      <text x="15" y="23" fill="#a7f3d0" font-size="13" font-weight="900" font-family="sans-serif">3. TEJIDO: RETENCIÓN PLACENTARIA (10%)</text>
+      <text x="15" y="60" fill="#ffffff" font-size="12" font-weight="bold">Cotiledón ausente en revisión de placenta, membranas rotas.</text>
+      <text x="15" y="85" fill="#cbd5e1" font-size="11">Sospecha de acretismo placentario (placenta accreta/increta).</text>
+      <text x="15" y="115" fill="#6ee7b7" font-size="11" font-weight="bold">Conducta:</text>
+      <text x="15" y="135" fill="#a7f3d0" font-size="11">• Revisión manual de cavidad con guante estéril largo</text>
+      <text x="15" y="155" fill="#a7f3d0" font-size="11">• Legrado instrumental suave o aspiración intrauterina</text>
+    </g>
+
+    <!-- T4: Trombina (1%) -->
+    <g transform="translate(365, 205)">
+      <rect width="335" height="180" rx="12" fill="#1c1917" stroke="#f59e0b" stroke-width="2"/>
+      <rect width="335" height="35" rx="10" fill="#451a03"/>
+      <text x="15" y="23" fill="#fde68a" font-size="13" font-weight="900" font-family="sans-serif">4. TROMBINA: COAGULOPATÍA (&lt; 1%)</text>
+      <text x="15" y="60" fill="#ffffff" font-size="12" font-weight="bold">Sangre que no coagula en tubo seco tras 8-10 min.</text>
+      <text x="15" y="85" fill="#cbd5e1" font-size="11">Causas: DPPNI grave, Síndrome HELLP, CID o Embolia de LA.</text>
+      <text x="15" y="115" fill="#fcd34d" font-size="11" font-weight="bold">Tratamiento:</text>
+      <text x="15" y="135" fill="#fef08a" font-size="11">• Ácido Tranexámico 1 g IV precoz</text>
+      <text x="15" y="155" fill="#fef08a" font-size="11">• Fibrinógeno / Crioprecipitados / Plasma / Plaquetas</text>
+    </g>
+  </g>
+
+  <g transform="translate(40, 510)">
+    <rect width="720" height="65" rx="10" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
+    <text x="20" y="26" fill="#a855f7" font-size="12" font-weight="900" font-family="sans-serif">PERLA DE EXPLORACIÓN OBSTÉTRICA:</text>
+    <text x="20" y="48" fill="#e2e8f0" font-size="11.5" font-family="sans-serif">NUNCA asumir atonía sin antes descartar desgarros con espéculo bajo buena tracción e iluminación adecuada.</text>
+  </g>
+</svg>

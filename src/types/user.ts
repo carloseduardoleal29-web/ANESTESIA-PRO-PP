@@ -1,4 +1,11 @@
-export interface DoctorUser {
+export interface ElitePlanConfig {
+  status: 'active' | 'inactive';
+  planType: string;
+  expiresAt?: string;
+  activatedAt?: string;
+}
+
+export interface RegisteredUser {
   id: string;
   fullName: string;
   idNumber: string;
@@ -16,10 +23,15 @@ export interface DoctorUser {
   registeredAt: string;
   lastActiveAt?: string;
   isPro?: boolean;
-  elitePlan?: {
-    status: 'active' | 'inactive';
-    planType: string;
-    expiresAt?: string;
-    activatedAt?: string;
-  };
+  avatarUrl?: string;
+  elitePlan?: ElitePlanConfig;
 }
+
+export interface RegistrationStatsSummary {
+  totalUsers: number;
+  eliteUsers: number;
+  activeToday: number;
+  lastRegistration?: string;
+}
+
+export type DoctorUser = RegisteredUser;

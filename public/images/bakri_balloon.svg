@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
+  <defs>
+    <radialGradient id="balloonGrad" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#fed7aa"/>
+      <stop offset="60%" stop-color="#f97316"/>
+      <stop offset="100%" stop-color="#c2410c"/>
+    </radialGradient>
+    <linearGradient id="uterusWall" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#881337"/>
+      <stop offset="50%" stop-color="#9f1239"/>
+      <stop offset="100%" stop-color="#881337"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="800" height="600" fill="#090d16" rx="16"/>
+
+  <!-- Header -->
+  <rect x="40" y="25" width="720" height="50" rx="10" fill="#111827" stroke="#334155" stroke-width="1.5"/>
+  <text x="60" y="56" fill="#fb923c" font-size="16" font-weight="900" font-family="system-ui, sans-serif" letter-spacing="1.5">TAMPONAMIENTO INTRAUTERINO CON BALÓN DE BAKRI</text>
+  <rect x="620" y="37" width="120" height="26" rx="13" fill="#7c2d12" stroke="#ea580c" stroke-width="1"/>
+  <text x="680" y="54" fill="#ffedd5" font-size="11" font-weight="bold" text-anchor="middle" font-family="monospace">HEMOSTASIA 2ª LÍNEA</text>
+
+  <!-- Uterine Cavity & Anatomy -->
+  <g transform="translate(180, 90)">
+    <!-- Myometrium Outer Wall -->
+    <path d="M 60 120 C 60 20 180 10 220 10 C 260 10 380 20 380 120 C 380 220 300 270 270 340 L 170 340 C 140 270 60 220 60 120 Z" fill="none" stroke="url(#uterusWall)" stroke-width="26" stroke-linecap="round"/>
+    
+    <!-- Endometrial Cavity Fill -->
+    <path d="M 75 120 C 75 35 185 25 220 25 C 255 25 365 35 365 120 C 365 210 290 260 260 330 L 180 330 C 150 260 75 210 75 120 Z" fill="#2e0513"/>
+
+    <!-- Inflated 100% Silicone Bakri Balloon -->
+    <ellipse cx="220" cy="165" rx="135" ry="110" fill="url(#balloonGrad)" stroke="#ffedd5" stroke-width="3" opacity="0.95"/>
+    <text x="220" y="155" fill="#431407" font-size="15" font-weight="900" font-family="sans-serif" text-anchor="middle">BALÓN DE BAKRI</text>
+    <text x="220" y="175" fill="#7c2d12" font-size="12" font-weight="bold" font-family="sans-serif" text-anchor="middle">300 a 500 mL SSN Estéril</text>
+    <text x="220" y="195" fill="#7c2d12" font-size="11" font-weight="semibold" font-family="sans-serif" text-anchor="middle">Compresión Hidrostática de Lecho Placentario</text>
+
+    <!-- Catheter Shaft & Drainage Lumen -->
+    <rect x="212" y="275" width="16" height="180" fill="#fdba74" stroke="#c2410c" stroke-width="1.5"/>
+    <!-- Lumen Lines -->
+    <line x1="216" y1="275" x2="216" y2="455" stroke="#ea580c" stroke-width="1.5"/>
+    <line x1="224" y1="275" x2="224" y2="455" stroke="#991b1b" stroke-width="1.5"/>
+
+    <!-- Cervical Ring and Vaginal Packing -->
+    <ellipse cx="220" cy="340" rx="45" ry="12" fill="#4c0519" stroke="#f43f5e" stroke-width="2"/>
+    <rect x="185" y="355" width="70" height="40" rx="6" fill="#cbd5e1" opacity="0.85" stroke="#64748b" stroke-width="1.5"/>
+    <text x="220" y="378" fill="#0f172a" font-size="9.5" font-weight="900" font-family="sans-serif" text-anchor="middle">PACKING VAGINAL</text>
+
+    <!-- Inflation Syringe Port -->
+    <g transform="translate(240, 420)">
+      <path d="M 0 0 L 60 40" stroke="#fb923c" stroke-width="4"/>
+      <rect x="55" y="30" width="90" height="26" rx="4" fill="#1e293b" stroke="#f97316" stroke-width="1.5"/>
+      <text x="100" y="47" fill="#fed7aa" font-size="10" font-weight="bold" font-family="monospace" text-anchor="middle">VÍA LLENADO SSN</text>
+    </g>
+
+    <!-- Blood Drainage Bag Port -->
+    <g transform="translate(140, 420)">
+      <path d="M 75 0 L 15 40" stroke="#ef4444" stroke-width="4"/>
+      <rect x="-35" y="30" width="85" height="26" rx="4" fill="#1e293b" stroke="#ef4444" stroke-width="1.5"/>
+      <text x="7" y="47" fill="#fecdd3" font-size="10" font-weight="bold" font-family="monospace" text-anchor="middle">DRENAJE UTERINO</text>
+    </g>
+  </g>
+
+  <!-- Explanatory Box -->
+  <g transform="translate(40, 520)">
+    <rect width="720" height="60" rx="10" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
+    <text x="20" y="24" fill="#fb923c" font-size="12" font-weight="900" font-family="sans-serif">TEST DE TAMPONAMIENTO POSITIVO:</text>
+    <text x="20" y="44" fill="#e2e8f0" font-size="11.5" font-family="sans-serif">Si el sangrado por la luz de drenaje cesa tras inflar con 300-500 mL, el test es exitoso y evita histerectomía en >85% de atonías.</text>
+  </g>
+</svg>

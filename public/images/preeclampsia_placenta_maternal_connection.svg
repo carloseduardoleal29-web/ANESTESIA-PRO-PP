@@ -1,0 +1,364 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradients -->
+    <radialGradient id="bgGlow" cx="50%" cy="50%" r="70%">
+      <stop offset="0%" stop-color="#1e1026"/>
+      <stop offset="45%" stop-color="#0f0c1b"/>
+      <stop offset="100%" stop-color="#05070e"/>
+    </radialGradient>
+
+    <radialGradient id="placentaAura" cx="40%" cy="50%" r="55%">
+      <stop offset="0%" stop-color="#e11d48" stop-opacity="0.25"/>
+      <stop offset="60%" stop-color="#881337" stop-opacity="0.1"/>
+      <stop offset="100%" stop-color="#05070e" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Maternal Uterine Wall & Decidua -->
+    <linearGradient id="uterineWallGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#4c0519"/>
+      <stop offset="35%" stop-color="#881337"/>
+      <stop offset="70%" stop-color="#9f1239"/>
+      <stop offset="100%" stop-color="#e11d48"/>
+    </linearGradient>
+
+    <linearGradient id="deciduaGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#500724"/>
+      <stop offset="50%" stop-color="#831843"/>
+      <stop offset="100%" stop-color="#be123c"/>
+    </linearGradient>
+
+    <!-- Placenta Tissue Gradient -->
+    <radialGradient id="placentaTissue" cx="45%" cy="45%" r="50%">
+      <stop offset="0%" stop-color="#fb7185"/>
+      <stop offset="25%" stop-color="#e11d48"/>
+      <stop offset="65%" stop-color="#9f1239"/>
+      <stop offset="90%" stop-color="#4c0519"/>
+      <stop offset="100%" stop-color="#1f0208"/>
+    </radialGradient>
+
+    <!-- Umbilical Cord 3D Volume -->
+    <linearGradient id="umbilicalGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0284c7"/>
+      <stop offset="25%" stop-color="#38bdf8"/>
+      <stop offset="50%" stop-color="#e0f2fe"/>
+      <stop offset="75%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#0369a1"/>
+    </linearGradient>
+
+    <!-- Spiral Arteries Gradients -->
+    <linearGradient id="spiralNormal" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#e11d48"/>
+      <stop offset="50%" stop-color="#fb7185"/>
+      <stop offset="100%" stop-color="#fda4af"/>
+    </linearGradient>
+
+    <linearGradient id="spiralPreeclampsia" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#991b1b"/>
+      <stop offset="40%" stop-color="#dc2626"/>
+      <stop offset="70%" stop-color="#f97316"/>
+      <stop offset="100%" stop-color="#facc15"/>
+    </linearGradient>
+
+    <!-- Glow & Softening Filters -->
+    <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+
+    <filter id="hyperGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="14" result="blur1"/>
+      <feGaussianBlur stdDeviation="6" result="blur2"/>
+      <feMerge>
+        <feMergeNode in="blur1"/>
+        <feMergeNode in="blur2"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Canvas Background -->
+  <rect width="1200" height="675" fill="url(#bgGlow)"/>
+  <rect width="1200" height="675" fill="url(#placentaAura)"/>
+
+  <!-- Subtle Microvascular Grid Background Pattern -->
+  <g opacity="0.07" stroke="#38bdf8" stroke-width="0.75" fill="none">
+    <path d="M 0 100 Q 300 150 600 80 T 1200 120"/>
+    <path d="M 0 250 Q 400 320 800 220 T 1200 280"/>
+    <path d="M 0 420 Q 350 490 750 390 T 1200 450"/>
+    <path d="M 0 580 Q 450 640 900 560 T 1200 600"/>
+  </g>
+
+  <!-- ================================================================= -->
+  <!-- LEFT & CENTER: ANATOMICAL VISUALIZATION OF MATERNAL-PLACENTAL UNIT -->
+  <!-- ================================================================= -->
+
+  <!-- Pregnant Mother & Uterine Silhouette (Elegant anatomical contour) -->
+  <g transform="translate(10, 0)">
+    <!-- Maternal Abdominal Wall Outer Contour Glow -->
+    <path d="M 40 40 Q 90 280 260 480 Q 380 620 540 660" 
+          fill="none" stroke="#f43f5e" stroke-width="2.5" opacity="0.4" filter="url(#softGlow)"/>
+    <path d="M 40 40 Q 90 280 260 480 Q 380 620 540 660" 
+          fill="none" stroke="#fda4af" stroke-width="1.2" opacity="0.7"/>
+
+    <!-- Uterine Myometrium Layer (Muscular Uterine Wall) -->
+    <path d="M 80 50 C 130 180 180 340 320 490 C 410 590 510 640 560 660 
+             L 510 675 C 450 650 360 600 270 510 C 130 360 80 200 30 70 Z" 
+          fill="url(#uterineWallGrad)" opacity="0.85"/>
+
+    <!-- Maternal Blood Vessel Network inside Myometrium -->
+    <g stroke="#fca5a5" stroke-width="2" fill="none" opacity="0.6">
+      <path d="M 70 120 Q 120 160 140 240 Q 160 320 230 390"/>
+      <path d="M 100 200 Q 150 220 180 300 Q 210 380 290 440"/>
+      <path d="M 130 280 Q 170 330 220 400 Q 270 470 350 530"/>
+    </g>
+
+    <!-- Decidua Basalis (Maternal-Placental Interface) -->
+    <path d="M 125 90 C 180 220 240 370 370 500 C 440 570 520 620 575 645 
+             L 555 660 C 500 635 420 585 350 515 C 220 385 160 235 105 105 Z" 
+          fill="url(#deciduaGrad)" opacity="0.95"/>
+
+    <!-- Human Placenta Body (Cotyledons, Spongy Intervillous Space) -->
+    <path d="M 130 100 C 230 140 380 210 470 330 C 550 440 580 560 565 635
+             C 490 600 400 540 330 450 C 240 340 180 220 130 100 Z" 
+          fill="url(#placentaTissue)" filter="url(#softGlow)" opacity="0.95"/>
+
+    <!-- Placental Lobes & Cotyledon Grooves -->
+    <g stroke="#4c0519" stroke-width="4" opacity="0.7" fill="none">
+      <path d="M 180 180 Q 280 240 340 330"/>
+      <path d="M 230 270 Q 340 320 410 420"/>
+      <path d="M 290 370 Q 400 410 470 510"/>
+      <path d="M 350 460 Q 450 490 520 580"/>
+    </g>
+
+    <!-- Chorionic Plate (Fetal Surface of the Placenta - Shining Blue-Silver) -->
+    <path d="M 175 120 C 260 170 390 245 470 355 C 540 455 570 560 555 625" 
+          fill="none" stroke="#38bdf8" stroke-width="6" stroke-linecap="round" opacity="0.9" filter="url(#softGlow)"/>
+    <path d="M 175 120 C 260 170 390 245 470 355 C 540 455 570 560 555 625" 
+          fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
+
+    <!-- Umbilical Cord emerging from the Chorionic Plate -->
+    <!-- Wharton's Jelly Luminescent Cable with Helical Twist -->
+    <g filter="url(#softGlow)">
+      <!-- Outer Cord Structure -->
+      <path d="M 430 330 C 500 290 590 260 670 290 C 740 320 780 390 830 410" 
+            fill="none" stroke="url(#umbilicalGrad)" stroke-width="26" stroke-linecap="round" opacity="0.9"/>
+      
+      <!-- Helical Umbilical Arteries (Crimson Spiral carrying deoxygenated blood from fetus) -->
+      <path d="M 435 325 Q 470 300 510 285 T 590 270 T 660 295 T 730 335 T 790 395 T 830 405" 
+            fill="none" stroke="#dc2626" stroke-width="5" opacity="0.95"/>
+      <path d="M 440 335 Q 480 310 525 295 T 605 280 T 675 305 T 745 345 T 805 405 T 835 415" 
+            fill="none" stroke="#b91c1c" stroke-width="4.5" opacity="0.85"/>
+
+      <!-- Umbilical Vein (Oxygen-rich Glowing Cyan Vessel returning to fetus) -->
+      <path d="M 425 330 Q 465 295 505 275 T 585 265 T 655 285 T 725 325 T 785 385 T 825 400" 
+            fill="none" stroke="#38bdf8" stroke-width="6" opacity="0.95"/>
+      <path d="M 425 330 Q 465 295 505 275 T 585 265 T 655 285 T 725 325 T 785 385 T 825 400" 
+            fill="none" stroke="#ffffff" stroke-width="1.8" opacity="0.9"/>
+    </g>
+
+    <!-- Branching Corionic Villi Inside Intervillous Space (Vascular Trees) -->
+    <g stroke="#f43f5e" stroke-width="2.5" fill="none" opacity="0.85">
+      <!-- Villi Tree 1 -->
+      <path d="M 230 160 Q 210 200 180 210"/>
+      <path d="M 200 185 Q 170 185 160 170"/>
+      <path d="M 190 200 Q 180 230 165 240"/>
+      
+      <!-- Villi Tree 2 (Central) -->
+      <path d="M 330 260 Q 300 290 260 300"/>
+      <path d="M 290 280 Q 270 260 250 250"/>
+      <path d="M 280 295 Q 260 330 235 340"/>
+      <path d="M 305 270 Q 310 320 285 350"/>
+
+      <!-- Villi Tree 3 (Lower) -->
+      <path d="M 420 380 Q 380 420 330 430"/>
+      <path d="M 370 410 Q 340 390 315 395"/>
+      <path d="M 350 425 Q 330 460 300 470"/>
+    </g>
+
+    <!-- SPIRAL ARTERIES COMPARISON HIGHLIGHT -->
+    <!-- 1. Normal remodeled spiral artery (High caliber, dilated, low resistance) -->
+    <g transform="translate(0, 0)">
+      <path d="M 100 140 C 130 150 140 180 175 190" 
+            fill="none" stroke="url(#spiralNormal)" stroke-width="12" stroke-linecap="round" opacity="0.9"/>
+      <path d="M 100 140 C 130 150 140 180 175 190" 
+            fill="none" stroke="#ffe4e6" stroke-width="4" stroke-linecap="round" opacity="0.9"/>
+      <!-- Soft blood pool -->
+      <circle cx="178" cy="192" r="14" fill="#fb7185" opacity="0.4" filter="url(#softGlow)"/>
+    </g>
+
+    <!-- 2. Preeclamptic non-remodeled spiral artery (Narrow, spastic, high-shear turbulent jet) -->
+    <g transform="translate(0, 0)">
+      <!-- Spastic tortuous narrow vessel -->
+      <path d="M 160 320 Q 180 340 190 325 T 220 350 T 245 335 T 270 355" 
+            fill="none" stroke="url(#spiralPreeclampsia)" stroke-width="4.5" stroke-linecap="round"/>
+      <!-- High pressure turbulent jet spray into intervillous space -->
+      <path d="M 270 355 L 305 345" stroke="#f59e0b" stroke-width="3" stroke-dasharray="4 2"/>
+      <path d="M 270 355 L 315 365" stroke="#ef4444" stroke-width="3.5" stroke-dasharray="3 2"/>
+      <path d="M 270 355 L 300 380" stroke="#f59e0b" stroke-width="3" stroke-dasharray="4 2"/>
+      <circle cx="270" cy="355" r="7" fill="#ef4444" filter="url(#hyperGlow)"/>
+    </g>
+
+    <!-- Molecular Storm: Antiangiogenic Factors Release (sFlt-1 & sEng) -->
+    <!-- Glowing toxic particles diffusing from the ischemic syncytiotrophoblast into maternal blood -->
+    <g filter="url(#hyperGlow)">
+      <!-- Toxic Factor Cluster (sFlt-1 / Soluble Fms-like Tyrosine Kinase-1) -->
+      <circle cx="295" cy="360" r="5" fill="#facc15"/>
+      <circle cx="330" cy="340" r="4" fill="#fb923c"/>
+      <circle cx="310" cy="390" r="4.5" fill="#f43f5e"/>
+      <circle cx="350" cy="375" r="3.5" fill="#e11d48"/>
+      <circle cx="380" cy="350" r="4" fill="#fbbf24"/>
+      <circle cx="280" cy="240" r="3" fill="#fb7185"/>
+      <circle cx="360" cy="440" r="3.5" fill="#f87171"/>
+      <circle cx="430" cy="480" r="4" fill="#facc15"/>
+    </g>
+  </g>
+
+  <!-- ================================================================= -->
+  <!-- RIGHT: THE PATHOPHYSIOLOGICAL CASCADE PANEL (ELEGANT MEDICAL FLOW) -->
+  <!-- ================================================================= -->
+  <g transform="translate(680, 40)">
+    <!-- Main Card Container -->
+    <rect width="480" height="595" rx="24" fill="#0b1120" fill-opacity="0.88" 
+          stroke="#e11d48" stroke-opacity="0.4" stroke-width="1.8" filter="url(#softGlow)"/>
+
+    <!-- Header Badge -->
+    <g transform="translate(24, 24)">
+      <rect width="432" height="68" rx="16" fill="#1e1b4b" fill-opacity="0.6" stroke="#4338ca" stroke-opacity="0.5" stroke-width="1"/>
+      
+      <circle cx="32" cy="34" r="18" fill="#e11d48" fill-opacity="0.2" stroke="#f43f5e" stroke-width="1.5"/>
+      <path d="M 26 34 L 30 38 L 38 29" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      
+      <text x="60" y="27" fill="#fda4af" font-size="11" font-weight="900" font-family="system-ui, -apple-system, sans-serif" letter-spacing="1.5">
+        CASCADA PATOGÉNICA VASCULAR • ACOG / FIGO 2026
+      </text>
+      <text x="60" y="47" fill="#ffffff" font-size="16" font-weight="900" font-family="system-ui, -apple-system, sans-serif">
+        De la Placenta a la Tormenta Materna
+      </text>
+    </g>
+
+    <!-- STEP 1: DEFECTO DE INVASIÓN TROFOBLÁSTICA -->
+    <g transform="translate(24, 108)">
+      <rect width="432" height="100" rx="16" fill="#111827" stroke="#f43f5e" stroke-opacity="0.5" stroke-width="1.2"/>
+      <rect x="0" y="0" width="8" height="100" rx="4" fill="#f43f5e"/>
+      
+      <!-- Step Badge -->
+      <rect x="18" y="12" width="68" height="22" rx="6" fill="#881337"/>
+      <text x="52" y="27" fill="#fecdd3" font-size="11" font-weight="900" font-family="system-ui, sans-serif" text-anchor="middle">FASE 1</text>
+      <text x="96" y="27" fill="#cbd5e1" font-size="10" font-weight="bold" font-family="monospace">Sem 8 - 18</text>
+
+      <text x="18" y="52" fill="#ffffff" font-size="13" font-weight="900" font-family="system-ui, sans-serif">
+        1. Falla de Remodelación de Arterias Espirales
+      </text>
+      <text x="18" y="71" fill="#94a3b8" font-size="10.5" font-family="system-ui, sans-serif">
+        El citotrofoblasto no invade el miometrio. Los vasos conservan capa
+      </text>
+      <text x="18" y="87" fill="#fca5a5" font-size="10.5" font-weight="bold" font-family="system-ui, sans-serif">
+        muscular lisa intacta, reactividad simpática y calibre estrecho rígido.
+      </text>
+    </g>
+
+    <!-- Connector 1 -> 2 -->
+    <g transform="translate(230, 212)" stroke="#f43f5e" stroke-width="2" fill="none">
+      <path d="M 0 0 L 0 16" stroke-dasharray="3 3"/>
+      <polygon points="0,20 -4,14 4,14" fill="#f43f5e"/>
+    </g>
+
+    <!-- STEP 2: ISQUEMIA PLACENTARIA Y ESTRÉS OXIDATIVO -->
+    <g transform="translate(24, 234)">
+      <rect width="432" height="100" rx="16" fill="#111827" stroke="#f59e0b" stroke-opacity="0.5" stroke-width="1.2"/>
+      <rect x="0" y="0" width="8" height="100" rx="4" fill="#f59e0b"/>
+
+      <rect x="18" y="12" width="68" height="22" rx="6" fill="#78350f"/>
+      <text x="52" y="27" fill="#fde68a" font-size="11" font-weight="900" font-family="system-ui, sans-serif" text-anchor="middle">FASE 2A</text>
+      <text x="96" y="27" fill="#fef08a" font-size="10" font-weight="bold" font-family="monospace">Isquemia-Reperfusión</text>
+
+      <text x="18" y="52" fill="#ffffff" font-size="13" font-weight="900" font-family="system-ui, sans-serif">
+        2. Flujo en "Jet" Turbulento &amp; Hipoxia Sincitial
+      </text>
+      <text x="18" y="71" fill="#94a3b8" font-size="10.5" font-family="system-ui, sans-serif">
+        El flujo pulsátil de alta presión traumatiza las vellosidades coriónicas,
+      </text>
+      <text x="18" y="87" fill="#fde047" font-size="10.5" font-weight="bold" font-family="system-ui, sans-serif">
+        desencadenando estrés oxidativo masivo y apoptosis placentaria.
+      </text>
+    </g>
+
+    <!-- Connector 2 -> 3 -->
+    <g transform="translate(230, 338)" stroke="#f59e0b" stroke-width="2" fill="none">
+      <path d="M 0 0 L 0 16" stroke-dasharray="3 3"/>
+      <polygon points="0,20 -4,14 4,14" fill="#f59e0b"/>
+    </g>
+
+    <!-- STEP 3: LIBERACIÓN DE TOXINAS ANTIANGIOGÉNICAS (sFlt-1 / sEng) -->
+    <g transform="translate(24, 360)">
+      <rect width="432" height="100" rx="16" fill="#111827" stroke="#06b6d4" stroke-opacity="0.6" stroke-width="1.2"/>
+      <rect x="0" y="0" width="8" height="100" rx="4" fill="#06b6d4"/>
+
+      <rect x="18" y="12" width="68" height="22" rx="6" fill="#164e63"/>
+      <text x="52" y="27" fill="#a5f3fc" font-size="11" font-weight="900" font-family="system-ui, sans-serif" text-anchor="middle">FASE 2B</text>
+      <text x="96" y="27" fill="#67e8f9" font-size="10" font-weight="bold" font-family="monospace">Desbalance Molecular</text>
+
+      <text x="18" y="52" fill="#ffffff" font-size="13" font-weight="900" font-family="system-ui, sans-serif">
+        3. Secuestro de VEGF &amp; PlGF por sFlt-1 / sEng
+      </text>
+      <text x="18" y="71" fill="#94a3b8" font-size="10.5" font-family="system-ui, sans-serif">
+        La placenta vierte sFlt-1 a la circulación materna, secuestrando factores
+      </text>
+      <text x="18" y="87" fill="#67e8f9" font-size="10.5" font-weight="bold" font-family="system-ui, sans-serif">
+        angiogénicos y destruyendo el soporte vital del endotelio vascular.
+      </text>
+    </g>
+
+    <!-- Connector 3 -> 4 -->
+    <g transform="translate(230, 464)" stroke="#06b6d4" stroke-width="2" fill="none">
+      <path d="M 0 0 L 0 16" stroke-dasharray="3 3"/>
+      <polygon points="0,20 -4,14 4,14" fill="#06b6d4"/>
+    </g>
+
+    <!-- STEP 4: DAÑO ENDOTELIAL SISTÉMICO MATERNO -->
+    <g transform="translate(24, 486)">
+      <rect width="432" height="92" rx="16" fill="#1e1026" stroke="#ec4899" stroke-opacity="0.7" stroke-width="1.4"/>
+      <rect x="0" y="0" width="8" height="92" rx="4" fill="#ec4899"/>
+
+      <rect x="18" y="10" width="76" height="20" rx="6" fill="#831843"/>
+      <text x="56" y="24" fill="#fbcfe8" font-size="10" font-weight="900" font-family="system-ui, sans-serif" text-anchor="middle">CLÍNICA</text>
+      <text x="104" y="24" fill="#f472b6" font-size="10" font-weight="bold" font-family="monospace">Semana &gt; 20 y Posparto</text>
+
+      <text x="18" y="47" fill="#ffffff" font-size="12.5" font-weight="900" font-family="system-ui, sans-serif">
+        4. Endoteliosis, Crisis HTA, Fuga Capilar y Edema
+      </text>
+      <text x="18" y="65" fill="#cbd5e1" font-size="10" font-family="system-ui, sans-serif">
+        Destrucción del glicocálix, hiperreflexia/PRES cerebral, endoteliosis
+      </text>
+      <text x="18" y="79" fill="#f472b6" font-size="10" font-weight="bold" font-family="system-ui, sans-serif">
+        renal (proteinuria), trombocitopenia y vasoespasmo multiorgánico.
+      </text>
+    </g>
+  </g>
+
+  <!-- ================================================================= -->
+  <!-- BOTTOM OVERLAY BAR: CLINICAL TITLE & KEYWORDS -->
+  <!-- ================================================================= -->
+  <g transform="translate(40, 585)">
+    <rect width="610" height="60" rx="18" fill="#030712" fill-opacity="0.85" stroke="#f43f5e" stroke-opacity="0.4" stroke-width="1.2" filter="url(#softGlow)"/>
+    
+    <g transform="translate(18, 16)">
+      <circle cx="12" cy="14" r="7" fill="#10b981"/>
+      <text x="30" y="11" fill="#38bdf8" font-size="10" font-weight="bold" font-family="monospace" letter-spacing="1">
+        UNIDAD MATERNO-FETO-PLACENTARIA
+      </text>
+      <text x="30" y="27" fill="#ffffff" font-size="13" font-weight="900" font-family="system-ui, sans-serif">
+        Placenta Humana, Cordón Umbilical &amp; Cascada de la Preeclampsia
+      </text>
+    </g>
+
+    <!-- High-tech tags -->
+    <g transform="translate(410, 16)">
+      <rect width="84" height="26" rx="8" fill="#881337" opacity="0.8"/>
+      <text x="452" y="33" fill="#fecdd3" font-size="10" font-weight="black" font-family="system-ui, sans-serif" text-anchor="middle">sFlt-1 / PlGF</text>
+
+      <rect x="94" y="0" width="92" height="26" rx="8" fill="#0e7490" opacity="0.8"/>
+      <text x="140" y="33" fill="#cffafe" font-size="10" font-weight="black" font-family="system-ui, sans-serif" text-anchor="middle">Arterias Espirales</text>
+    </g>
+  </g>
+</svg>
