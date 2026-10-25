@@ -134,11 +134,15 @@ export async function registerDoctorInCloud(user: DoctorUser): Promise<DoctorUse
     id: userId,
     registeredAt: user.registeredAt || new Date().toISOString(),
     lastActiveAt: new Date().toISOString(),
-    isPro: true,
-    elitePlan: {
+    isPro: Boolean(user.isAdmin || user.id === 'usr_carlos_leal_admin'),
+    elitePlan: (user.isAdmin || user.id === 'usr_carlos_leal_admin') ? {
       status: 'active',
-      planType: user.isAdmin ? 'lifetime' : 'pro',
-      expiresAt: user.isAdmin ? 'Permanente (Autor y Fundador)' : 'Permanente'
+      planType: 'lifetime',
+      expiresAt: 'Permanente (Autor y Fundador)'
+    } : {
+      status: 'inactive',
+      planType: 'standard',
+      expiresAt: 'Plan Estándar Gratuito'
     }
   };
 

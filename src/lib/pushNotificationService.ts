@@ -58,18 +58,35 @@ export async function requestPushPermissionAndSubscribe(userInfo?: { email?: str
       try {
         let sub = await reg.pushManager.getSubscription();
         if (!sub) {
+          // Fetch VAPID public key from backend
+          let applicationServerKey: Uint8Array | undefined;
+          try {
+            const vRes = await fetch('/api/push/vapid-key');
+            const vData = await vRes.json();
+            if (vData.success && vData.publicKey) {
+              const padding = '='.repeat((4 - (vData.publicKey.length % 4)) % 4);
+              const base64 = (vData.publicKey + padding).replace(/-/g, '+').replace(/_/g, '/');
+              const rawData = window.atob(base64);
+              applicationServerKey = new Uint8Array(rawData.length);
+              for (let i = 0; i < rawData.length; ++i) {
+                applicationServerKey[i] = rawData.charCodeAt(i);
+              }
+            }
+          } catch (vErr) {
+            console.warn('[Push Service] VAPID key fetch notice:', vErr);
+          }
+
           // Subscribe to push
           sub = await reg.pushManager.subscribe({
             userVisibleOnly: true,
-            // In a production server with VAPID keys, applicationServerKey is passed here.
-            // For general Web Push / PWA background notifications, userVisibleOnly allows native banner delivery.
+            applicationServerKey: applicationServerKey
           });
         }
         if (sub) {
           subscriptionData = sub.toJSON();
         }
       } catch (subErr) {
-        console.warn('[Push Service] PushManager subscription optional step:', subErr);
+        console.warn('[Push Service] PushManager subscription step:', subErr);
       }
     }
 

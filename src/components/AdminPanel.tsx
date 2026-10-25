@@ -145,22 +145,31 @@ export function AdminPanel({ onClose }: Props) {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60">
-                    {filteredUsers.map(u => (
-                      <tr key={u.id} className="hover:bg-slate-800/40 transition-colors">
-                        <td className="p-3.5">
-                          <span className="font-bold text-white block">{u.fullName}</span>
-                          <span className="text-[11px] text-slate-400">{u.email}</span>
-                        </td>
-                        <td className="p-3.5 text-slate-300 font-mono">{u.idNumber || 'N/A'}</td>
-                        <td className="p-3.5 text-slate-300">{u.country || 'No especificado'}</td>
-                        <td className="p-3.5 text-slate-300">{u.specialty || 'Anestesiología'}</td>
-                        <td className="p-3.5">
-                          <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30 text-[10px]">
-                            {u.elitePlan?.planType === 'lifetime' ? 'PRO DE POR VIDA' : 'PRO ACTIVO'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
+                    {filteredUsers.map(u => {
+                      const isCarlos = u.id === 'usr_carlos_leal_admin' || u.role === 'admin' || (u.email || '').toLowerCase().includes('carloseduardoleal');
+                      return (
+                        <tr key={u.id} className="hover:bg-slate-800/40 transition-colors">
+                          <td className="p-3.5">
+                            <span className="font-bold text-white block">{u.fullName}</span>
+                            <span className="text-[11px] text-slate-400">{u.email}</span>
+                          </td>
+                          <td className="p-3.5 text-slate-300 font-mono">{u.idNumber || 'N/A'}</td>
+                          <td className="p-3.5 text-slate-300">{u.country || 'No especificado'}</td>
+                          <td className="p-3.5 text-slate-300">{u.specialty || 'Anestesiología'}</td>
+                          <td className="p-3.5">
+                            {isCarlos ? (
+                              <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30 text-[10px]">
+                                👑 ADMINISTRADOR
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-bold border border-slate-700 text-[10px]">
+                                PLAN ESTÁNDAR
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

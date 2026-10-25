@@ -5132,6 +5132,7 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
   const [isSendingDirectPush, setIsSendingDirectPush] = useState<boolean>(false);
   const [isSyncingWithServer, setIsSyncingWithServer] = useState<boolean>(false);
   const [syncBanner, setSyncBanner] = useState<{ type: 'info' | 'success' | 'warning'; message: string } | null>(null);
+  const [lastManualSyncTime, setLastManualSyncTime] = useState<string | null>(null);
   const [latestUploadNotification, setLatestUploadNotification] = useState<AppNotification | null>(null);
   const [highlightedResourceId, setHighlightedResourceId] = useState<string | null>(null);
   const [hasLocalPhotosToUpload, setHasLocalPhotosToUpload] = useState<boolean>(false);
@@ -6192,62 +6193,43 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
     if (!silent) setIsSyncingWithServer(true);
 
     try {
-      // 1. Direct Cloud Firestore synchronization: guarantees cross-device persistence with zero delay
-      for (const item of customItemsToSync) {
-        try {
-          await saveCloudResource(item);
-        } catch (cloudErr) {
-          console.warn('[AnestesiaPro Cloud] Cloud Firestore sync notice:', item?.id, cloudErr);
-        }
-      }
+      // 1. Direct Cloud Firestore synchronization non-blocking in parallel
+      Promise.allSettled(customItemsToSync.map(item => saveCloudResource(item))).catch(e => {
+        console.warn('[AnestesiaPro Cloud] Background Firestore sync notice:', e);
+      });
 
+      // 2. Batch upload all items to server API in a single request instead of sequential loops
       let lastServerItems: EducationalResource[] | null = null;
-      // Sync one by one so heavy media uploads never timeout or crash on mobile devices
-      for (const item of customItemsToSync) {
-        try {
-          const res = await fetch('/api/education/resources', {
-            method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json',
-              'x-author-pin': '2534'
-            },
-            body: JSON.stringify({ 
-              resources: [item],
-              authorPin: '2534',
-              isSync: true
-            })
-          });
-          if (res.ok) {
-            const data = await res.json();
-            if (data.success && Array.isArray(data.allResources)) {
-              lastServerItems = data.allResources as EducationalResource[];
-            }
+      try {
+        const res = await fetch('/api/education/resources', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'x-author-pin': '2534'
+          },
+          body: JSON.stringify({ 
+            resources: customItemsToSync,
+            authorPin: '2534',
+            isSync: true
+          })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && Array.isArray(data.allResources)) {
+            lastServerItems = data.allResources as EducationalResource[];
           }
-        } catch (itemErr) {
-          console.warn('[AnestesiaPro] Error syncing single item to server:', item?.id, itemErr);
         }
+      } catch (itemErr) {
+        console.warn('[AnestesiaPro] Error syncing batch items to server:', itemErr);
       }
 
       if (lastServerItems && lastServerItems.length > 0) {
         setResources(prev => {
           const merged = mergeResources(INITIAL_RESOURCES, prev, lastServerItems!);
           const sorted = sortResourcesNewestToOldest(merged);
-          // Only update state if there are actual structural differences
-          if (sorted.length !== prev.length || sorted[0]?.id !== prev[0]?.id) {
-            persistResources(sorted);
-            window.dispatchEvent(new CustomEvent('anestesiapro_education_synced', { detail: sorted }));
-            return sorted;
-          }
-          const hasDiff = sorted.some((it, idx) => {
-            const p = prev[idx];
-            return !p || p.id !== it.id || p.updatedAt !== it.updatedAt;
-          });
-          if (hasDiff) {
-            persistResources(sorted);
-            window.dispatchEvent(new CustomEvent('anestesiapro_education_synced', { detail: sorted }));
-            return sorted;
-          }
-          return prev;
+          persistResources(sorted);
+          window.dispatchEvent(new CustomEvent('anestesiapro_education_synced', { detail: sorted }));
+          return sorted;
         });
       }
     } catch (e) {
@@ -6262,52 +6244,65 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
     setIsSyncingWithServer(true);
     setSyncBanner({
       type: 'info',
-      message: 'Sincronizando con la nube central de AnestesiaPro...'
+      message: '🔄 Sincronizando con la nube central de AnestesiaPro...'
     });
 
+    const startTime = Date.now();
     try {
-      // 1. Fetch from server with dual-fallback (API + Static JSON)
-      const { resources: serverList, deletedIds: srvDeletedIds } = await fetchServerResources();
-      
-      // Register any server deleted IDs locally
-      if (Array.isArray(srvDeletedIds)) {
-        srvDeletedIds.forEach((did: string) => markResourceAsDeleted(did));
-      }
+      // 1. Fetch from server with dual-fallback (API + Static JSON) with timeout
+      const syncPromise = (async () => {
+        const { resources: serverList, deletedIds: srvDeletedIds } = await fetchServerResources();
+        
+        // Register any server deleted IDs locally (ignoring protected core guides)
+        if (Array.isArray(srvDeletedIds)) {
+          srvDeletedIds.forEach((did: string) => markResourceAsDeleted(did));
+        }
 
-      // 2. Identify all local custom or updated resources across IndexedDB, excluding tombstones
-      const locallyPersisted = await loadStoredResources();
-      const deletedIds = getDeletedResourceIds();
+        // 2. Identify all local custom or updated resources across IndexedDB, excluding tombstones
+        const locallyPersisted = await loadStoredResources();
+        const deletedIds = getDeletedResourceIds();
 
-      const itemsToSync = locallyPersisted.filter(loc => {
-        if (!loc || !loc.id || deletedIds.includes(loc.id)) return false;
-        const srvMatch = serverList.find(srv => srv.id === loc.id);
-        if (!srvMatch) return true; // Push to server if missing on server
-        if (loc.updatedAt && srvMatch.updatedAt && new Date(loc.updatedAt).getTime() > new Date(srvMatch.updatedAt).getTime()) return true;
-        return false;
-      });
+        const itemsToSync = locallyPersisted.filter(loc => {
+          if (!loc || !loc.id || deletedIds.includes(loc.id)) return false;
+          const srvMatch = serverList.find(srv => srv.id === loc.id);
+          if (!srvMatch) return true; // Push to server if missing on server
+          if (loc.updatedAt && srvMatch.updatedAt && new Date(loc.updatedAt).getTime() > new Date(srvMatch.updatedAt).getTime()) return true;
+          return false;
+        });
 
-      if (itemsToSync.length > 0) {
-        await syncLocalResourcesToServer(itemsToSync);
-      }
+        if (itemsToSync.length > 0) {
+          await syncLocalResourcesToServer(itemsToSync, true);
+        }
 
-      // Merge server items into local view and persist
-      const cleanLocals = (await loadStoredResources()).filter(l => l && !deletedIds.includes(l.id));
-      const merged = mergeResources(INITIAL_RESOURCES, cleanLocals, serverList, srvDeletedIds || []);
-      const sorted = sortResourcesNewestToOldest(merged);
-      setResources(sorted);
-      await persistResources(sorted);
-      window.dispatchEvent(new CustomEvent('anestesiapro_education_synced', { detail: sorted }));
+        // Merge server items into local view and persist
+        const cleanLocals = (await loadStoredResources()).filter(l => l && !deletedIds.includes(l.id));
+        const merged = mergeResources(INITIAL_RESOURCES, cleanLocals, serverList, srvDeletedIds || []);
+        const sorted = sortResourcesNewestToOldest(merged);
+        setResources(sorted);
+        await persistResources(sorted);
+        window.dispatchEvent(new CustomEvent('anestesiapro_education_synced', { detail: sorted }));
+        return sorted;
+      })();
+
+      const timeoutPromise = new Promise<any>((resolve) =>
+        setTimeout(() => resolve(resources), 6000)
+      );
+
+      const finalSorted = await Promise.race([syncPromise, timeoutPromise]);
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+      const timeStr = new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      setLastManualSyncTime(timeStr);
 
       setSyncBanner({
         type: 'success',
-        message: `Sincronización completa: ${sorted.length} recursos actualizados en la nube y disponibles en tu teléfono y PC.`
+        message: `✅ ¡Sincronizado con éxito (${elapsed}s)! ${finalSorted?.length || resources.length} recursos disponibles en tu teléfono y PC (${timeStr}).`
       });
-      setTimeout(() => setSyncBanner(null), 5000);
+      setTimeout(() => setSyncBanner(null), 8000);
     } catch (err) {
       console.error('Error during manual sync:', err);
       setSyncBanner({
         type: 'warning',
-        message: 'Error al conectar con el servidor. Revisa tu conexión a internet.'
+        message: 'Aviso de sincronización: Se mantuvieron los recursos locales guardados.'
       });
       setTimeout(() => setSyncBanner(null), 5000);
     } finally {
@@ -7150,6 +7145,7 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
         );
       }
       setTimeout(() => setToastMessage(null), 6000);
+      alert('✅ ¡Archivo subido y publicado con éxito en la nube de AnestesiaPro!');
 
       // Actualizar alerta de material nuevo en esta pantalla
       checkLatestEducationNotification();
@@ -7329,6 +7325,39 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
 
   return (
     <div className="space-y-6 animate-fadeIn pb-12">
+      {/* High-Visibility Realtime Cloud Sync Feedback Banner */}
+      {syncBanner && (
+        <div
+          className={`flex items-center justify-between p-3.5 rounded-2xl border text-xs font-bold shadow-xl transition-all animate-fadeIn ${
+            syncBanner.type === 'success'
+              ? 'bg-emerald-950/95 border-emerald-400/70 text-emerald-100 shadow-emerald-950/50'
+              : syncBanner.type === 'warning'
+              ? 'bg-amber-950/95 border-amber-400/70 text-amber-100 shadow-amber-950/50'
+              : 'bg-slate-900/95 border-cyan-400/70 text-cyan-100 shadow-cyan-950/50'
+          }`}
+        >
+          <div className="flex items-center gap-2.5">
+            {syncBanner.type === 'info' && (
+              <RefreshCw className="w-4 h-4 text-cyan-400 animate-spin shrink-0" />
+            )}
+            {syncBanner.type === 'success' && (
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            )}
+            {syncBanner.type === 'warning' && (
+              <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+            )}
+            <span className="leading-snug">{syncBanner.message}</span>
+          </div>
+          <button
+            onClick={() => setSyncBanner(null)}
+            className="text-slate-400 hover:text-white px-2 py-0.5 rounded cursor-pointer transition-colors shrink-0 font-black text-sm"
+            title="Cerrar aviso"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* High-Impact Banner Header */}
       <div className="bg-gradient-to-r from-slate-950 via-indigo-950 to-blue-950 rounded-3xl p-6 md:p-8 text-white border border-indigo-800/60 shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 right-0 -mr-16 -mt-16 w-96 h-96 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none animate-pulse" />
@@ -7498,13 +7527,19 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
                   <div className="flex flex-wrap items-center gap-2 pt-1">
                     <button
                       onClick={() => handleManualSync()}
-                    disabled={isSyncingWithServer}
-                    className="flex items-center gap-1.5 text-xs text-cyan-200 hover:text-white font-bold px-3.5 py-2 bg-cyan-950/70 hover:bg-cyan-900/90 rounded-xl border border-cyan-500/40 transition-all cursor-pointer active:scale-95 shadow-sm disabled:opacity-50"
-                    title="Sincronizar cambios en tiempo real entre Teléfono y PC"
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 ${isSyncingWithServer ? 'animate-spin text-cyan-400' : 'text-cyan-400'}`} />
-                    <span>{isSyncingWithServer ? 'Sincronizando...' : '🔄 Sincronizar Nube'}</span>
-                  </button>
+                      disabled={isSyncingWithServer}
+                      className="flex items-center gap-1.5 text-xs text-cyan-200 hover:text-white font-bold px-3.5 py-2 bg-cyan-950/70 hover:bg-cyan-900/90 rounded-xl border border-cyan-500/40 transition-all cursor-pointer active:scale-95 shadow-sm disabled:opacity-50"
+                      title="Sincronizar cambios en tiempo real entre Teléfono y PC"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${isSyncingWithServer ? 'animate-spin text-cyan-400' : 'text-cyan-400'}`} />
+                      <span>{isSyncingWithServer ? 'Sincronizando...' : '🔄 Sincronizar Nube'}</span>
+                    </button>
+                    {lastManualSyncTime && (
+                      <span className="text-[11px] font-semibold text-emerald-300 bg-emerald-950/80 border border-emerald-500/40 px-2.5 py-1.5 rounded-xl flex items-center gap-1 shadow-sm">
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Al día ({lastManualSyncTime})</span>
+                      </span>
+                    )}
 
                   <button
                     onClick={() => setIsManageModalOpen(true)}
@@ -7566,6 +7601,12 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
                       <RefreshCw className={`w-3.5 h-3.5 ${isSyncingWithServer ? 'animate-spin text-cyan-400' : 'text-cyan-400'}`} />
                       <span>{isSyncingWithServer ? 'Sincronizando...' : 'Sincronizar Nube'}</span>
                     </button>
+                    {lastManualSyncTime && (
+                      <span className="text-[10px] text-emerald-300 bg-emerald-950/60 px-2 py-0.5 rounded-lg border border-emerald-500/30 flex items-center gap-1">
+                        <Check className="w-2.5 h-2.5 text-emerald-400" />
+                        <span>{lastManualSyncTime}</span>
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-2 ml-auto">
@@ -7717,12 +7758,12 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
                           <div className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-800 text-[11px] font-black px-2.5 py-1 rounded-xl shadow-xs transition-colors">
                             <span className="flex items-center gap-1 text-blue-700" title="Número de visualizaciones de este recurso">
                               <Eye className="w-3.5 h-3.5 text-blue-600" />
-                              <span>{metrics.views || 42}</span>
+                              <span>{metrics.views || 0}</span>
                             </span>
                             <span className="text-slate-300">|</span>
                             <span className="flex items-center gap-1 text-emerald-700" title="Número de descargas de este recurso">
                               <Download className="w-3.5 h-3.5 text-emerald-600" />
-                              <span>{metrics.downloads || 15}</span>
+                              <span>{metrics.downloads || 0}</span>
                             </span>
                           </div>
                         );

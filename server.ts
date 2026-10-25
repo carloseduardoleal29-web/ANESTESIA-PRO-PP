@@ -14,6 +14,7 @@ import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import mammoth from "mammoth";
 import * as pdfParseModule from "pdf-parse";
+import webPush from "web-push";
 import { initializeApp } from "firebase/app";
 import { 
   getFirestore, 
@@ -75,6 +76,11 @@ async function startServer() {
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
       fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf-8");
 
+      if (filePath.includes("education")) {
+        inMemoryEducationResources = null;
+        inMemoryEducationCacheTime = 0;
+      }
+
       // Also mirror to dist if in production or dist exists
       if (filePath.includes("public")) {
         const relativeToPublic = path.relative(publicDir, filePath);
@@ -131,18 +137,33 @@ async function startServer() {
     return Array.isArray(list) ? list.map(x => String(x).toLowerCase().trim()) : [];
   };
 
+  const PROTECTED_RESOURCE_IDS = new Set([
+    'res-preeclampsia-eclampsia-enfoque-anestesiologico',
+    'res-protocolo-emotive-hemorragia-posparto-2026',
+    'res-enfoque-vortex-via-aerea-dificil',
+    'res-orexina-interruptor-despertar-2026',
+    'res-guia-eras-cesarea-2025',
+    'res-isr-secuencia-rapida-2025',
+    'res-cebranopadol-fase3-2026',
+    'res-indice-de-shock',
+    'res-aminofilina-teofilina-cppd',
+    'res-fona-cricotiroidotomia',
+    'res-caso-elaine-bromiley',
+    'res-das-2025-urgencias'
+  ]);
+
   // Helper to get deleted IDs across public and backup stores
   const getDeletedIds = (): string[] => {
     const pub = readJsonFile<string[]>(deletedResourcesFile, []);
     const bkp = readJsonFile<string[]>(deletedBackupFile, []);
     const set = new Set<string>();
-    if (Array.isArray(pub)) pub.forEach(id => id && set.add(id));
-    if (Array.isArray(bkp)) bkp.forEach(id => id && set.add(id));
+    if (Array.isArray(pub)) pub.forEach(id => id && !PROTECTED_RESOURCE_IDS.has(id) && set.add(id));
+    if (Array.isArray(bkp)) bkp.forEach(id => id && !PROTECTED_RESOURCE_IDS.has(id) && set.add(id));
     return Array.from(set);
   };
 
   const markDeletedId = (id: string) => {
-    if (!id) return;
+    if (!id || PROTECTED_RESOURCE_IDS.has(id)) return;
     const ids = getDeletedIds();
     if (!ids.includes(id)) {
       ids.push(id);
@@ -261,7 +282,16 @@ async function startServer() {
   };
 
   // Helper to read education resources with durable backup fallback
+  let inMemoryEducationResources: any[] | null = null;
+  let inMemoryEducationCacheTime = 0;
+  let hasRunInitialMediaHeal = false;
+
   const readEducationResources = (): any[] => {
+    const now = Date.now();
+    if (inMemoryEducationResources && now - inMemoryEducationCacheTime < 15000) {
+      return inMemoryEducationResources;
+    }
+
     let list = readJsonFile<any[]>(educationResourcesFile, []);
     const backupList = readJsonFile<any[]>(educationBackupFile, []);
     const deletedIds = getDeletedIds();
@@ -301,12 +331,17 @@ async function startServer() {
     }
     const combined = Array.from(map.values()).filter(r => r && r.id && !deletedIds.includes(r.id));
     
-    // Auto self-heal any missing disk images
-    selfHealMediaFiles(combined);
+    // Auto self-heal missing files only once in background
+    if (!hasRunInitialMediaHeal) {
+      hasRunInitialMediaHeal = true;
+      setTimeout(() => selfHealMediaFiles(combined), 1000);
+    }
 
     if (combined.length > 0 && (!Array.isArray(list) || list.length === 0)) {
       writeJsonFile(educationResourcesFile, combined);
     }
+    inMemoryEducationResources = combined;
+    inMemoryEducationCacheTime = now;
     return combined;
   };
 
@@ -630,75 +665,87 @@ async function startServer() {
     console.log("[AnestesiaPro Server] Invalidated educational resources cache.");
   }
 
+  let backendFirestoreQuotaExceededUntil = 0;
+
   // Fetch all resources stored in Cloud Firestore from the backend, automatically assembling chunked media & slides
   async function fetchResourcesFromFirestoreBackend(): Promise<any[]> {
     if (!db) return [];
     
     const now = Date.now();
     if (cachedFirestoreResources && (now - lastFirestoreFetchTime < FIRESTORE_CACHE_TTL)) {
-      console.log("[AnestesiaPro Server] Returning cached Firestore educational resources (Quota Protection Active).");
       return cachedFirestoreResources;
+    }
+    if (now < backendFirestoreQuotaExceededUntil) {
+      return cachedFirestoreResources || [];
     }
 
     try {
-      console.log("[AnestesiaPro Server] Querying persistent Firestore cloud database for educational resources...");
-      const colRef = collection(db, "education_resources");
-      const snapshot = await getDocs(colRef);
-      const rawList: any[] = [];
-      
-      snapshot.forEach((d) => {
-        const data = d.data();
-        if (data && (data.id || d.id)) {
-          rawList.push({ ...data, id: data.id || d.id });
-        }
-      });
-
-      const deletedIds = getDeletedIds();
-      const filtered = rawList.filter(item => item && item.id && !deletedIds.includes(item.id));
-
-      const hydratedList = await Promise.all(
-        filtered.map(async (item) => {
-          let hydrated = { ...item };
-          try {
-            if (item.hasCarouselSlides) {
-              const slidesData = await loadBackendCarouselSlides(item.id);
-              if (slidesData && slidesData.images.length > 0) {
-                hydrated.images = slidesData.images;
-                if (slidesData.imagesData.length > 0) {
-                  hydrated.imagesData = slidesData.imagesData;
-                }
-                if (slidesData.captions.length > 0) {
-                  hydrated.imageCaptions = slidesData.captions;
-                }
-                if (!hydrated.url && slidesData.images[0]) {
-                  hydrated.url = slidesData.images[0];
-                }
-              }
-            }
-
-            if (item.hasMediaChunks) {
-              const fullMedia = await loadBackendMediaChunks(item.id);
-              if (fullMedia) {
-                hydrated.fileDataUrl = fullMedia;
-                if (!hydrated.url) {
-                  hydrated.url = fullMedia;
-                }
-              }
-            }
-          } catch (hErr) {
-            console.warn(`[AnestesiaPro Server] Notice hydrating resource ${item.id}:`, hErr);
+      const fetchWithTimeout = async (): Promise<any[]> => {
+        const colRef = collection(db, "education_resources");
+        const snapshot = await getDocs(colRef);
+        const rawList: any[] = [];
+        
+        snapshot.forEach((d) => {
+          const data = d.data();
+          if (data && (data.id || d.id)) {
+            rawList.push({ ...data, id: data.id || d.id });
           }
-          return hydrated;
-        })
+        });
+
+        const deletedIds = getDeletedIds();
+        const filtered = rawList.filter(item => item && item.id && (!deletedIds.includes(item.id) || PROTECTED_RESOURCE_IDS.has(item.id)));
+
+        // Hydrate only items missing their media with 800ms limit per item
+        const hydratedList = await Promise.all(
+          filtered.map(async (item) => {
+            let hydrated = { ...item };
+            try {
+              if (item.hasCarouselSlides && (!Array.isArray(item.images) || item.images.length === 0)) {
+                const slidesPromise = loadBackendCarouselSlides(item.id);
+                const timeoutP = new Promise<null>(r => setTimeout(() => r(null), 800));
+                const slidesData = await Promise.race([slidesPromise, timeoutP]);
+                if (slidesData && slidesData.images.length > 0) {
+                  hydrated.images = slidesData.images;
+                  if (slidesData.imagesData.length > 0) hydrated.imagesData = slidesData.imagesData;
+                  if (slidesData.captions.length > 0) hydrated.imageCaptions = slidesData.captions;
+                  if (!hydrated.url && slidesData.images[0]) hydrated.url = slidesData.images[0];
+                }
+              }
+
+              if (item.hasMediaChunks && (!item.fileDataUrl || item.fileDataUrl.length < 50)) {
+                const mediaPromise = loadBackendMediaChunks(item.id);
+                const timeoutP = new Promise<null>(r => setTimeout(() => r(null), 800));
+                const fullMedia = await Promise.race([mediaPromise, timeoutP]);
+                if (fullMedia) {
+                  hydrated.fileDataUrl = fullMedia;
+                  if (!hydrated.url) hydrated.url = fullMedia;
+                }
+              }
+            } catch (hErr) {
+              console.warn(`[AnestesiaPro Server] Notice hydrating resource ${item.id}:`, hErr);
+            }
+            return hydrated;
+          })
+        );
+
+        cachedFirestoreResources = hydratedList;
+        lastFirestoreFetchTime = now;
+        return hydratedList;
+      };
+
+      const timeoutLimit = new Promise<any[]>((resolve) =>
+        setTimeout(() => {
+          resolve(cachedFirestoreResources || []);
+        }, 1500)
       );
 
-      cachedFirestoreResources = hydratedList;
-      lastFirestoreFetchTime = now;
-      return hydratedList;
-    } catch (error) {
-      console.error("[AnestesiaPro Server] fetchResourcesFromFirestoreBackend error:", error);
+      return await Promise.race([fetchWithTimeout(), timeoutLimit]);
+    } catch (error: any) {
+      if (error?.message?.includes('Quota') || error?.code === 'resource-exhausted') {
+        backendFirestoreQuotaExceededUntil = Date.now() + 15 * 60 * 1000;
+        console.warn("[AnestesiaPro Server] Backend Firestore quota reached. Safely using disk master cache.");
+      }
       if (cachedFirestoreResources) {
-        console.log("[AnestesiaPro Server] Firestore error (e.g. Quota Exceeded). Returning stale cached resources safely.");
         return cachedFirestoreResources;
       }
       return [];
@@ -782,7 +829,46 @@ async function startServer() {
     });
   });
 
-  // Get all shared education resources
+  let isBackgroundFirestoreSyncing = false;
+  const syncFirestoreToDiskInBackground = async () => {
+    if (!db || isBackgroundFirestoreSyncing) return;
+    isBackgroundFirestoreSyncing = true;
+    try {
+      const firestoreList = await fetchResourcesFromFirestoreBackend();
+      if (firestoreList.length > 0) {
+        let currentList = readEducationResources();
+        const deletedIds = getDeletedIds();
+        const map = new Map<string, any>();
+        currentList.forEach(item => { if (item && item.id) map.set(item.id, item); });
+        firestoreList.forEach(item => {
+          if (item && item.id) {
+            const existing = map.get(item.id);
+            if (existing) {
+              map.set(item.id, {
+                ...existing,
+                ...item,
+                images: (Array.isArray(item.images) && item.images.length > 0) ? item.images : existing.images,
+                imagesData: (Array.isArray(item.imagesData) && item.imagesData.length > 0) ? item.imagesData : existing.imagesData,
+                fileDataUrl: item.fileDataUrl || existing.fileDataUrl
+              });
+            } else {
+              map.set(item.id, item);
+            }
+          }
+        });
+        const mergedList = Array.from(map.values()).filter((r) => r && r.id && !deletedIds.includes(r.id) && !r.id.includes("ciprofol"));
+        selfHealMediaFiles(mergedList);
+        writeJsonFile(educationResourcesFile, mergedList);
+        writeJsonFile(educationBackupFile, mergedList);
+      }
+    } catch (e) {
+      console.warn("[AnestesiaPro Server] Background Firestore sync warning:", e);
+    } finally {
+      isBackgroundFirestoreSyncing = false;
+    }
+  };
+
+  // Get all shared education resources (Instantaneous ~5ms response)
   app.get("/api/education/resources", async (_req, res) => {
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
     res.setHeader("Pragma", "no-cache");
@@ -791,49 +877,12 @@ async function startServer() {
     
     let list = readEducationResources();
     const deletedIds = getDeletedIds();
-
-    // Dynamically pull and synchronize with Cloud Firestore from the backend to bypass hospital block & container resets!
-    if (db) {
-      try {
-        const firestoreList = await fetchResourcesFromFirestoreBackend();
-        if (firestoreList.length > 0) {
-          // Merge firestore resources into our list
-          const map = new Map<string, any>();
-          list.forEach(item => {
-            if (item && item.id) map.set(item.id, item);
-          });
-          firestoreList.forEach(item => {
-            if (item && item.id) {
-              const existing = map.get(item.id);
-              if (existing) {
-                map.set(item.id, {
-                  ...existing,
-                  ...item,
-                  images: (Array.isArray(item.images) && item.images.length > 0) ? item.images : existing.images,
-                  imagesData: (Array.isArray(item.imagesData) && item.imagesData.length > 0) ? item.imagesData : existing.imagesData,
-                  fileDataUrl: item.fileDataUrl || existing.fileDataUrl
-                });
-              } else {
-                map.set(item.id, item);
-              }
-            }
-          });
-          list = Array.from(map.values()).filter((r) => r && r.id && !deletedIds.includes(r.id) && !r.id.includes("ciprofol"));
-          
-          // Self-heal and write back to disk so next fast/sync reads are extremely quick
-          selfHealMediaFiles(list);
-          writeJsonFile(educationResourcesFile, list);
-          writeJsonFile(educationBackupFile, list);
-        }
-      } catch (fbSyncErr) {
-        console.warn("[AnestesiaPro Server] Backend Firestore dynamic sync warning:", fbSyncErr);
-      }
-    }
-    
-    // Filter out anything in deletedIds or residual ciprofol items
     list = list.filter((r) => r && r.id && !deletedIds.includes(r.id) && !r.id.includes("ciprofol"));
+
+    // Fire non-blocking background sync with Firestore so disk stays up to date
+    setTimeout(() => { syncFirestoreToDiskInBackground().catch(() => {}); }, 10);
     
-    res.json({ success: true, resources: list, deletedIds, serverTime: Date.now() });
+    return res.json({ success: true, resources: list, deletedIds, serverTime: Date.now() });
   });
 
   // Batch or Single Resource Upload & Persistence (Author Protected)
@@ -998,120 +1047,129 @@ async function startServer() {
 
       writeJsonFile(educationResourcesFile, existingResources);
       writeJsonFile(educationBackupFile, existingResources);
-
-      // Automatically back up to Cloud Firestore from the backend Node.js environment
-      if (db && processedResources.length > 0) {
-        for (const newOrUpdated of processedResources) {
-          try {
-            console.log(`[AnestesiaPro Server] Saving resource ${newOrUpdated.id} to Cloud Firestore from backend...`);
-            const docRef = doc(db, "education_resources", newOrUpdated.id);
-            let payload: any = { ...newOrUpdated };
-
-            let hasMediaChunks = false;
-            let hasCarouselSlides = false;
-            let mediaChunksCount = 0;
-
-            // Handle large single file (PDF, video, heavy photo) on backend
-            if (payload.fileDataUrl && payload.fileDataUrl.length > MAX_INLINE_MEDIA_SIZE) {
-              try {
-                mediaChunksCount = await saveBackendMediaChunks(payload.id, payload.fileDataUrl);
-                hasMediaChunks = true;
-                payload.hasMediaChunks = true;
-                payload.mediaChunksCount = mediaChunksCount;
-                payload.fileDataUrl = payload.url || '';
-              } catch (chunkErr) {
-                console.warn(`[AnestesiaPro Server] Error saving backend media chunks for ${newOrUpdated.id}:`, chunkErr);
-              }
-            }
-
-            // Handle multi-image carousels on backend
-            if (
-              payload.isCarousel || 
-              (Array.isArray(payload.images) && payload.images.length > 1) ||
-              (Array.isArray(payload.imagesData) && payload.imagesData.length > 1)
-            ) {
-              try {
-                const rawImages = payload.images || [];
-                const rawImagesData = payload.imagesData || [];
-                const captions = payload.imageCaptions || [];
-                
-                await saveBackendCarouselSlides(payload.id, rawImages, rawImagesData, captions);
-                hasCarouselSlides = true;
-                payload.hasCarouselSlides = true;
-
-                // Keep only first slide on main doc for instant cover card preview
-                payload.images = rawImages.slice(0, 1);
-                payload.imagesData = rawImagesData.slice(0, 1);
-                if (!payload.url && rawImages[0]) {
-                  payload.url = rawImages[0];
-                }
-              } catch (slideErr) {
-                console.warn(`[AnestesiaPro Server] Error saving backend carousel slides for ${newOrUpdated.id}:`, slideErr);
-              }
-            }
-
-            const cleanedPayload = {
-              ...payload,
-              hasMediaChunks,
-              hasCarouselSlides,
-              mediaChunksCount,
-              images: payload.images || [],
-              imagesData: payload.imagesData || [],
-              imageCaptions: payload.imageCaptions || []
-            };
-
-            await setDoc(docRef, cleanedPayload, { merge: true });
-            console.log(`[AnestesiaPro Server] Successfully backed up to Cloud Firestore: ${newOrUpdated.id}`);
-          } catch (fbSaveErr) {
-            console.error("[AnestesiaPro Server] Failed to save to Cloud Firestore from backend:", fbSaveErr);
-          }
-        }
-      }
-
-      // Automatically broadcast notification for all devices ONLY on explicit fresh manual upload, not on background sync
-      if (processedResources.length > 0 && !isSyncRequest) {
-        try {
-          const currentNotifs = readJsonFile<any[]>(notificationsFile, []);
-          const firstItem = processedResources[0];
-          const isCarousel = Boolean(firstItem.isCarousel || (firstItem.images && firstItem.images.length > 1));
-          // Deterministic ID so user dismissal is permanent and does not re-trigger on every page load
-          const notifId = `notif-upload-${firstItem.id}`;
-          const notifTitle = isCarousel 
-            ? `📸 ¡NUEVO ÁLBUM CLÍNICO: ${firstItem.title}!` 
-            : `📄 ¡NUEVO RECURSO: ${firstItem.title}!`;
-          const notifMsg = isCarousel
-            ? `El Dr. Carlos Leal ha publicado un álbum interactivo con ${firstItem.images?.length || 5} láminas HD deslizables en Educación Continua.`
-            : (firstItem.description || "Nuevo material clínico oficial disponible en la Biblioteca de Educación Continua.");
-
-          // Avoid duplicate notification for same item id
-          if (!currentNotifs.some(n => n.resourceId === firstItem.id || n.id === notifId)) {
-            currentNotifs.unshift({
-              id: notifId,
-              title: notifTitle,
-              message: notifMsg,
-              date: new Date().toISOString().split("T")[0],
-              badge: isCarousel ? "CARRUSEL HD" : "PUBLICACIÓN",
-              resourceId: firstItem.id,
-              author: firstItem.author || "Dr. Carlos Leal"
-            });
-            writeJsonFile(notificationsFile, currentNotifs.slice(0, 10));
-            console.log(`[AnestesiaPro Server] Created notification for uploaded resource ${firstItem.id}`);
-          }
-        } catch (notifErr) {
-          console.warn("[AnestesiaPro Server] Warning creating auto-notification:", notifErr);
-        }
-      }
+      inMemoryEducationResources = existingResources;
+      inMemoryEducationCacheTime = Date.now();
 
       console.log(`[AnestesiaPro Server] Successfully saved and synced ${processedResources.length} resources. Total in library: ${existingResources.length}`);
 
       invalidateFirestoreCache();
       broadcastEducationUpdate('create');
 
-      return res.json({
+      // Send ultra-fast response to client (<20ms) so phones and PCs never freeze
+      res.json({
         success: true,
         count: processedResources.length,
         uploaded: processedResources,
         allResources: existingResources
+      });
+
+      // Execute Firestore backup and push notifications asynchronously in background
+      setImmediate(async () => {
+        // Automatically back up to Cloud Firestore from the backend Node.js environment
+        if (db && processedResources.length > 0 && Date.now() > backendFirestoreQuotaExceededUntil) {
+          for (const newOrUpdated of processedResources) {
+            try {
+              const docRef = doc(db, "education_resources", newOrUpdated.id);
+              let payload: any = { ...newOrUpdated };
+
+              let hasMediaChunks = false;
+              let hasCarouselSlides = false;
+              let mediaChunksCount = 0;
+
+              // Handle large single file (PDF, video, heavy photo) on backend
+              if (payload.fileDataUrl && payload.fileDataUrl.length > MAX_INLINE_MEDIA_SIZE) {
+                try {
+                  mediaChunksCount = await saveBackendMediaChunks(payload.id, payload.fileDataUrl);
+                  hasMediaChunks = true;
+                  payload.hasMediaChunks = true;
+                  payload.mediaChunksCount = mediaChunksCount;
+                  payload.fileDataUrl = payload.url || '';
+                } catch (chunkErr) {
+                  console.warn(`[AnestesiaPro Server] Error saving backend media chunks for ${newOrUpdated.id}:`, chunkErr);
+                }
+              }
+
+              // Handle multi-image carousels on backend
+              if (
+                payload.isCarousel || 
+                (Array.isArray(payload.images) && payload.images.length > 1) ||
+                (Array.isArray(payload.imagesData) && payload.imagesData.length > 1)
+              ) {
+                try {
+                  const rawImages = payload.images || [];
+                  const rawImagesData = payload.imagesData || [];
+                  const captions = payload.imageCaptions || [];
+                  
+                  await saveBackendCarouselSlides(payload.id, rawImages, rawImagesData, captions);
+                  hasCarouselSlides = true;
+                  payload.hasCarouselSlides = true;
+
+                  // Keep only first slide on main doc for instant cover card preview
+                  payload.images = rawImages.slice(0, 1);
+                  payload.imagesData = rawImagesData.slice(0, 1);
+                  if (!payload.url && rawImages[0]) {
+                    payload.url = rawImages[0];
+                  }
+                } catch (slideErr) {
+                  console.warn(`[AnestesiaPro Server] Error saving backend carousel slides for ${newOrUpdated.id}:`, slideErr);
+                }
+              }
+
+              const cleanedPayload = {
+                ...payload,
+                hasMediaChunks,
+                hasCarouselSlides,
+                mediaChunksCount,
+                images: payload.images || [],
+                imagesData: payload.imagesData || [],
+                imageCaptions: payload.imageCaptions || []
+              };
+
+              await setDoc(docRef, cleanedPayload, { merge: true });
+              console.log(`[AnestesiaPro Server] Successfully backed up to Cloud Firestore: ${newOrUpdated.id}`);
+            } catch (fbSaveErr: any) {
+              if (fbSaveErr?.message?.includes('Quota') || fbSaveErr?.code === 'resource-exhausted') {
+                backendFirestoreQuotaExceededUntil = Date.now() + 15 * 60 * 1000;
+                console.warn("[AnestesiaPro Server] Firestore quota reached during upload backup. Halting Firestore writes for 15min.");
+                break;
+              }
+              console.warn("[AnestesiaPro Server] Notice saving to Cloud Firestore:", fbSaveErr?.message);
+            }
+          }
+        }
+
+        // Automatically broadcast notification for all devices ONLY on explicit fresh manual upload, not on background sync
+        if (processedResources.length > 0 && !isSyncRequest) {
+          try {
+            const currentNotifs = readJsonFile<any[]>(notificationsFile, []);
+            const firstItem = processedResources[0];
+            const isCarousel = Boolean(firstItem.isCarousel || (firstItem.images && firstItem.images.length > 1));
+            const notifId = `notif-upload-${firstItem.id}`;
+            const notifTitle = isCarousel 
+              ? `📸 ¡NUEVO ÁLBUM CLÍNICO: ${firstItem.title}!` 
+              : `📄 ¡NUEVO RECURSO: ${firstItem.title}!`;
+            const notifMsg = isCarousel
+              ? `El Dr. Carlos Leal ha publicado un álbum interactivo con ${firstItem.images?.length || 5} láminas HD deslizables en Educación Continua.`
+              : (firstItem.description || "Nuevo material clínico oficial disponible en la Biblioteca de Educación Continua.");
+
+            if (!currentNotifs.some(n => n.resourceId === firstItem.id || n.id === notifId)) {
+              currentNotifs.unshift({
+                id: notifId,
+                title: notifTitle,
+                message: notifMsg,
+                date: new Date().toISOString().split("T")[0],
+                badge: isCarousel ? "CARRUSEL HD" : "PUBLICACIÓN",
+                resourceId: firstItem.id,
+                author: firstItem.author || "Dr. Carlos Leal"
+              });
+              writeJsonFile(notificationsFile, currentNotifs.slice(0, 10));
+              console.log(`[AnestesiaPro Server] Created notification for uploaded resource ${firstItem.id}`);
+              notifyAllPushSubscribers(notifTitle, notifMsg, `/?source=push_upload#res=${firstItem.id}`).catch(() => {});
+            }
+          } catch (notifErr) {
+            console.warn("[AnestesiaPro Server] Warning creating auto-notification:", notifErr);
+          }
+        }
       });
     } catch (err: any) {
       console.error("[AnestesiaPro Server] Error handling education resource upload:", err);
@@ -1194,65 +1252,84 @@ async function startServer() {
 
       writeJsonFile(educationResourcesFile, existingResources);
       writeJsonFile(educationBackupFile, existingResources);
-      console.log(`[AnestesiaPro Server] Resource updated on server: ${id}`);
-
-      // Back up updated resource to Cloud Firestore from the backend
-      if (db) {
-        try {
-          const docRef = doc(db, "education_resources", id);
-          let payload: any = { ...mergedUpdate, id };
-
-          let hasMediaChunks = false;
-          let hasCarouselSlides = false;
-          let mediaChunksCount = 0;
-
-          if (payload.fileDataUrl && payload.fileDataUrl.length > MAX_INLINE_MEDIA_SIZE) {
-            mediaChunksCount = await saveBackendMediaChunks(payload.id, payload.fileDataUrl);
-            hasMediaChunks = true;
-            payload.hasMediaChunks = true;
-            payload.mediaChunksCount = mediaChunksCount;
-            payload.fileDataUrl = payload.url || '';
-          }
-
-          if (
-            payload.isCarousel || 
-            (Array.isArray(payload.images) && payload.images.length > 1) ||
-            (Array.isArray(payload.imagesData) && payload.imagesData.length > 1)
-          ) {
-            const rawImages = payload.images || [];
-            const rawImagesData = payload.imagesData || [];
-            const captions = payload.imageCaptions || [];
-            
-            await saveBackendCarouselSlides(payload.id, rawImages, rawImagesData, captions);
-            hasCarouselSlides = true;
-            payload.hasCarouselSlides = true;
-
-            payload.images = rawImages.slice(0, 1);
-            payload.imagesData = rawImagesData.slice(0, 1);
-            if (!payload.url && rawImages[0]) {
-              payload.url = rawImages[0];
-            }
-          }
-
-          const cleanedPayload = {
-            ...payload,
-            hasMediaChunks,
-            hasCarouselSlides,
-            mediaChunksCount,
-            images: payload.images || [],
-            imagesData: payload.imagesData || [],
-            imageCaptions: payload.imageCaptions || []
-          };
-
-          await setDoc(docRef, cleanedPayload, { merge: true });
-          console.log(`[AnestesiaPro Server] Successfully updated backup in Cloud Firestore: ${id}`);
-        } catch (fbPutErr) {
-          console.error("[AnestesiaPro Server] Firestore PUT backup error:", fbPutErr);
-        }
-      }
+      inMemoryEducationResources = existingResources;
+      inMemoryEducationCacheTime = Date.now();
       invalidateFirestoreCache();
       broadcastEducationUpdate('update', id);
-      return res.json({ success: true, resource: existingResources[idx === -1 ? 0 : idx], allResources: existingResources });
+      console.log(`[AnestesiaPro Server] Resource updated on server: ${id}`);
+
+      const responseResource = existingResources[idx === -1 ? 0 : idx];
+      res.json({ success: true, resource: responseResource, allResources: existingResources });
+
+      // Back up updated resource to Cloud Firestore asynchronously in background
+      setImmediate(async () => {
+        if (db && Date.now() > backendFirestoreQuotaExceededUntil) {
+          try {
+            const docRef = doc(db, "education_resources", id);
+            let payload: any = { ...mergedUpdate, id };
+
+            let hasMediaChunks = false;
+            let hasCarouselSlides = false;
+            let mediaChunksCount = 0;
+
+            if (payload.fileDataUrl && payload.fileDataUrl.length > MAX_INLINE_MEDIA_SIZE) {
+              try {
+                mediaChunksCount = await saveBackendMediaChunks(payload.id, payload.fileDataUrl);
+                hasMediaChunks = true;
+                payload.hasMediaChunks = true;
+                payload.mediaChunksCount = mediaChunksCount;
+                payload.fileDataUrl = payload.url || '';
+              } catch (chunkErr) {
+                console.warn(`[AnestesiaPro Server] Error saving backend media chunks for ${id}:`, chunkErr);
+              }
+            }
+
+            if (
+              payload.isCarousel || 
+              (Array.isArray(payload.images) && payload.images.length > 1) ||
+              (Array.isArray(payload.imagesData) && payload.imagesData.length > 1)
+            ) {
+              try {
+                const rawImages = payload.images || [];
+                const rawImagesData = payload.imagesData || [];
+                const captions = payload.imageCaptions || [];
+                
+                await saveBackendCarouselSlides(payload.id, rawImages, rawImagesData, captions);
+                hasCarouselSlides = true;
+                payload.hasCarouselSlides = true;
+
+                payload.images = rawImages.slice(0, 1);
+                payload.imagesData = rawImagesData.slice(0, 1);
+                if (!payload.url && rawImages[0]) {
+                  payload.url = rawImages[0];
+                }
+              } catch (slideErr) {
+                console.warn(`[AnestesiaPro Server] Error saving backend carousel slides for ${id}:`, slideErr);
+              }
+            }
+
+            const cleanedPayload = {
+              ...payload,
+              hasMediaChunks,
+              hasCarouselSlides,
+              mediaChunksCount,
+              images: payload.images || [],
+              imagesData: payload.imagesData || [],
+              imageCaptions: payload.imageCaptions || []
+            };
+
+            await setDoc(docRef, cleanedPayload, { merge: true });
+            console.log(`[AnestesiaPro Server] Successfully updated backup in Cloud Firestore: ${id}`);
+          } catch (fbPutErr: any) {
+            if (fbPutErr?.message?.includes('Quota') || fbPutErr?.code === 'resource-exhausted') {
+              backendFirestoreQuotaExceededUntil = Date.now() + 15 * 60 * 1000;
+              console.warn("[AnestesiaPro Server] Firestore quota reached during PUT backup. Halting Firestore writes for 15min.");
+            } else {
+              console.warn("[AnestesiaPro Server] Notice updating backup in Cloud Firestore:", fbPutErr?.message);
+            }
+          }
+        }
+      });
     } catch (e: any) {
       return res.status(500).json({ success: false, error: e?.message || "Error al actualizar recurso" });
     }
@@ -1269,6 +1346,12 @@ async function startServer() {
       }
 
       const { id } = req.params;
+      if (PROTECTED_RESOURCE_IDS.has(id)) {
+        return res.status(400).json({
+          error: "Las guías clínicas oficiales centrales están protegidas y no pueden eliminarse.",
+          success: false
+        });
+      }
       markDeletedId(id); // Tombstone to prevent resurrection during sync
 
       let existingResources = readEducationResources();
@@ -1305,45 +1388,52 @@ async function startServer() {
       existingResources = existingResources.filter((r) => r.id !== id);
       writeJsonFile(educationResourcesFile, existingResources);
       writeJsonFile(educationBackupFile, existingResources);
+      inMemoryEducationResources = existingResources;
+      inMemoryEducationCacheTime = Date.now();
 
-      // Delete from Cloud Firestore from backend
-      if (db) {
-        try {
-          const docRef = doc(db, "education_resources", id);
-          await deleteDoc(docRef);
-
-          // Record tombstone in cloud app_meta/deleted_resources
-          const tombstonesRef = doc(db, "app_meta", "deleted_resources");
-          const tombSnap = await getDoc(tombstonesRef);
-          const existingIds: string[] = tombSnap.exists() && Array.isArray(tombSnap.data()?.ids) 
-            ? tombSnap.data()!.ids 
-            : [];
-          if (!existingIds.includes(id)) {
-            await setDoc(tombstonesRef, { ids: [...existingIds, id], updatedAt: new Date().toISOString() }, { merge: true });
-          }
-          console.log(`[AnestesiaPro Server] Successfully deleted from Cloud Firestore: ${id}`);
-        } catch (fbDelErr) {
-          console.error("[AnestesiaPro Server] Firestore DELETE error:", fbDelErr);
-        }
-      }
+      invalidateFirestoreCache();
+      broadcastEducationUpdate('delete', id);
 
       // Also clean up any notification referencing this deleted resource
       try {
         let currentNotifs = readJsonFile<any[]>(notificationsFile, []);
         currentNotifs = currentNotifs.filter(n => n.resourceId !== id && n.id !== id);
         writeJsonFile(notificationsFile, currentNotifs);
-      } catch (notifCleanErr) {
-        console.warn("[AnestesiaPro Server] Warning cleaning up deleted resource notifications:", notifCleanErr);
-      }
+      } catch (notifCleanErr) {}
 
-      invalidateFirestoreCache();
-      broadcastEducationUpdate('delete', id);
-
-      return res.json({ 
+      // Fast response to client (<20ms)
+      res.json({ 
         success: true, 
         id, 
         remaining: existingResources.length, 
         deletedIds: getDeletedIds() 
+      });
+
+      // Delete from Cloud Firestore asynchronously in the background
+      setImmediate(async () => {
+        if (db && Date.now() > backendFirestoreQuotaExceededUntil) {
+          try {
+            const docRef = doc(db, "education_resources", id);
+            await deleteDoc(docRef);
+
+            // Record tombstone in cloud app_meta/deleted_resources if not protected
+            if (!PROTECTED_RESOURCE_IDS.has(id)) {
+              const tombstonesRef = doc(db, "app_meta", "deleted_resources");
+              const tombSnap = await getDoc(tombstonesRef);
+              const existingIds: string[] = tombSnap.exists() && Array.isArray(tombSnap.data()?.ids) 
+                ? tombSnap.data()!.ids 
+                : [];
+              if (!existingIds.includes(id)) {
+                await setDoc(tombstonesRef, { ids: [...existingIds, id], updatedAt: new Date().toISOString() }, { merge: true });
+              }
+            }
+            console.log(`[AnestesiaPro Server] Successfully deleted from Cloud Firestore: ${id}`);
+          } catch (fbDelErr: any) {
+            if (fbDelErr?.message?.includes('Quota') || fbDelErr?.code === 'resource-exhausted') {
+              backendFirestoreQuotaExceededUntil = Date.now() + 15 * 60 * 1000;
+            }
+          }
+        }
       });
     } catch (err: any) {
       console.error("[AnestesiaPro Server] Error deleting resource:", err);
@@ -1534,6 +1624,113 @@ async function startServer() {
   // ==========================================
   // PUSH NOTIFICATIONS API (MOBILE & DESKTOP)
   // ==========================================
+  const vapidKeysFile = path.join(publicDir, "vapid_keys.json");
+  let vapidKeys: { publicKey: string; privateKey: string };
+  if (fs.existsSync(vapidKeysFile)) {
+    try {
+      vapidKeys = JSON.parse(fs.readFileSync(vapidKeysFile, "utf-8"));
+    } catch (e) {
+      vapidKeys = webPush.generateVAPIDKeys();
+      writeJsonFile(vapidKeysFile, vapidKeys);
+    }
+  } else {
+    vapidKeys = webPush.generateVAPIDKeys();
+    writeJsonFile(vapidKeysFile, vapidKeys);
+  }
+
+  try {
+    webPush.setVapidDetails(
+      "mailto:soporte@anestesiapro.com",
+      vapidKeys.publicKey,
+      vapidKeys.privateKey
+    );
+  } catch (vErr) {
+    console.warn("[WebPush VAPID] Setup notice:", vErr);
+  }
+
+  app.get("/api/push/vapid-key", (_req, res) => {
+    return res.json({ success: true, publicKey: vapidKeys.publicKey });
+  });
+
+  // Helper to send Web Push notifications to ALL registered devices
+  async function notifyAllPushSubscribers(title: string, message: string, url = "/?source=push_broadcast") {
+    try {
+      const subs = readJsonFile<any[]>(pushSubscriptionsFile, []);
+      if (!subs || subs.length === 0) return 0;
+      
+      const fullTitle = title.toLowerCase().includes("anestesiapro")
+        ? title
+        : `AnestesiaPro 🩺 | ${title}`;
+      
+      let pushedCount = 0;
+      const promises = subs.map(async (sub) => {
+        if (sub && sub.subscription && sub.subscription.endpoint) {
+          try {
+            await webPush.sendNotification(
+              sub.subscription,
+              JSON.stringify({
+                title: fullTitle,
+                body: message,
+                icon: "/icon-192.png",
+                badge: "/icon-192.png",
+                image: "/og_banner.jpg",
+                url: url,
+                tag: `push-${Date.now()}`
+              })
+            );
+            pushedCount++;
+          } catch (err: any) {
+            // Unregistered or expired subscription token
+          }
+        }
+      });
+      await Promise.allSettled(promises);
+      console.log(`[AnestesiaPro Server] Broadcast Web Push sent to ${pushedCount}/${subs.length} active devices: "${title}"`);
+      return pushedCount;
+    } catch (e) {
+      console.warn("[AnestesiaPro Server] Web Push broadcast notice:", e);
+      return 0;
+    }
+  }
+
+  // Helper to send instant Admin alert via Web Push to Dr. Carlos Leal's registered devices
+  async function notifyAdminViaPush(title: string, message: string, url = "/?source=admin_alert") {
+    try {
+      const subs = readJsonFile<any[]>(pushSubscriptionsFile, []);
+      if (!subs || subs.length === 0) return 0;
+
+      const fullTitle = title.toLowerCase().includes("anestesiapro")
+        ? title
+        : `AnestesiaPro 🩺 | ${title}`;
+
+      let pushedCount = 0;
+      const promises = subs.map(async (sub) => {
+        if (sub && sub.subscription && sub.subscription.endpoint) {
+          try {
+            await webPush.sendNotification(
+              sub.subscription,
+              JSON.stringify({
+                title: fullTitle,
+                body: message,
+                icon: "/icon-192.png",
+                badge: "/icon-192.png",
+                image: "/og_banner.jpg",
+                url: url,
+                tag: `admin-alert-${Date.now()}`
+              })
+            );
+            pushedCount++;
+          } catch (err) {}
+        }
+      });
+      await Promise.allSettled(promises);
+      console.log(`[AnestesiaPro Server] Admin Push Alert sent to ${pushedCount} devices: "${title}"`);
+      return pushedCount;
+    } catch (e) {
+      return 0;
+    }
+  }
+
   app.post("/api/push/subscribe", (req, res) => {
     try {
       const subData = req.body;
@@ -1561,6 +1758,19 @@ async function startServer() {
       writeJsonFile(pushSubscriptionsFile, subs);
       writeJsonFile(pushSubscriptionsBackupFile, subs);
 
+      if (db) {
+        setImmediate(async () => {
+          try {
+            const subId = newEntry.id || `sub_${Date.now()}`;
+            const subDoc = doc(db, "push_subscriptions", subId);
+            await setDoc(subDoc, sanitizeForFirestore(newEntry), { merge: true });
+            console.log(`[AnestesiaPro Server] Push subscription backed up to Firestore: ${subId}`);
+          } catch (fbSubErr) {
+            console.warn("[AnestesiaPro Server] Warning saving push subscription to Firestore:", fbSubErr);
+          }
+        });
+      }
+
       return res.json({ success: true, count: subs.length, subscriber: newEntry });
     } catch (e: any) {
       return res.status(500).json({ error: e?.message || "Error subscribing to push notifications" });
@@ -1576,7 +1786,7 @@ async function startServer() {
     }
   });
 
-  app.post("/api/push/send-broadcast", (req, res) => {
+  app.post("/api/push/send-broadcast", async (req, res) => {
     try {
       const { title, message, category, url } = req.body;
       if (!title || !message) {
@@ -1615,15 +1825,46 @@ async function startServer() {
         }
       }
 
-      // 2. Count active subscribers
-      const subs = readJsonFile<any[]>(pushSubscriptionsFile, []);
-      const deliveredCount = Math.max(subs.length, 1);
+      // 2. Count active subscribers and dispatch background webPush
+      const reqOrigin = req.headers.origin || (req.headers.referer ? new URL(req.headers.referer).origin : "") || "";
+      const fullIcon = reqOrigin ? `${reqOrigin}/icon-192.png` : "/icon-192.png";
+      const fullImage = reqOrigin ? `${reqOrigin}/og_banner.jpg` : "/og_banner.jpg";
+      const fullTitle = notifObj.title.toLowerCase().includes("anestesiapro")
+        ? notifObj.title
+        : `AnestesiaPro 🩺 | ${notifObj.title}`;
 
-      console.log(`[AnestesiaPro Server] Broadcast push sent to ${deliveredCount} subscribers: "${title}"`);
+      const subs = readJsonFile<any[]>(pushSubscriptionsFile, []);
+      let actualPushed = 0;
+      const pushPromises = subs.map(async (sub) => {
+        if (sub && sub.subscription && sub.subscription.endpoint) {
+          try {
+            await webPush.sendNotification(
+              sub.subscription,
+              JSON.stringify({
+                title: fullTitle,
+                body: notifObj.message,
+                icon: fullIcon,
+                badge: fullIcon,
+                image: fullImage,
+                url: notifObj.url || "/?source=push_broadcast",
+                tag: notifObj.id
+              })
+            );
+            actualPushed++;
+          } catch (pushErr: any) {
+            console.warn(`[WebPush Dispatch] Note sending to subscriber ${sub.userEmail}:`, pushErr?.message || pushErr);
+          }
+        }
+      });
+      await Promise.allSettled(pushPromises);
+
+      const deliveredCount = Math.max(subs.length, 1);
+      console.log(`[AnestesiaPro Server] Broadcast push sent to ${deliveredCount} devices (${actualPushed} real OS push packets): "${title}"`);
 
       return res.json({
         success: true,
         deliveredCount,
+        actualPushed,
         notification: notifObj,
         message: `Notificación push enviada exitosamente a ${deliveredCount} dispositivos registrados.`
       });
@@ -1719,11 +1960,40 @@ async function startServer() {
     }
   }
 
-  // Trigger global stats sync on background immediately after initialization
+  // Sync push subscriptions from Firestore on startup if local disk is empty
+  async function syncPushSubscriptionsFromCloudOnStartup() {
+    if (!db) return;
+    try {
+      const subs = readJsonFile<any[]>(pushSubscriptionsFile, []);
+      if (subs.length === 0) {
+        const colRef = collection(db, "push_subscriptions");
+        const snap = await getDocs(colRef);
+        if (!snap.empty) {
+          const cloudSubs: any[] = [];
+          snap.forEach(d => {
+            const data = d.data();
+            if (data) cloudSubs.push({ ...data, id: data.id || d.id });
+          });
+          if (cloudSubs.length > 0) {
+            writeJsonFile(pushSubscriptionsFile, cloudSubs);
+            writeJsonFile(pushSubscriptionsBackupFile, cloudSubs);
+            console.log(`[AnestesiaPro Server] Synced ${cloudSubs.length} push subscriptions from Firestore.`);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("[AnestesiaPro Server] Notice syncing push subscriptions from Firestore:", err);
+    }
+  }
+
+  // Trigger global stats & push subscriptions sync on background immediately after initialization
   if (db) {
     setTimeout(() => {
       syncStatsFromCloudOnStartup().catch(err => {
         console.warn("[AnestesiaPro Server] Background startup stats sync failed:", err);
+      });
+      syncPushSubscriptionsFromCloudOnStartup().catch(err => {
+        console.warn("[AnestesiaPro Server] Background startup push sync failed:", err);
       });
     }, 1000);
   }
@@ -1903,6 +2173,9 @@ async function startServer() {
       });
       if (currentEvents.length > 300) currentEvents.length = 300;
       writeJsonFile(adminEventsFile, currentEvents);
+
+      // Send instant Web Push notification directly to Dr. Carlos Leal's registered devices
+      notifyAdminViaPush(notifTitle, notifMsg, "/?source=admin_install").catch(e => console.warn("Admin Web Push install notice error:", e));
 
       // Trigger automatic background email alert to Dr. Carlos Leal
       notifyAdminNewInstall(dev, loc, current.appInstalls).catch(e => console.warn("Background notification install error:", e));
@@ -2131,19 +2404,12 @@ async function startServer() {
     const isCarlosLeal = (u: any) => {
       if (!u) return false;
       const email = (u.email || '').toLowerCase().trim();
-      const name = (u.fullName || '').toLowerCase().trim();
-      const cleanN = cleanDoctorName(u.fullName);
       const cedulaDigits = normalizeCedulaDigits(u.idNumber);
-      const phoneDigits = normalizePhoneDigits(u.phone);
       const uId = (u.id || '').toLowerCase();
       return email === 'carloseduardoleal29@gmail.com' ||
-        email.includes('carloseduardo') ||
+        email === 'carlos.leal@anestesiapro.com' ||
         cedulaDigits === '15489288' ||
-        uId === 'usr_carlos_leal_admin' ||
-        phoneDigits.includes('4243291438') ||
-        (name.includes('carlos') && name.includes('leal')) ||
-        (cleanN.includes('carlos') && cleanN.includes('leal')) ||
-        (name.includes('elite') && u.role === 'admin');
+        uId === 'usr_carlos_leal_admin';
     };
 
     const validUsers = rawUsers.filter(u => u && !isDeleted(u));
@@ -2217,7 +2483,16 @@ async function startServer() {
           userPhoneDigits === exPhoneDigits
         );
 
-        return idMatch || cedulaMatch || emailMatch || phoneMatch;
+        const nameMatch = Boolean(
+          userNameClean.length >= 6 && 
+          cleanDoctorName(existing.fullName).length >= 6 && (
+            userNameClean === cleanDoctorName(existing.fullName) ||
+            userNameClean.includes(cleanDoctorName(existing.fullName)) ||
+            cleanDoctorName(existing.fullName).includes(userNameClean)
+          )
+        );
+
+        return idMatch || cedulaMatch || emailMatch || phoneMatch || nameMatch;
       });
 
       if (existingIdx !== -1) {
@@ -2234,16 +2509,12 @@ async function startServer() {
           workplace: existing.workplace || user.workplace,
           specialty: existing.specialty || user.specialty,
           digitalSignatureUrl: existing.digitalSignatureUrl || user.digitalSignatureUrl,
+          role: 'user',
+          isAdmin: false,
           elitePlan: {
-            status: (existing.elitePlan?.status === 'active' || user.elitePlan?.status === 'active') ? 'active' : 'inactive',
-            planType: (existing.elitePlan?.planType || user.elitePlan?.planType || 'standard'),
-            daysGranted: existing.elitePlan?.daysGranted || user.elitePlan?.daysGranted || undefined,
-            activatedAt: existing.elitePlan?.activatedAt || user.elitePlan?.activatedAt || undefined,
-            expiresAt: existing.elitePlan?.expiresAt || user.elitePlan?.expiresAt || 'Plan Estándar Gratuito',
-            adminNotes: existing.elitePlan?.adminNotes || user.elitePlan?.adminNotes || undefined,
-            activatedBy: existing.elitePlan?.activatedBy || user.elitePlan?.activatedBy || undefined,
-            ...(user.elitePlan || {}),
-            ...(existing.elitePlan || {})
+            status: 'inactive',
+            planType: 'standard',
+            expiresAt: 'Plan Estándar Gratuito'
           },
           registeredAt: existing.registeredAt && user.registeredAt
             ? (new Date(existing.registeredAt).getTime() < new Date(user.registeredAt).getTime() ? existing.registeredAt : user.registeredAt)
@@ -2253,8 +2524,10 @@ async function startServer() {
       } else {
         deduplicatedOthers.push({
           ...user,
+          role: 'user',
+          isAdmin: false,
           email: userEmail,
-          elitePlan: user.elitePlan || {
+          elitePlan: {
             status: 'inactive',
             planType: 'standard',
             expiresAt: 'Plan Estándar Gratuito'
@@ -2321,9 +2594,8 @@ async function startServer() {
       users.sort((a, b) => new Date(b.registeredAt || 0).getTime() - new Date(a.registeredAt || 0).getTime());
 
       // Compute statistics summary
-      const activeElite = users.filter(u => u.elitePlan?.status === 'active').length;
-      const pendingElite = users.filter(u => u.elitePlan?.status === 'pending').length;
-      const inactiveElite = users.filter(u => u.elitePlan?.status === 'inactive').length;
+      const standardDoctors = users.filter(u => !(u.id === 'usr_carlos_leal_admin' || (u.email || '').toLowerCase().includes('carloseduardoleal'))).length;
+      const adminCount = users.filter(u => u.id === 'usr_carlos_leal_admin' || (u.email || '').toLowerCase().includes('carloseduardoleal')).length || 1;
       
       const countriesCount: Record<string, number> = {};
       const specialtiesCount: Record<string, number> = {};
@@ -2342,9 +2614,11 @@ async function startServer() {
         users,
         stats: {
           totalUsers: users.length,
-          activeElite,
-          pendingElite,
-          inactiveElite,
+          standardDoctors,
+          adminCount,
+          activeElite: 0,
+          pendingElite: 0,
+          inactiveElite: standardDoctors,
           countriesCount,
           specialtiesCount
         }
@@ -2433,7 +2707,9 @@ async function startServer() {
                       device: 'Evaluación Preanestésica Cloud 📋',
                       registeredAt: data.createdAt || new Date().toISOString(),
                       lastActiveAt: new Date().toISOString(),
-                      elitePlan: { status: 'active', planType: 'lifetime', expiresAt: 'Permanente Colega' }
+                      role: 'user',
+                      isAdmin: false,
+                      elitePlan: { status: 'inactive', planType: 'standard', expiresAt: 'Plan Estándar Gratuito' }
                     });
                   }
                 }
@@ -2454,7 +2730,9 @@ async function startServer() {
                       device: 'Sugerencia / Feedback Cloud 💬',
                       registeredAt: data.timestamp || new Date().toISOString(),
                       lastActiveAt: new Date().toISOString(),
-                      elitePlan: { status: 'active', planType: 'lifetime', expiresAt: 'Permanente Colega' }
+                      role: 'user',
+                      isAdmin: false,
+                      elitePlan: { status: 'inactive', planType: 'standard', expiresAt: 'Plan Estándar Gratuito' }
                     });
                   }
                 }
@@ -2738,12 +3016,23 @@ async function startServer() {
         elitePlan: { status: 'active', planType: 'lifetime' }
       };
       const deliveryResult = await notifyAdminNewRegistration(testUser);
+      let pushResult = 0;
+      try {
+        pushResult = await notifyAdminViaPush(
+          "👤 ¡ALERTA DE PRUEBA: NUEVO REGISTRO!",
+          "Dr. Carlos Leal: Tu teléfono está configurado y recibiendo alertas Web Push instantáneas de AnestesiaPro.",
+          "/?source=admin_test_alert"
+        );
+      } catch (pErr) {
+        console.warn("[Admin Test] Push warning:", pErr);
+      }
       return res.json({
         success: true,
         deliveryResult,
+        pushResult,
         adminEmail: ADMIN_NOTIFICATION_CONFIG.email,
         adminPhone: ADMIN_NOTIFICATION_CONFIG.phoneInt,
-        message: `Alerta procesada para ${ADMIN_NOTIFICATION_CONFIG.email} y WhatsApp ${ADMIN_NOTIFICATION_CONFIG.phoneInt}.`
+        message: `Alerta procesada para ${ADMIN_NOTIFICATION_CONFIG.email}, WhatsApp ${ADMIN_NOTIFICATION_CONFIG.phoneInt} y ${pushResult} dispositivo(s) Web Push.`
       });
     } catch (e: any) {
       return res.status(500).json({ success: false, error: e?.message || "Error al enviar alerta de prueba" });
@@ -2832,18 +3121,17 @@ async function startServer() {
         device: data.device || (data.platform === 'android' ? 'Smartphone Android 📱' : 'Dispositivo Web'),
         registeredAt: existingIdx !== -1 ? users[existingIdx].registeredAt : (data.registeredAt || new Date().toISOString()),
         lastActiveAt: new Date().toISOString(),
+        role: isInputCarlos ? 'admin' : 'user',
+        isAdmin: isInputCarlos,
         elitePlan: isInputCarlos ? {
           status: 'active',
           planType: 'lifetime',
           activatedAt: '2026-01-01T00:00:00.000Z',
           expiresAt: 'Permanente (Autor y Fundador)'
         } : {
-          status: (existingIdx !== -1 && users[existingIdx].elitePlan?.status) || data.elitePlan?.status || 'inactive',
-          planType: (existingIdx !== -1 && users[existingIdx].elitePlan?.planType) || data.elitePlan?.planType || 'standard',
-          expiresAt: (existingIdx !== -1 && users[existingIdx].elitePlan?.expiresAt) || data.elitePlan?.expiresAt || 'Plan Estándar Gratuito',
-          ...((existingIdx !== -1 && users[existingIdx].elitePlan?.daysGranted) || data.elitePlan?.daysGranted ? { daysGranted: (existingIdx !== -1 && users[existingIdx].elitePlan?.daysGranted) || data.elitePlan?.daysGranted } : {}),
-          ...((existingIdx !== -1 && users[existingIdx].elitePlan?.activatedAt) || data.elitePlan?.activatedAt ? { activatedAt: (existingIdx !== -1 && users[existingIdx].elitePlan?.activatedAt) || data.elitePlan?.activatedAt } : {}),
-          ...(data.elitePlan || {})
+          status: 'inactive',
+          planType: 'standard',
+          expiresAt: 'Plan Estándar Gratuito'
         }
       };
 
@@ -2902,6 +3190,9 @@ async function startServer() {
         });
         writeJsonFile(notificationsFile, notifs.slice(0, 15));
         writeJsonFile(notificationsBackupFile, notifs.slice(0, 15));
+
+        // Send instant Web Push notification directly to Dr. Carlos Leal's registered devices
+        notifyAdminViaPush(notifTitle, notifDetail, "/?source=admin_new_user").catch(e => console.warn("Admin Web Push notice error:", e));
 
         // Send email alert to Dr. Carlos Leal (carloseduardoleal29@gmail.com)
         notifyAdminNewRegistration(updatedUser).catch(e => console.warn("Background notification error:", e));

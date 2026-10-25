@@ -305,9 +305,8 @@ export function isAdministratorUser(): boolean {
       const role = (u?.role || '').toLowerCase().trim();
       if (
         email === 'carloseduardoleal29@gmail.com' ||
-        role === 'admin' ||
-        role === 'superadmin' ||
-        (name.includes('carlos') && name.includes('leal'))
+        email === 'carlos.leal@anestesiapro.com' ||
+        u?.id === 'usr_carlos_leal_admin'
       ) {
         try {
           localStorage.setItem('anestesiapro_is_author_admin', 'true');
@@ -326,8 +325,7 @@ export function isAdministratorUser(): boolean {
     if (preDoc) {
       const p = JSON.parse(preDoc);
       const docEmail = (p?.email || p?.doctorEmail || '').toLowerCase().trim();
-      const docName = (p?.doctorName || '').toLowerCase().trim();
-      if (docEmail === 'carloseduardoleal29@gmail.com' || (docName.includes('carlos') && docName.includes('leal'))) {
+      if (docEmail === 'carloseduardoleal29@gmail.com' || docEmail === 'carlos.leal@anestesiapro.com') {
         try {
           localStorage.setItem('anestesiapro_is_author_admin', 'true');
           localStorage.setItem('anestesiapro_author_admin', 'true');
@@ -501,10 +499,6 @@ export async function getGlobalStats(): Promise<AppStats> {
 
 export async function recordGlobalDownload(resourceId?: string): Promise<AppStats> {
   const local = getLocalCache();
-  // Do not inflate download counts when Dr. Carlos Leal tests or downloads resources
-  if (isAdministratorUser()) {
-    return local;
-  }
   if (resourceId) {
     local.itemDownloads[resourceId] = (local.itemDownloads[resourceId] || 0) + 1;
   }
@@ -550,10 +544,6 @@ export async function recordGlobalDownload(resourceId?: string): Promise<AppStat
 
 export async function recordResourceView(resourceId: string): Promise<AppStats> {
   const local = getLocalCache();
-  // Do not inflate view counts when Dr. Carlos Leal consults resources
-  if (isAdministratorUser()) {
-    return local;
-  }
   if (resourceId) {
     local.itemViews = local.itemViews || {};
     local.itemViews[resourceId] = (local.itemViews[resourceId] || 0) + 1;
@@ -603,9 +593,6 @@ export async function recordPreanesthesiaUsage(
   patientInfo?: string
 ): Promise<AppStats> {
   const local = getLocalCache();
-  if (isAdministratorUser()) {
-    return local;
-  }
   let resourceId = 'res-modulo-preanestesia-consultado';
   let badgeTitle = '📋 Módulo Preanestesia';
   let notifMsg = '';
@@ -654,9 +641,6 @@ export async function recordCalculatorUsage(
   type: 'induccion' | 'shock_index' | 'preeclampsia'
 ): Promise<AppStats> {
   const local = getLocalCache();
-  if (isAdministratorUser()) {
-    return local;
-  }
   const resourceId = type === 'induccion' 
     ? 'res-calculadora-induccion' 
     : type === 'shock_index' 
@@ -1110,11 +1094,6 @@ export async function logAdminActivity(
   title: string,
   detail?: string
 ): Promise<void> {
-  // If Dr. Carlos Leal is browsing, testing, or downloading, do not log himself as a visitor
-  if (isAdministratorUser()) {
-    return;
-  }
-
   const device = detectDevice();
   const location = detectLocation();
   const timestamp = getCaracasTimestamp();

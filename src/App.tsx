@@ -23,7 +23,7 @@ import { DeveloperModal } from './components/DeveloperModal';
 import { ContactModal } from './components/ContactModal';
 import { ShareModal } from './components/ShareModal';
 import { FloatingRegistrationPrompt } from './components/FloatingRegistrationPrompt';
-import { UserRegistrationModal } from './components/UserRegistrationModal';
+import { requestPushPermissionAndSubscribe } from './lib/pushNotificationService';
 
 export default function App() {
   const [updateAvailable, setUpdateAvailable] = useState(false);
@@ -140,6 +140,20 @@ export default function App() {
       window.removeEventListener('online', onFocusOrOnline);
       window.removeEventListener('anestesiapro_new_resource_published', onNewPublish);
     };
+  }, []);
+
+  // Auto-register or refresh WebPush subscription on device launch
+  useEffect(() => {
+    const autoSyncPushSubscription = async () => {
+      try {
+        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+          await requestPushPermissionAndSubscribe();
+        }
+      } catch (e) {
+        console.warn('[Push AutoSync] Notice:', e);
+      }
+    };
+    autoSyncPushSubscription();
   }, []);
 
   // Auto-frame lock viewport on load and screen resize

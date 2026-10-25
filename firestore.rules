@@ -33,6 +33,17 @@ service cloud.firestore {
       match /media_chunks/{chunkId} {
         allow read, write: if true;
       }
+
+      match /carousel_slides/{slideId} {
+        allow read, write: if true;
+      }
+    }
+
+    // Colección de suscripciones Web Push para notificaciones
+    match /push_subscriptions/{subId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if false;
     }
 
     // Colección de notificaciones y difusiones push

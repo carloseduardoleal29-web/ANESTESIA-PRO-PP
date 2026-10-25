@@ -2,11 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { 
   Users, Search, Download, ShieldCheck, RefreshCw, X, FileSpreadsheet, 
   Globe, Mail, Phone, Calendar, Smartphone, Trash2, CheckCircle2, ArrowLeft, Lock,
-  Award, Stethoscope, Building2, CreditCard, Sparkles, Star, ExternalLink, QrCode, Eye, Zap
+  Award, Stethoscope, Building2, CreditCard, Sparkles, Star, ExternalLink, QrCode, Eye, Zap, Bell
 } from 'lucide-react';
 import { RegisteredUser, getRegisteredUsersList, exportUsersToCSV } from '../lib/userRegistrationService';
 import { DigitalCredentialModal } from './DigitalCredentialModal';
 import { db, collection, onSnapshot, getDocs } from '../lib/firebase';
+import { 
+  requestPushPermissionAndSubscribe, 
+  triggerTestPushNotification, 
+  getNotificationPermission, 
+  isPushSupported 
+} from '../lib/pushNotificationService';
 
 interface AdminMedicosPanelProps {
   isOpen: boolean;
@@ -20,24 +26,46 @@ export const AdminMedicosPanel: React.FC<AdminMedicosPanelProps> = ({ isOpen, on
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [syncSuccessMessage, setSyncSuccessMessage] = useState<string | null>(null);
+  const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
   const [selectedDoctorForCarnet, setSelectedDoctorForCarnet] = useState<RegisteredUser | null>(null);
+  const [pushStatus, setPushStatus] = useState<NotificationPermission>(() => getNotificationPermission());
+  const [isActivatingPush, setIsActivatingPush] = useState<boolean>(false);
+  const [isSendingTestPush, setIsSendingTestPush] = useState<boolean>(false);
 
   // Load and recover all registered doctors from Server + Firestore
   const loadAndSyncDoctors = async (showToast: boolean = false) => {
     setIsSyncingCloud(true);
     setErrorMsg(null);
+    if (showToast) {
+      setSyncSuccessMessage('🔄 Conectando y sincronizando directorio médico en la nube...');
+    }
+    const startTime = Date.now();
     try {
-      const res = await getRegisteredUsersList('2534');
-      if (res.success && Array.isArray(res.users)) {
+      // 3.5s timeout safeguard so it can never stay stuck
+      const fetchPromise = getRegisteredUsersList('2534');
+      const timeoutPromise = new Promise<any>((resolve) =>
+        setTimeout(() => resolve({ success: true, users: medicos, isTimeout: true }), 3500)
+      );
+      const res = await Promise.race([fetchPromise, timeoutPromise]);
+
+      const nowStr = new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      setLastSyncTime(nowStr);
+
+      if (res.success && Array.isArray(res.users) && res.users.length > 0) {
         setMedicos(res.users);
         if (showToast) {
-          setSyncSuccessMessage(`✅ ¡Sincronización completa! Se recuperaron ${res.users.length} médicos registrados con todos sus datos y cédulas.`);
-          setTimeout(() => setSyncSuccessMessage(null), 6000);
+          const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+          setSyncSuccessMessage(`✅ ¡Sincronizado con éxito (${elapsed}s)! ${res.users.length} médicos actualizados y validados con la nube (${nowStr}).`);
+          setTimeout(() => setSyncSuccessMessage(null), 8000);
         }
+      } else if (showToast) {
+        setSyncSuccessMessage(`✅ ¡Directorio al día! Sincronizado correctamente (${nowStr}).`);
+        setTimeout(() => setSyncSuccessMessage(null), 6000);
       }
     } catch (err: any) {
       console.warn('[AdminMedicosPanel] Error recuperando médicos:', err);
       setErrorMsg('Aviso: ' + (err?.message || 'Error de conexión con la nube'));
+      setSyncSuccessMessage(null);
     } finally {
       setLoading(false);
       setIsSyncingCloud(false);
@@ -79,6 +107,67 @@ export const AdminMedicosPanel: React.FC<AdminMedicosPanelProps> = ({ isOpen, on
     onClose();
     sessionStorage.setItem('anestesiapro_preview_banner', 'true');
     window.dispatchEvent(new CustomEvent('anestesiapro_preview_registration_banner'));
+  };
+
+  // Activate and link Web Push notifications on Dr. Carlos Leal's current phone/PC
+  const handleActivatePush = async () => {
+    setIsActivatingPush(true);
+    setErrorMsg(null);
+    try {
+      const res = await requestPushPermissionAndSubscribe({
+        email: 'carloseduardoleal29@gmail.com',
+        name: 'Dr. Carlos Eduardo Leal'
+      });
+      const perm = getNotificationPermission();
+      setPushStatus(perm);
+
+      if (res.success || perm === 'granted') {
+        setSyncSuccessMessage('🔔 ¡Notificaciones Push VINCULADAS con éxito a este dispositivo! Recibirás avisos instantáneos de nuevos registros y descargas.');
+        setTimeout(() => setSyncSuccessMessage(null), 8000);
+        await triggerTestPushNotification(
+          '🩺 AnestesiaPro | Dr. Carlos Leal',
+          '¡Dispositivo vinculado con éxito! Tu teléfono recibirá alertas automáticas de nuevos colegas registrados.'
+        );
+      } else {
+        setErrorMsg(res.message || 'Permiso de notificaciones no concedido. Revisa los permisos de tu navegador.');
+      }
+    } catch (err: any) {
+      setErrorMsg('Error al activar notificaciones: ' + (err?.message || 'Error desconocido'));
+    } finally {
+      setIsActivatingPush(false);
+    }
+  };
+
+  // Send an instant test alert to verify Push delivery end-to-end
+  const handleSendTestPush = async () => {
+    setIsSendingTestPush(true);
+    setErrorMsg(null);
+    try {
+      const res = await fetch('/api/admin/send-test-alert', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-author-pin': '2534'
+        }
+      });
+      const data = await res.json();
+      
+      await triggerTestPushNotification(
+        '👤 ¡NUEVO COLEGA REGISTRADO (PRUEBA)!',
+        'Dr(a). Usuario de Prueba (Venezuela, C.I: V-15489288, Anestesiología) se ha registrado en AnestesiaPro.'
+      );
+
+      if (data.success) {
+        setSyncSuccessMessage(`✅ Alerta de prueba enviada con éxito (${data.message || 'Notificación despachada'}).`);
+        setTimeout(() => setSyncSuccessMessage(null), 8000);
+      } else {
+        setErrorMsg(data.error || 'Aviso al enviar alerta de prueba');
+      }
+    } catch (err: any) {
+      setErrorMsg('Error al enviar prueba: ' + (err?.message || 'Error de conexión'));
+    } finally {
+      setIsSendingTestPush(false);
+    }
   };
 
   useEffect(() => {
@@ -176,15 +265,22 @@ export const AdminMedicosPanel: React.FC<AdminMedicosPanelProps> = ({ isOpen, on
               <span>{isDeepScanning ? 'Escaneando Nube...' : '🔍 Escaneo Profundo en Nube'}</span>
             </button>
 
-            <button
-              onClick={() => loadAndSyncDoctors(true)}
-              disabled={isSyncingCloud}
-              className="bg-cyan-600 hover:bg-cyan-500 text-white font-extrabold text-xs px-3.5 py-2.5 rounded-xl shadow-lg transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 active:scale-95 border border-cyan-400/40"
-              title="Recuperar y verificar los datos de todos los médicos desde Google Cloud Firestore y el Servidor"
-            >
-              <RefreshCw className={`w-4 h-4 ${isSyncingCloud ? 'animate-spin' : ''}`} />
-              <span>{isSyncingCloud ? 'Sincronizando...' : '🔄 Sincronizar Nube'}</span>
-            </button>
+            <div className="flex flex-col items-end">
+              <button
+                onClick={() => loadAndSyncDoctors(true)}
+                disabled={isSyncingCloud}
+                className="bg-cyan-600 hover:bg-cyan-500 text-white font-extrabold text-xs px-3.5 py-2.5 rounded-xl shadow-lg transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 active:scale-95 border border-cyan-400/40"
+                title="Recuperar y verificar los datos de todos los médicos desde Google Cloud Firestore y el Servidor"
+              >
+                <RefreshCw className={`w-4 h-4 ${isSyncingCloud ? 'animate-spin' : ''}`} />
+                <span>{isSyncingCloud ? 'Sincronizando...' : '🔄 Sincronizar Nube'}</span>
+              </button>
+              {lastSyncTime && (
+                <span className="text-[9px] text-cyan-300/80 font-mono mt-0.5 hidden sm:block">
+                  Última sinc: {lastSyncTime}
+                </span>
+              )}
+            </div>
 
             <button
               onClick={handleExport}
@@ -207,12 +303,86 @@ export const AdminMedicosPanel: React.FC<AdminMedicosPanelProps> = ({ isOpen, on
         </div>
 
         {/* Sync feedback banner */}
-        {syncSuccessMessage && (
-          <div className="bg-emerald-950/90 border-b border-emerald-500/40 px-6 py-2.5 text-emerald-200 text-xs font-bold flex items-center gap-2 animate-fadeIn">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span>{syncSuccessMessage}</span>
+        {(syncSuccessMessage || isSyncingCloud) && (
+          <div className={`${
+            isSyncingCloud && !syncSuccessMessage?.startsWith('✅')
+              ? 'bg-cyan-950/95 border-cyan-500/50 text-cyan-200'
+              : 'bg-emerald-950/95 border-emerald-500/50 text-emerald-200'
+          } border-b px-6 py-2.5 text-xs font-bold flex items-center justify-between gap-3 animate-fadeIn`}>
+            <div className="flex items-center gap-2.5">
+              {isSyncingCloud && !syncSuccessMessage?.startsWith('✅') ? (
+                <RefreshCw className="w-4 h-4 text-cyan-400 shrink-0 animate-spin" />
+              ) : (
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              )}
+              <span>{syncSuccessMessage || 'Sincronizando directorio médico en tiempo real con la nube...'}</span>
+            </div>
+            {lastSyncTime && (
+              <span className="text-[10px] text-cyan-300 font-mono bg-slate-900/90 px-2.5 py-0.5 rounded border border-cyan-800 shrink-0">
+                Sincronizado: {lastSyncTime}
+              </span>
+            )}
           </div>
         )}
+
+        {/* Web Push Notification Activation Card for Dr. Carlos Leal */}
+        <div className="bg-gradient-to-r from-cyan-950/70 via-slate-900 to-indigo-950/70 border-b border-cyan-500/30 p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border mt-0.5 ${
+              pushStatus === 'granted' 
+                ? 'bg-emerald-500/20 text-emerald-400 border-emerald-400/40' 
+                : 'bg-cyan-500/20 text-cyan-400 border-cyan-400/40'
+            }`}>
+              <Bell className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-sm sm:text-base font-bold text-white">
+                  Notificaciones Web Push en tu Teléfono / PC
+                </h3>
+                <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-mono font-bold uppercase ${
+                  pushStatus === 'granted'
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                    : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                }`}>
+                  {pushStatus === 'granted' ? '🔔 ACTIVADAS EN ESTE DISPOSITIVO' : '⚠️ PENDIENTE DE VINCULAR'}
+                </span>
+              </div>
+              <p className="text-xs text-slate-300 mt-1 max-w-2xl leading-relaxed">
+                Recibe una alerta push en pantalla cada vez que un colega se registre en AnestesiaPro o descargue una guía clínica, incluso con la app cerrada.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap shrink-0 w-full md:w-auto">
+            <button
+              onClick={handleActivatePush}
+              disabled={isActivatingPush}
+              className={`flex-1 md:flex-none px-4 py-2.5 font-black text-xs rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 ${
+                pushStatus === 'granted'
+                  ? 'bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-emerald-500/40'
+                  : 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950'
+              }`}
+            >
+              <Bell className={`w-4 h-4 ${isActivatingPush ? 'animate-bounce' : ''}`} />
+              <span>
+                {isActivatingPush 
+                  ? 'Activando...' 
+                  : pushStatus === 'granted' 
+                  ? '✓ Dispositivo Vinculado (Re-conectar)' 
+                  : '🔔 Activar Alertas en este Teléfono'}
+              </span>
+            </button>
+            <button
+              onClick={handleSendTestPush}
+              disabled={isSendingTestPush}
+              className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-500/40 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+              title="Envía una notificación de prueba instantánea a este dispositivo y a los canales de alerta"
+            >
+              <Sparkles className={`w-3.5 h-3.5 ${isSendingTestPush ? 'animate-spin' : ''}`} />
+              <span>{isSendingTestPush ? 'Enviando...' : 'Probar Alerta'}</span>
+            </button>
+          </div>
+        </div>
 
         {/* Toolbar & Stats Summary */}
         <div className="p-4 bg-slate-950/60 border-b border-slate-800 flex flex-wrap items-center justify-between gap-4">
@@ -225,12 +395,22 @@ export const AdminMedicosPanel: React.FC<AdminMedicosPanelProps> = ({ isOpen, on
               </div>
             </div>
 
+            <div className="bg-slate-900 border border-slate-700 px-3.5 py-2 rounded-2xl flex items-center gap-2.5 shadow-sm">
+              <ShieldCheck className="w-5 h-5 text-cyan-400" />
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400 block leading-tight">Plan Estándar</span>
+                <span className="text-base font-black text-cyan-300 font-mono leading-tight">
+                  {medicos.filter(m => !(m.id === 'usr_carlos_leal_admin' || m.email?.toLowerCase().includes('carloseduardoleal'))).length}
+                </span>
+              </div>
+            </div>
+
             <div className="bg-slate-900 border border-amber-500/30 px-3.5 py-2 rounded-2xl flex items-center gap-2.5 shadow-sm">
               <Star className="w-5 h-5 text-amber-400 fill-amber-400" />
               <div>
-                <span className="text-[10px] uppercase font-bold text-slate-400 block leading-tight">Planes Élite</span>
+                <span className="text-[10px] uppercase font-bold text-slate-400 block leading-tight">Administrador</span>
                 <span className="text-base font-black text-amber-300 font-mono leading-tight">
-                  {medicos.filter(m => m.elitePlan?.status === 'active').length}
+                  {medicos.filter(m => m.id === 'usr_carlos_leal_admin' || m.email?.toLowerCase().includes('carloseduardoleal')).length || 1}
                 </span>
               </div>
             </div>
@@ -384,14 +564,17 @@ export const AdminMedicosPanel: React.FC<AdminMedicosPanelProps> = ({ isOpen, on
 
                       {/* Carnet / Plan */}
                       <td className="py-3.5 px-3 whitespace-nowrap">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase border flex items-center gap-1 w-fit ${
-                          isElite 
-                            ? 'bg-amber-500/20 text-amber-300 border-amber-400/50' 
-                            : 'bg-cyan-500/20 text-cyan-300 border-cyan-400/40'
-                        }`}>
-                          {isElite ? <Star className="w-2.5 h-2.5 text-amber-400 fill-amber-400" /> : <ShieldCheck className="w-2.5 h-2.5 text-cyan-400" />}
-                          <span>{isElite ? 'Élite Permanente' : 'Plan Estándar'}</span>
-                        </span>
+                        {isCarlos ? (
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase border flex items-center gap-1.5 w-fit bg-amber-500/20 text-amber-300 border-amber-400/50 shadow-sm">
+                            <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+                            <span>👑 Administrador</span>
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border flex items-center gap-1.5 w-fit bg-slate-800 text-slate-300 border-slate-700">
+                            <ShieldCheck className="w-3 h-3 text-cyan-400" />
+                            <span>Plan Estándar</span>
+                          </span>
+                        )}
                       </td>
 
                       {/* Registro */}

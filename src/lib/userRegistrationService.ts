@@ -549,7 +549,7 @@ export async function registerUserProfile(formData: {
     isInstalledPWA,
     registeredAt: existing?.registeredAt || new Date().toISOString(),
     lastActiveAt: new Date().toISOString(),
-    elitePlan: (existing?.elitePlan?.status === 'active') ? existing.elitePlan : {
+    elitePlan: {
       status: 'inactive',
       planType: 'standard',
       activatedAt: new Date().toISOString(),
@@ -559,7 +559,8 @@ export async function registerUserProfile(formData: {
 
   // Reconocimiento especial e inmediato para el Dr. Carlos Leal (Super Administrador y Autor)
   const isCarlosAdmin = userPayload.email === 'carloseduardoleal29@gmail.com' ||
-    (userPayload.fullName.toLowerCase().includes('carlos') && userPayload.fullName.toLowerCase().includes('leal'));
+    userPayload.email === 'carlos.leal@anestesiapro.com' ||
+    userPayload.idNumber.replace(/[^0-9]/g, '') === '15489288';
   if (isCarlosAdmin) {
     userPayload.id = 'usr_carlos_leal_admin';
     userPayload.role = 'admin';
@@ -758,16 +759,12 @@ export function deduplicateClientUsers(rawUsers: RegisteredUser[]): RegisteredUs
         workplace: existing.workplace || user.workplace,
         specialty: existing.specialty || user.specialty,
         digitalSignatureUrl: existing.digitalSignatureUrl || user.digitalSignatureUrl,
+        role: 'user',
+        isAdmin: false,
         elitePlan: {
-          status: (existing.elitePlan?.status === 'active' || user.elitePlan?.status === 'active') ? 'active' : 'inactive',
-          planType: (existing.elitePlan?.planType || user.elitePlan?.planType || 'standard'),
-          daysGranted: existing.elitePlan?.daysGranted || user.elitePlan?.daysGranted || undefined,
-          activatedAt: existing.elitePlan?.activatedAt || user.elitePlan?.activatedAt || undefined,
-          expiresAt: existing.elitePlan?.expiresAt || user.elitePlan?.expiresAt || 'Plan Estándar Gratuito',
-          adminNotes: existing.elitePlan?.adminNotes || user.elitePlan?.adminNotes || undefined,
-          activatedBy: existing.elitePlan?.activatedBy || user.elitePlan?.activatedBy || undefined,
-          ...(user.elitePlan || {}),
-          ...(existing.elitePlan || {})
+          status: 'inactive',
+          planType: 'standard',
+          expiresAt: 'Plan Estándar Gratuito'
         },
         registeredAt: existing.registeredAt && user.registeredAt
           ? (new Date(existing.registeredAt).getTime() < new Date(user.registeredAt).getTime() ? existing.registeredAt : user.registeredAt)
@@ -777,8 +774,10 @@ export function deduplicateClientUsers(rawUsers: RegisteredUser[]): RegisteredUs
     } else {
       deduplicatedOthers.push({
         ...user,
+        role: 'user',
+        isAdmin: false,
         email: userEmail,
-        elitePlan: user.elitePlan || {
+        elitePlan: {
           status: 'inactive',
           planType: 'standard',
           expiresAt: 'Plan Estándar Gratuito'
@@ -802,71 +801,125 @@ export async function getRegisteredUsersList(pin: string = '2534'): Promise<{
   stats: RegistrationStatsSummary;
   error?: string;
 }> {
-  const accumulatedList: RegisteredUser[] = [];
+  const timeoutMs = 3000;
+  const withTimeout = <T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> =>
+    Promise.race([
+      promise,
+      new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms))
+    ]);
 
-  // 1. Fetch directly from Cloud Firestore (primary authoritative cloud source)
-  try {
-    const snap = await getDocs(collection(db, 'registered_users'));
-    if (!snap.empty) {
-      snap.forEach(d => {
-        const data = d.data() as RegisteredUser;
-        if (data && (data.id || d.id)) {
-          const uId = data.id || d.id;
-          accumulatedList.push({ ...data, id: uId });
+  // 1. Prepare parallel fetchers with strict timeouts
+  const fetchServerApi = async (): Promise<RegisteredUser[]> => {
+    try {
+      const res = await fetch(`/api/users?pin=${encodeURIComponent(pin)}&_t=${Date.now()}`, {
+        headers: {
+          'x-author-pin': pin,
+          'Cache-Control': 'no-cache'
         }
       });
-    }
-  } catch (fbErr) {
-    console.warn('[AnestesiaPro Admin] Direct Firestore fetch notice:', fbErr);
-  }
-
-  // 1.1 Also check medicos_registrados collection
-  try {
-    const snap2 = await getDocs(collection(db, 'medicos_registrados'));
-    if (!snap2.empty) {
-      snap2.forEach(d => {
-        const data = d.data() as RegisteredUser;
-        if (data && (data.id || d.id)) {
-          const uId = data.id || d.id;
-          accumulatedList.push({ ...data, id: uId });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.users)) {
+          return data.users;
         }
-      });
-    }
-  } catch (fbErr2) {
-    console.warn('[AnestesiaPro Admin] Direct Firestore medicos_registrados fetch notice:', fbErr2);
-  }
-
-  // 2. Also fetch from Server API (merging backups & local records)
-  try {
-    const res = await fetch(`/api/users?pin=${encodeURIComponent(pin)}`, {
-      headers: {
-        'x-author-pin': pin,
-        'Cache-Control': 'no-cache'
       }
-    });
+    } catch (err) {
+      console.warn('[AnestesiaPro Admin] Server API fetch note:', err);
+    }
+    return [];
+  };
 
-    if (res.ok) {
-      const data = await res.json();
-      if (data.success && Array.isArray(data.users)) {
-        data.users.forEach((u: RegisteredUser) => {
-          if (u && u.id) {
-            accumulatedList.push(u);
+  const fetchFirestoreRegistered = async (): Promise<RegisteredUser[]> => {
+    try {
+      const snap = await getDocs(collection(db, 'registered_users'));
+      if (!snap.empty) {
+        const list: RegisteredUser[] = [];
+        snap.forEach(d => {
+          const data = d.data() as RegisteredUser;
+          if (data && (data.id || d.id)) {
+            list.push({ ...data, id: data.id || d.id });
           }
         });
+        return list;
       }
+    } catch (fbErr) {
+      console.warn('[AnestesiaPro Admin] Firestore registered_users fetch note:', fbErr);
     }
-  } catch (err: any) {
-    console.warn('[AnestesiaPro Admin] Server API users notice:', err);
-  }
+    return [];
+  };
 
-  // 3. Run strict multi-key deduplication (Cédula, Email, Name, Carlos Leal Master)
+  const fetchFirestoreMedicos = async (): Promise<RegisteredUser[]> => {
+    try {
+      const snap = await getDocs(collection(db, 'medicos_registrados'));
+      if (!snap.empty) {
+        const list: RegisteredUser[] = [];
+        snap.forEach(d => {
+          const data = d.data() as RegisteredUser;
+          if (data && (data.id || d.id)) {
+            list.push({ ...data, id: data.id || d.id });
+          }
+        });
+        return list;
+      }
+    } catch (fbErr) {
+      console.warn('[AnestesiaPro Admin] Firestore medicos_registrados fetch note:', fbErr);
+    }
+    return [];
+  };
+
+  const fetchStaticBackup = async (): Promise<RegisteredUser[]> => {
+    try {
+      const jsonRes = await fetch(`/registered_users.json?_t=${Date.now()}`);
+      if (jsonRes.ok) {
+        const jsonUsers = await jsonRes.json();
+        if (Array.isArray(jsonUsers)) {
+          return jsonUsers;
+        }
+      }
+    } catch (jErr) {
+      console.warn('[AnestesiaPro Admin] Static JSON fallback note:', jErr);
+    }
+    return [];
+  };
+
+  // Run all 4 sources simultaneously with timeout protection
+  const results = await Promise.allSettled([
+    withTimeout(fetchServerApi(), timeoutMs, []),
+    withTimeout(fetchFirestoreRegistered(), timeoutMs, []),
+    withTimeout(fetchFirestoreMedicos(), timeoutMs, []),
+    withTimeout(fetchStaticBackup(), timeoutMs, [])
+  ]);
+
+  const accumulatedList: RegisteredUser[] = [];
+  results.forEach(res => {
+    if (res.status === 'fulfilled' && Array.isArray(res.value)) {
+      res.value.forEach(u => {
+        if (u && (u.id || u.fullName)) {
+          accumulatedList.push(u);
+        }
+      });
+    }
+  });
+
+  // Strict multi-key deduplication (Cédula, Email, Name, Carlos Leal Master)
   const allUsers = deduplicateClientUsers(accumulatedList);
   allUsers.sort((a, b) => new Date(b.registeredAt || 0).getTime() - new Date(a.registeredAt || 0).getTime());
 
+  // Non-blocking background sync to Cloud Firestore
+  setTimeout(() => {
+    try {
+      allUsers.forEach((u) => {
+        if (u && u.id && u.id !== 'usr_carlos_leal_admin') {
+          const docRef = doc(db, 'registered_users', u.id);
+          setDoc(docRef, JSON.parse(JSON.stringify(u)), { merge: true }).catch(() => {});
+        }
+      });
+    } catch {}
+  }, 100);
+
   // Compute live statistics summary
-  const activeElite = allUsers.filter(u => u.elitePlan?.status === 'active').length;
-  const pendingElite = allUsers.filter(u => u.elitePlan?.status === 'pending').length;
-  const inactiveElite = allUsers.filter(u => u.elitePlan?.status === 'inactive').length;
+  const standardDoctors = allUsers.filter(u => !(u.id === 'usr_carlos_leal_admin' || (u.email || '').toLowerCase().includes('carloseduardoleal'))).length;
+  const adminCount = allUsers.filter(u => u.id === 'usr_carlos_leal_admin' || (u.email || '').toLowerCase().includes('carloseduardoleal')).length || 1;
   
   const countriesCount: Record<string, number> = {};
   const specialtiesCount: Record<string, number> = {};
@@ -885,9 +938,11 @@ export async function getRegisteredUsersList(pin: string = '2534'): Promise<{
     users: allUsers,
     stats: {
       totalUsers: allUsers.length,
-      activeElite,
-      pendingElite,
-      inactiveElite,
+      standardDoctors,
+      adminCount,
+      activeElite: 0,
+      pendingElite: 0,
+      inactiveElite: standardDoctors,
       countriesCount,
       specialtiesCount
     }

@@ -294,10 +294,43 @@ export async function batchSaveCloudResources(resources: CloudResourceRecord[]):
   return allSuccess;
 }
 
+const PROTECTED_CORE_IDS = new Set([
+  'res-preeclampsia-eclampsia-enfoque-anestesiologico',
+  'res-protocolo-emotive-hemorragia-posparto-2026',
+  'res-enfoque-vortex-via-aerea-dificil',
+  'res-orexina-interruptor-despertar-2026',
+  'res-guia-eras-cesarea-2025',
+  'res-isr-secuencia-rapida-2025',
+  'res-cebranopadol-fase3-2026',
+  'res-indice-de-shock',
+  'res-aminofilina-teofilina-cppd',
+  'res-fona-cricotiroidotomia',
+  'res-caso-elaine-bromiley',
+  'res-das-2025-urgencias'
+]);
+
+let cachedCloudResources: { resources: CloudResourceRecord[]; deletedIds: string[] } | null = null;
+let lastCloudFetchTime = 0;
+let clientFirestoreQuotaExceededUntil = 0;
+const CLIENT_CLOUD_CACHE_TTL = 3 * 60 * 1000; // 3 minutes cache
+
+export function invalidateClientCloudCache() {
+  cachedCloudResources = null;
+  lastCloudFetchTime = 0;
+}
+
 /**
  * Fetch all resources stored in Cloud Firestore, automatically assembling chunked media
  */
 export async function getCloudResources(): Promise<{ resources: CloudResourceRecord[]; deletedIds: string[] }> {
+  const now = Date.now();
+  if (cachedCloudResources && (now - lastCloudFetchTime < CLIENT_CLOUD_CACHE_TTL)) {
+    return cachedCloudResources;
+  }
+  if (now < clientFirestoreQuotaExceededUntil) {
+    return cachedCloudResources || { resources: [], deletedIds: [] };
+  }
+
   try {
     const colRef = collection(db, COLLECTION_NAME);
     const snapshot = await getDocs(colRef);
@@ -318,14 +351,14 @@ export async function getCloudResources(): Promise<{ resources: CloudResourceRec
       if (tombstoneSnap.exists()) {
         const data = tombstoneSnap.data();
         if (Array.isArray(data?.ids)) {
-          deletedIds = data.ids;
+          deletedIds = data.ids.filter((id: string) => !PROTECTED_CORE_IDS.has(id));
         }
       }
     } catch (e) {
       console.warn('[Firestore] Error reading tombstones doc:', e);
     }
 
-    const filtered = rawList.filter(item => !deletedIds.includes(item.id));
+    const filtered = rawList.filter(item => !deletedIds.includes(item.id) || PROTECTED_CORE_IDS.has(item.id));
 
     // Hydrate any items that have subcollection chunks or carousel slides
     const hydratedList = await Promise.all(
@@ -364,10 +397,18 @@ export async function getCloudResources(): Promise<{ resources: CloudResourceRec
       })
     );
 
-    return { resources: hydratedList, deletedIds };
-  } catch (error) {
-    console.warn('[Firestore] getCloudResources notice:', error);
-    return { resources: [], deletedIds: [] };
+    const result = { resources: hydratedList, deletedIds };
+    cachedCloudResources = result;
+    lastCloudFetchTime = now;
+    return result;
+  } catch (error: any) {
+    if (error?.message?.includes('Quota') || error?.code === 'resource-exhausted') {
+      console.warn('[Firestore] Quota limit active; safely falling back to Express server master cache.');
+      clientFirestoreQuotaExceededUntil = Date.now() + 10 * 60 * 1000;
+    } else {
+      console.warn('[Firestore] getCloudResources notice:', error);
+    }
+    return cachedCloudResources || { resources: [], deletedIds: [] };
   }
 }
 

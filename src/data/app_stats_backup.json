@@ -2,10 +2,10 @@
   "visits": 1503,
   "uniqueDevices": 168,
   "appInstalls": 209,
-  "totalDownloads": 1093,
+  "totalDownloads": 1094,
   "itemDownloads": {
     "res-modulo-preanestesia-consultado": 151,
-    "res-guia-eras-cesarea-2025": 110,
+    "res-guia-eras-cesarea-2025": 111,
     "res-fona-cricotiroidotomia": 48,
     "res-caso-elaine-bromiley": 35,
     "res-articulo-metaanalisis-aminofilina-2023": 15,
@@ -59,6 +59,7 @@
     "🇦🇷 Argentina": 5,
     "🇺🇸 Estados Unidos": 3,
     "🇲🇽 México": 14,
-    "🇪🇸 España": 7
+    "🇪🇸 España": 7,
+    "Venezuela": 1
   }
 }

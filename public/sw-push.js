@@ -19,10 +19,7 @@ self.addEventListener('activate', (event) => {
 
 // Network-first with offline fallback fetch handler
 self.addEventListener('fetch', (event) => {
-  // Only handle GET requests
   if (event.request.method !== 'GET') return;
-  
-  // Do not intercept Firestore / Firebase API calls
   if (event.request.url.includes('firestore.googleapis.com') || event.request.url.includes('identitytoolkit')) {
     return;
   }
@@ -42,18 +39,27 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
+// Helper to guarantee full absolute HTTPS URLs for Firefox, Chrome, Safari, and Edge
+function getAbsoluteUrl(urlPath) {
+  const origin = self.location ? self.location.origin : '';
+  if (!urlPath) return origin + '/icon-192.png';
+  if (urlPath.startsWith('http://') || urlPath.startsWith('https://')) return urlPath;
+  if (urlPath.startsWith('/')) return origin + urlPath;
+  return origin + '/' + urlPath;
+}
+
 // Push notification handling with absolute URLs
 self.addEventListener('push', function (event) {
   const origin = self.location ? self.location.origin : '';
-  const appLogoUrl = origin ? origin + '/icon-192.png' : '/icon-192.png';
-  const badgeUrl = origin ? origin + '/icon-192.png' : '/icon-192.png';
+  const defaultLogo = getAbsoluteUrl('/icon-192.png');
+  const defaultBanner = getAbsoluteUrl('/og_banner.jpg');
 
   let payload = {
     title: 'AnestesiaPro 🩺',
     body: 'Nueva actualización y alerta clínica disponible.',
-    icon: appLogoUrl,
-    badge: badgeUrl,
-    image: origin ? origin + '/og_banner.jpg' : '/og_banner.jpg',
+    icon: defaultLogo,
+    badge: defaultLogo,
+    image: defaultBanner,
     url: '/?source=push_notification',
     tag: 'anestesiapro-push-' + Date.now()
   };
@@ -70,13 +76,20 @@ self.addEventListener('push', function (event) {
     }
   }
 
+  // Guarantee title includes AnestesiaPro brand so Firefox/Chrome/Safari always state the app name clearly
+  let rawTitle = payload.title || 'AnestesiaPro 🩺';
+  let finalTitle = rawTitle;
+  if (!rawTitle.toLowerCase().includes('anestesiapro')) {
+    finalTitle = `AnestesiaPro 🩺 | ${rawTitle}`;
+  }
+
   const options = {
     body: payload.body,
-    icon: payload.icon || appLogoUrl,
-    badge: payload.badge || badgeUrl,
-    image: payload.image || origin + '/og_banner.jpg',
+    icon: getAbsoluteUrl(payload.icon),
+    badge: getAbsoluteUrl(payload.badge || payload.icon),
+    image: getAbsoluteUrl(payload.image),
     requireInteraction: true,
-    vibrate: [200, 100, 200, 100, 200],
+    vibrate: [250, 100, 250, 100, 250],
     tag: payload.tag || 'anestesiapro-push-' + Date.now(),
     renotify: true,
     silent: false,
@@ -91,7 +104,7 @@ self.addEventListener('push', function (event) {
   };
 
   event.waitUntil(
-    self.registration.showNotification(payload.title, options)
+    self.registration.showNotification(finalTitle, options)
   );
 });
 

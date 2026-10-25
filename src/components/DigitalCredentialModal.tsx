@@ -129,8 +129,12 @@ export function DigitalCredentialModal({ user, onClose }: Props) {
               <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
               <span className="truncate">{user.workplace || 'Maracay, Estado Aragua'}</span>
             </div>
-            <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 rounded-full font-bold text-[10px] border border-emerald-500/30">
-              {user.elitePlan?.planType === 'lifetime' ? 'PRO VITALICIO' : 'PRO ACTIVO'}
+            <span className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] border ${
+              isCarlosLeal
+                ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                : 'bg-slate-800 text-slate-300 border-slate-700'
+            }`}>
+              {isCarlosLeal ? 'ADMINISTRADOR / FUNDADOR' : 'PLAN ESTÁNDAR'}
             </span>
           </div>
 

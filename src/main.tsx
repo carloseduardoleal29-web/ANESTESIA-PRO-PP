@@ -1,19 +1,17 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { registerSW } from './registerServiceWorker';
 import './index.css';
 
-// Registro de Service Worker para PWA y notificaciones push
-if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw-push.js').catch((err) => {
-      console.warn('Service Worker registration skipped:', err);
-    });
-  });
-}
+// Registra el Service Worker de forma segura para PWA offline y Push
+registerSW();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </React.StrictMode>
 );

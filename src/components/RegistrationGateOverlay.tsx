@@ -39,12 +39,16 @@ export const RegistrationGateOverlay: React.FC<RegistrationGateOverlayProps> = (
           }
         }
 
-        // Check if any record exists in Firestore for default device / session or previous email
-        const querySnapshot = await getDocs(collection(db, 'medicos_registrados'));
-        if (!querySnapshot.empty) {
-          const first = querySnapshot.docs[0].data() as MedicoRegistrado;
-          localStorage.setItem('anestesiapro_medico', JSON.stringify(first));
-          onVerified(first);
+        // Check if an email is already stored locally to query only that specific user
+        const storedEmail = localStorage.getItem('anestesiapro_reg_user_email') || localStorage.getItem('anestesiapro_registered_email');
+        if (storedEmail) {
+          const docRef = doc(db, 'registered_users', storedEmail.toLowerCase().replace(/[^a-z0-9]/g, '_'));
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            const data = docSnap.data() as MedicoRegistrado;
+            localStorage.setItem('anestesiapro_medico', JSON.stringify(data));
+            onVerified(data);
+          }
         }
       } catch (err) {
         console.error('Error during automatic rescue:', err);

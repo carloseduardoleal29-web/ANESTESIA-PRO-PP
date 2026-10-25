@@ -1,23 +1,5 @@
 [
   {
-    "fullName": "Dra. María Fernanda Gómez",
-    "idNumber": "V-20114890",
-    "email": "dra.maria.gomez.anest@gmail.com",
-    "phone": "+58 412 777 6655",
-    "country": "🇻🇪 Venezuela",
-    "specialty": "Anestesiología Obstétrica",
-    "workplace": "Maternidad Concepción Palacios",
-    "id": "usr_1792082975628_gcgkq",
-    "device": "Dispositivo Web",
-    "registeredAt": "2026-10-15T16:49:35.628Z",
-    "lastActiveAt": "2026-10-15T16:49:35.628Z",
-    "elitePlan": {
-      "status": "inactive",
-      "planType": "standard",
-      "expiresAt": "Plan Estándar Gratuito"
-    }
-  },
-  {
     "id": "usr_carlos_leal_admin",
     "fullName": "Dr. Carlos Eduardo Leal",
     "idNumber": "V-15.489.288",
@@ -29,16 +11,37 @@
     "phone": "+584243291438",
     "medicalLicenseNumber": "MPPS-84920",
     "collegeRegistration": "CM-4521",
+    "digitalSignatureUrl": "data:image/png;base64,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",
     "role": "admin",
     "isAdmin": true,
     "device": "Smartphone / Web (Autor y Fundador)",
     "registeredAt": "2026-10-01T00:00:00.000Z",
-    "lastActiveAt": "2026-10-15T16:49:35.627Z",
+    "lastActiveAt": "2026-10-24T11:06:20.743Z",
     "elitePlan": {
       "status": "active",
       "planType": "lifetime",
       "activatedAt": "2026-10-01T00:00:00.000Z",
       "expiresAt": "Permanente (Autor y Fundador)"
+    }
+  },
+  {
+    "fullName": "Dra. María Fernanda Gómez",
+    "idNumber": "V-20114890",
+    "email": "dra.maria.gomez.anest@gmail.com",
+    "phone": "+58 412 777 6655",
+    "country": "🇻🇪 Venezuela",
+    "specialty": "Anestesiología Obstétrica",
+    "workplace": "Maternidad Concepción Palacios",
+    "id": "usr_1792082975628_gcgkq",
+    "role": "user",
+    "isAdmin": false,
+    "device": "Dispositivo Web",
+    "registeredAt": "2026-10-15T16:49:35.628Z",
+    "lastActiveAt": "2026-10-24T10:22:49.622Z",
+    "elitePlan": {
+      "status": "inactive",
+      "planType": "standard",
+      "expiresAt": "Plan Estándar Gratuito"
     }
   },
   {
@@ -55,12 +58,11 @@
     "isAdmin": false,
     "device": "Smartphone Android / Web 📱",
     "registeredAt": "2026-10-14T11:30:00.000Z",
-    "lastActiveAt": "2026-10-15T16:49:35.627Z",
+    "lastActiveAt": "2026-10-24T10:22:49.622Z",
     "elitePlan": {
-      "status": "active",
-      "planType": "lifetime",
-      "activatedAt": "2026-10-14T11:30:00.000Z",
-      "expiresAt": "Permanente (Colega Equipo Quirúrgico)"
+      "status": "inactive",
+      "planType": "standard",
+      "expiresAt": "Plan Estándar Gratuito"
     }
   },
   {
@@ -71,19 +73,26 @@
     "phone": "+58 424 100 2030",
     "country": "🇻🇪 Venezuela",
     "specialty": "Médico Especialista en Anestesiología y Reanimación",
-    "subspecialty": "Anestesia General, Obstétrica y Manejo del Dolor",
+    "subspecialty": "",
     "workplace": "Maracay, Edo. Aragua",
     "role": "user",
     "isAdmin": false,
     "device": "Smartphone Android 📱",
-    "registeredAt": "2026-10-14T10:00:00.000Z",
-    "lastActiveAt": "2026-10-15T16:49:35.628Z",
+    "registeredAt": "2026-10-06T23:28:26.534Z",
+    "lastActiveAt": "2026-10-24T10:22:49.622Z",
     "elitePlan": {
-      "status": "active",
-      "planType": "lifetime",
-      "activatedAt": "2026-10-14T10:00:00.000Z",
-      "expiresAt": "Permanente (Colega Equipo Quirúrgico)"
-    }
+      "status": "inactive",
+      "planType": "standard",
+      "expiresAt": "Plan Estándar Gratuito"
+    },
+    "medicalLicenseNumber": "+584243213440",
+    "collegeRegistration": "",
+    "autoSendConfig": {
+      "autoSendWhatsApp": true,
+      "autoSendEmail": true
+    },
+    "platform": "android",
+    "isInstalledPWA": false
   },
   {
     "fullName": "Dr. Carlos Manuel Silva",
@@ -94,9 +103,11 @@
     "specialty": "Anestesiología General",
     "workplace": "Hospital Central de Maracay",
     "id": "usr_1792080674460_na01d",
+    "role": "user",
+    "isAdmin": false,
     "device": "Dispositivo Web",
     "registeredAt": "2026-10-15T16:11:14.461Z",
-    "lastActiveAt": "2026-10-15T16:49:35.628Z",
+    "lastActiveAt": "2026-10-24T10:22:49.622Z",
     "elitePlan": {
       "status": "inactive",
       "planType": "standard",
@@ -117,12 +128,11 @@
     "isAdmin": false,
     "device": "iPhone 15 Pro (Apple) 📱",
     "registeredAt": "2026-10-04T14:20:00.000Z",
-    "lastActiveAt": "2026-10-15T16:49:35.628Z",
+    "lastActiveAt": "2026-10-24T10:22:49.622Z",
     "elitePlan": {
-      "status": "active",
-      "planType": "lifetime",
-      "activatedAt": "2026-10-04T14:20:00.000Z",
-      "expiresAt": "Permanente"
+      "status": "inactive",
+      "planType": "standard",
+      "expiresAt": "Plan Estándar Gratuito"
     }
   },
   {
@@ -139,12 +149,11 @@
     "isAdmin": false,
     "device": "Smartphone Android 📱",
     "registeredAt": "2026-10-06T10:15:00.000Z",
-    "lastActiveAt": "2026-10-15T16:49:35.628Z",
+    "lastActiveAt": "2026-10-24T10:22:49.622Z",
     "elitePlan": {
-      "status": "active",
-      "planType": "lifetime",
-      "activatedAt": "2026-10-06T10:15:00.000Z",
-      "expiresAt": "Permanente"
+      "status": "inactive",
+      "planType": "standard",
+      "expiresAt": "Plan Estándar Gratuito"
     }
   },
   {
@@ -161,12 +170,11 @@
     "isAdmin": false,
     "device": "Tablet / iPad 📲",
     "registeredAt": "2026-10-08T18:45:00.000Z",
-    "lastActiveAt": "2026-10-15T16:49:35.628Z",
+    "lastActiveAt": "2026-10-24T10:22:49.622Z",
     "elitePlan": {
-      "status": "active",
-      "planType": "lifetime",
-      "activatedAt": "2026-10-08T18:45:00.000Z",
-      "expiresAt": "Permanente"
+      "status": "inactive",
+      "planType": "standard",
+      "expiresAt": "Plan Estándar Gratuito"
     }
   },
   {
@@ -183,12 +191,11 @@
     "isAdmin": false,
     "device": "Smartphone Android 📱",
     "registeredAt": "2026-10-10T11:30:00.000Z",
-    "lastActiveAt": "2026-10-15T16:49:35.628Z",
+    "lastActiveAt": "2026-10-24T10:22:49.622Z",
     "elitePlan": {
-      "status": "active",
-      "planType": "lifetime",
-      "activatedAt": "2026-10-10T11:30:00.000Z",
-      "expiresAt": "Permanente"
+      "status": "inactive",
+      "planType": "standard",
+      "expiresAt": "Plan Estándar Gratuito"
     }
   },
   {
@@ -205,12 +212,11 @@
     "isAdmin": false,
     "device": "Smartphone Android 📱",
     "registeredAt": "2026-10-12T09:10:00.000Z",
-    "lastActiveAt": "2026-10-15T16:49:35.628Z",
+    "lastActiveAt": "2026-10-24T10:22:49.622Z",
     "elitePlan": {
-      "status": "active",
-      "planType": "lifetime",
-      "activatedAt": "2026-10-12T09:10:00.000Z",
-      "expiresAt": "Permanente"
+      "status": "inactive",
+      "planType": "standard",
+      "expiresAt": "Plan Estándar Gratuito"
     }
   },
   {
@@ -227,12 +233,80 @@
     "isAdmin": false,
     "device": "Computadora PC (Windows) 💻",
     "registeredAt": "2026-10-13T16:00:00.000Z",
-    "lastActiveAt": "2026-10-15T16:49:35.628Z",
+    "lastActiveAt": "2026-10-24T10:22:49.622Z",
     "elitePlan": {
-      "status": "active",
-      "planType": "lifetime",
-      "activatedAt": "2026-10-13T16:00:00.000Z",
-      "expiresAt": "Permanente"
+      "status": "inactive",
+      "planType": "standard",
+      "expiresAt": "Plan Estándar Gratuito"
     }
+  },
+  {
+    "id": "usr_1791159033425_q29qi",
+    "workplace": "Hospital Razetti",
+    "device": "Dispositivo Web",
+    "specialty": "Médico Especialista en Anestesiología y Reanimación",
+    "country": "🇻🇪 Venezuela",
+    "registeredAt": "2026-10-05T00:10:33.425Z",
+    "fullName": "Dr. Fernando Gutierrez",
+    "idNumber": "V-15890123",
+    "elitePlan": {
+      "status": "inactive",
+      "planType": "standard",
+      "expiresAt": "Plan Estándar Gratuito"
+    },
+    "email": "drfernandogutierrez@gmail.com",
+    "lastActiveAt": "2026-10-24T10:22:49.621Z",
+    "phone": "+584121234567",
+    "role": "user",
+    "isAdmin": false
+  },
+  {
+    "specialty": "Médico Especialista en Anestesiología y Reanimación",
+    "device": "Dispositivo Web",
+    "email": "dr.robertosilva.anestesia@gmail.com",
+    "phone": "+584145551234",
+    "workplace": "Hospital Universitario de Caracas",
+    "id": "usr_1791214914718_9n7e4",
+    "lastActiveAt": "2026-10-24T10:22:49.621Z",
+    "fullName": "Dr. Roberto Silva",
+    "idNumber": "V-17849302",
+    "registeredAt": "2026-10-05T15:41:54.718Z",
+    "elitePlan": {
+      "status": "inactive",
+      "planType": "standard",
+      "expiresAt": "Plan Estándar Gratuito"
+    },
+    "country": "🇻🇪 Venezuela",
+    "role": "user",
+    "isAdmin": false
+  },
+  {
+    "isInstalledPWA": false,
+    "specialty": "Médico Especialista en Anestesiología",
+    "device": "iPhone / iPad (iOS) 📱",
+    "id": "usr_1791425444333_kdea2",
+    "collegeRegistration": "13204",
+    "email": "davidsolorzano20155@gmail.com",
+    "lastActiveAt": "2026-10-24T10:22:49.622Z",
+    "autoSendConfig": {
+      "autoSendWhatsApp": true,
+      "autoSendEmail": true
+    },
+    "platform": "ios",
+    "fullName": "David Enrrique Solórzano Herrera",
+    "idNumber": "V-REGISTRADO",
+    "medicalLicenseNumber": "140929",
+    "country": "🇻🇪 Venezuela",
+    "workplace": "IVSS José María Vargas",
+    "subspecialty": "Anestesiología General y TIVA (Infusión Total Intravenosa)",
+    "registeredAt": "2026-10-08T11:52:43.795Z",
+    "elitePlan": {
+      "status": "inactive",
+      "planType": "standard",
+      "expiresAt": "Plan Estándar Gratuito"
+    },
+    "phone": "04243633366",
+    "role": "user",
+    "isAdmin": false
   }
 ]

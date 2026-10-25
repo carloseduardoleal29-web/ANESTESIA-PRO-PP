@@ -27,6 +27,21 @@ const LEGACY_KEYS = [
   'anestesiapro_education_resources'
 ];
 
+export const PROTECTED_RESOURCE_IDS: string[] = [
+  'res-preeclampsia-eclampsia-enfoque-anestesiologico',
+  'res-protocolo-emotive-hemorragia-posparto-2026',
+  'res-enfoque-vortex-via-aerea-dificil',
+  'res-orexina-interruptor-despertar-2026',
+  'res-guia-eras-cesarea-2025',
+  'res-isr-secuencia-rapida-2025',
+  'res-cebranopadol-fase3-2026',
+  'res-indice-de-shock',
+  'res-aminofilina-teofilina-cppd',
+  'res-fona-cricotiroidotomia',
+  'res-caso-elaine-bromiley',
+  'res-das-2025-urgencias'
+];
+
 export const DEFAULT_TOMBSTONES: string[] = [
   'res-bloqueo-peng-cadera-2026',
   'res-modelo-vortex-redar',
@@ -365,23 +380,31 @@ const DELETED_KEYS = 'anestesiapro_deleted_resource_ids';
 
 /**
  * Get IDs of permanently deleted resources.
+ * Protected core guides are strictly excluded from ever being treated as deleted.
  */
 export function getDeletedResourceIds(): string[] {
-  const set = new Set<string>(DEFAULT_TOMBSTONES);
+  const protectedSet = new Set<string>(PROTECTED_RESOURCE_IDS);
+  const set = new Set<string>(DEFAULT_TOMBSTONES.filter(id => !protectedSet.has(id)));
   try {
     const raw = localStorage.getItem(DELETED_KEYS);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
+        let cleaned: string[] = [];
         parsed.forEach(id => {
-          if (id && typeof id === 'string') {
+          if (id && typeof id === 'string' && !protectedSet.has(id)) {
             set.add(id);
+            cleaned.push(id);
           }
         });
+        // Self-heal localStorage: remove any core clinical guides that were mistakenly saved in tombstones
+        if (cleaned.length !== parsed.length) {
+          localStorage.setItem(DELETED_KEYS, JSON.stringify(cleaned));
+        }
       }
     }
   } catch (e) {}
-  return Array.from(set);
+  return Array.from(set).filter(id => !protectedSet.has(id));
 }
 
 /**
@@ -389,7 +412,7 @@ export function getDeletedResourceIds(): string[] {
  * Permanently stores in localStorage tombstones.
  */
 export function markResourceAsDeleted(resourceId: string): void {
-  if (!resourceId) return;
+  if (!resourceId || PROTECTED_RESOURCE_IDS.includes(resourceId)) return;
   try {
     const current = getDeletedResourceIds();
     if (!current.includes(resourceId)) {
@@ -404,6 +427,10 @@ export function markResourceAsDeleted(resourceId: string): void {
  */
 export async function removeStoredResource(resourceId: string): Promise<boolean> {
   if (!resourceId) return false;
+  if (PROTECTED_RESOURCE_IDS.includes(resourceId)) {
+    console.warn('[EducationStorage] Core clinical guide cannot be deleted:', resourceId);
+    return false;
+  }
   markResourceAsDeleted(resourceId);
 
   // 1. Delete from IndexedDB
@@ -479,8 +506,11 @@ export async function purgeAllCustomStoredResources(): Promise<void> {
  */
 export function mergeResources(builtin: any[], local: any[], server: any[], remoteDeletedIds: string[] = []): any[] {
   const map = new Map<string, any>();
+  const protectedSet = new Set<string>(PROTECTED_RESOURCE_IDS);
   const localDeleted = getDeletedResourceIds();
-  const deletedSet = new Set<string>([...localDeleted, ...remoteDeletedIds, ...DEFAULT_TOMBSTONES]);
+  const deletedSet = new Set<string>(
+    [...localDeleted, ...remoteDeletedIds, ...DEFAULT_TOMBSTONES].filter(id => !protectedSet.has(id))
+  );
 
   // 1. Built-in first as foundation (sanitized, only if not in deletedSet)
   for (const rawItem of builtin) {
@@ -610,105 +640,118 @@ export async function fetchServerResources(): Promise<{ resources: any[]; delete
   const mergedMap = new Map<string, any>();
   const combinedDeleted = new Set<string>();
 
-  // Strategy 1: Cloud Firestore (Authoritative multi-device cloud database)
-  try {
-    const { resources: cloudList, deletedIds: cloudDeleted } = await getCloudResources();
-    if (Array.isArray(cloudDeleted)) {
-      cloudDeleted.forEach(id => id && combinedDeleted.add(id));
-    }
-    if (Array.isArray(cloudList) && cloudList.length > 0) {
-      cloudList.forEach(item => {
-        const sanitized = sanitizeResource(item);
-        if (sanitized && sanitized.id && !combinedDeleted.has(sanitized.id)) {
-          mergedMap.set(sanitized.id, sanitized);
+  const withTimeout = <T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> =>
+    Promise.race([
+      promise,
+      new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms))
+    ]);
+
+  // Strategy 1: Dynamic API endpoint (fastest, pre-aggregated with server-side Firestore cache)
+  const fetchApi = async (): Promise<{ resources: any[]; deletedIds?: string[] } | null> => {
+    try {
+      const res = await fetch(`/api/education/resources?t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'x-client-app': 'anestesiapro'
         }
       });
-    } else if (Array.isArray(cloudList) && cloudList.length === 0) {
-      // Seed Firestore with baseline educational catalog so cloud has the official guides
-      seedInitialResourcesToFirestore(INITIAL_RESOURCES as any);
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.warn('[EducationStorage] API fetch notice:', e);
     }
-  } catch (cloudErr) {
-    console.warn('[EducationStorage] Cloud Firestore fetch note:', cloudErr);
-  }
+    return null;
+  };
 
-  // Strategy 2: Dynamic API endpoint
-  try {
-    const res = await fetch(`/api/education/resources?t=${Date.now()}`, {
-      cache: 'no-store',
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'x-client-app': 'anestesiapro'
-      }
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data.success && Array.isArray(data.resources) && data.resources.length > 0) {
-        if (Array.isArray(data.deletedIds)) {
-          data.deletedIds.forEach((id: string) => id && combinedDeleted.add(id));
-        }
-        data.resources.forEach((item: any) => {
-          const sanitized = sanitizeResource(item);
-          if (sanitized && sanitized.id && !combinedDeleted.has(sanitized.id)) {
-            const existing = mergedMap.get(sanitized.id);
-            if (!existing) {
-              mergedMap.set(sanitized.id, sanitized);
-            } else {
-              // Merge preserving richest media
-              mergedMap.set(sanitized.id, {
-                ...sanitized,
-                ...existing,
-                images: (existing.images && existing.images.length > 0) ? existing.images : sanitized.images,
-                imagesData: (existing.imagesData && existing.imagesData.length > 0) ? existing.imagesData : sanitized.imagesData,
-                fileDataUrl: existing.fileDataUrl || sanitized.fileDataUrl
-              });
-            }
-          }
-        });
-      }
+  // Strategy 2: Direct Cloud Firestore with 2.5s timeout safeguard
+  const fetchCloud = async (): Promise<{ resources: CloudResourceRecord[]; deletedIds: string[] } | null> => {
+    try {
+      return await getCloudResources();
+    } catch (cloudErr) {
+      console.warn('[EducationStorage] Cloud Firestore fetch note:', cloudErr);
+      return null;
     }
-  } catch (err) {
-    console.warn('[EducationStorage] API fetch notice, falling back to static resources JSON:', err);
-  }
+  };
 
-  // Strategy 3: Direct static file fetch
-  try {
-    const staticRes = await fetch(`/education_resources.json?t=${Date.now()}`, {
-      cache: 'no-store',
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache'
-      }
-    });
-    if (staticRes.ok) {
-      const staticData = await staticRes.json();
-      if (Array.isArray(staticData) && staticData.length > 0) {
+  // Strategy 3: Direct static JSON fallback
+  const fetchStatic = async (): Promise<{ resources?: any[]; deletedIds?: string[] } | null> => {
+    try {
+      const staticRes = await fetch(`/education_resources.json?t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+      });
+      if (staticRes.ok) {
+        const staticData = await staticRes.json();
+        let deleted: string[] = [];
         try {
           const delRes = await fetch(`/deleted_resource_ids.json?t=${Date.now()}`, { cache: 'no-store' });
           if (delRes.ok) {
             const delData = await delRes.json();
-            if (Array.isArray(delData)) delData.forEach((id: string) => id && combinedDeleted.add(id));
+            if (Array.isArray(delData)) deleted = delData;
           }
         } catch {}
-        
-        staticData.forEach((item: any) => {
-          const sanitized = sanitizeResource(item);
-          if (sanitized && sanitized.id && !combinedDeleted.has(sanitized.id)) {
-            if (!mergedMap.has(sanitized.id)) {
-              mergedMap.set(sanitized.id, sanitized);
-            }
-          }
-        });
+        return { resources: staticData, deletedIds: deleted };
       }
+    } catch (e) {}
+    return null;
+  };
+
+  // Run in parallel with strict timeout limits (Express API is primary and fastest, <100ms)
+  const [apiRes, cloudRes, staticRes] = await Promise.allSettled([
+    withTimeout(fetchApi(), 2500, null),
+    withTimeout(fetchCloud(), 1200, null),
+    withTimeout(fetchStatic(), 2000, null)
+  ]);
+
+  const protectedSet = new Set<string>(PROTECTED_RESOURCE_IDS);
+
+  // Merge results
+  const addResources = (list: any[], dels: string[] = []) => {
+    if (Array.isArray(dels)) {
+      dels.forEach(d => {
+        if (d && !protectedSet.has(d)) {
+          combinedDeleted.add(d);
+        }
+      });
     }
-  } catch (staticErr) {
-    console.warn('[EducationStorage] Static fetch notice:', staticErr);
+    if (Array.isArray(list)) {
+      list.forEach(item => {
+        const sanitized = sanitizeResource(item);
+        if (sanitized && sanitized.id && (!combinedDeleted.has(sanitized.id) || protectedSet.has(sanitized.id))) {
+          const existing = mergedMap.get(sanitized.id);
+          if (!existing) {
+            mergedMap.set(sanitized.id, sanitized);
+          } else {
+            mergedMap.set(sanitized.id, {
+              ...sanitized,
+              ...existing,
+              images: (existing.images && existing.images.length > 0) ? existing.images : sanitized.images,
+              imagesData: (existing.imagesData && existing.imagesData.length > 0) ? existing.imagesData : sanitized.imagesData,
+              fileDataUrl: existing.fileDataUrl || sanitized.fileDataUrl
+            });
+          }
+        }
+      });
+    }
+  };
+
+  if (apiRes.status === 'fulfilled' && apiRes.value && Array.isArray(apiRes.value.resources)) {
+    addResources(apiRes.value.resources, apiRes.value.deletedIds || []);
+  }
+  if (cloudRes.status === 'fulfilled' && cloudRes.value && Array.isArray(cloudRes.value.resources)) {
+    addResources(cloudRes.value.resources, cloudRes.value.deletedIds || []);
+  }
+  if (staticRes.status === 'fulfilled' && staticRes.value && Array.isArray(staticRes.value.resources)) {
+    addResources(staticRes.value.resources, staticRes.value.deletedIds || []);
   }
 
-  const finalResources = Array.from(mergedMap.values()).filter(r => !combinedDeleted.has(r.id));
+  const finalResources = Array.from(mergedMap.values()).filter(r => !combinedDeleted.has(r.id) || protectedSet.has(r.id));
   return { 
     resources: finalResources, 
-    deletedIds: Array.from(combinedDeleted) 
+    deletedIds: Array.from(combinedDeleted).filter(id => !protectedSet.has(id)) 
   };
 }
 
