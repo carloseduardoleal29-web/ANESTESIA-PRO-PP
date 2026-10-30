@@ -160,6 +160,22 @@ export const PediatricCalculatorTab: React.FC = () => {
   const midazolamIvMaxMl = Number((midazolamIvMaxMg / 1).toFixed(2));
   const midazolamOralMg = Number(Math.min(15, weightKg * 0.5).toFixed(1));
 
+  // Lidocaine IV: 1.0 - 1.5 mg/kg
+  const lidocaineMinMg = Number((weightKg * 1.0).toFixed(1));
+  const lidocaineMaxMg = Number((weightKg * 1.5).toFixed(1));
+
+  // Clonidine Oral / IV: 3 - 5 mcg/kg
+  const clonidineMinMcg = Math.round(weightKg * 3);
+  const clonidineMaxMcg = Math.round(weightKg * 5);
+
+  // NSAIDs & Steroids Pediatric:
+  const ketorolacMg = Number(Math.min(15, weightKg * 0.5).toFixed(1)); // 0.5 mg/kg IV max 15mg
+  const ibuprofenMg = Math.round(weightKg * 10); // 10 mg/kg VO
+  const paracetamolMg = Math.round(weightKg * 15); // 15 mg/kg VO/IV
+  const dexamethasoneMinMg = Number((weightKg * 0.15).toFixed(2));
+  const dexamethasoneMaxMg = Number((weightKg * 0.5).toFixed(2));
+  const hydrocortisoneMg = Math.round(weightKg * 2.0);
+
   // Rocuronium: 0.6 mg/kg standard | 1.0 mg/kg RSI | 0.15 mg/kg maintenance
   const rocuroniumMg = Number((weightKg * 0.6).toFixed(1));
   const rocuroniumRsiMg = Number((weightKg * 1.0).toFixed(1));
@@ -625,6 +641,93 @@ Paciente: ${ageYears} años (${ageMonths} meses) | Peso: ${weightKg} kg | Volemi
                 <div className="text-right">
                   <span className="font-black text-emerald-300 font-mono">IV: {ketamineIvMg} mg</span>
                   <span className="text-[10px] text-slate-400 block font-mono">(IM: {ketamineImMg} mg)</span>
+                </div>
+              </div>
+
+              {/* LIDOCAÍNA IV */}
+              <div className="flex items-center justify-between pt-1 border-t border-slate-800/60 text-xs">
+                <div>
+                  <span className="font-bold text-slate-200 block">Lidocaína IV (1.0 - 1.5 mg/kg)</span>
+                  <span className="text-[10px] text-slate-400">Atenuación respuesta intubación / PIC</span>
+                </div>
+                <div className="text-right">
+                  <span className="font-black text-cyan-300 font-mono">{lidocaineMinMg} - {lidocaineMaxMg} mg</span>
+                </div>
+              </div>
+
+              {/* CLONIDINA */}
+              <div className="flex items-center justify-between pt-1 border-t border-slate-800/60 text-xs">
+                <div>
+                  <span className="font-bold text-slate-200 block">Clonidina Oral / IV (3 - 5 µg/kg)</span>
+                  <span className="text-[10px] text-slate-400">Premedicación / sedación / estabilidad</span>
+                </div>
+                <div className="text-right">
+                  <span className="font-black text-amber-300 font-mono">{clonidineMinMcg} - {clonidineMaxMcg} µg</span>
+                </div>
+              </div>
+            </div>
+
+            {/* SECCIÓN AINES & ESTEROIDES PEDIÁTRICOS */}
+            <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-1">
+                <span className="text-[10px] font-black text-purple-400 uppercase tracking-wider flex items-center gap-1">
+                  <Sparkles className="w-3 h-3" /> AINES & Esteroides Pediátricos
+                </span>
+                <span className="text-[9px] text-slate-400">Analgésicos y Antiinflamatorios</span>
+              </div>
+
+              {/* PARACETAMOL */}
+              <div className="flex items-center justify-between text-xs">
+                <div>
+                  <span className="font-bold text-slate-200 block">Paracetamol / Acetaminofén (15 mg/kg)</span>
+                  <span className="text-[10px] text-slate-400">VO / IV (dosis analgésica estándar)</span>
+                </div>
+                <div className="text-right">
+                  <span className="font-black text-emerald-300 font-mono">{paracetamolMg} mg</span>
+                </div>
+              </div>
+
+              {/* IBUPROFENO */}
+              <div className="flex items-center justify-between pt-1 border-t border-slate-800/60 text-xs">
+                <div>
+                  <span className="font-bold text-slate-200 block">Ibuprofeno Oral (10 mg/kg)</span>
+                  <span className="text-[10px] text-slate-400">AINE (cada 6-8 horas)</span>
+                </div>
+                <div className="text-right">
+                  <span className="font-black text-cyan-300 font-mono">{ibuprofenMg} mg</span>
+                </div>
+              </div>
+
+              {/* KETOROLACO */}
+              <div className="flex items-center justify-between pt-1 border-t border-slate-800/60 text-xs">
+                <div>
+                  <span className="font-bold text-slate-200 block">Ketorolaco IV (0.5 mg/kg, máx 15mg)</span>
+                  <span className="text-[10px] text-slate-400">AINE potente postoperatorio</span>
+                </div>
+                <div className="text-right">
+                  <span className="font-black text-amber-300 font-mono">{ketorolacMg} mg</span>
+                </div>
+              </div>
+
+              {/* DEXAMETASONA */}
+              <div className="flex items-center justify-between pt-1 border-t border-slate-800/60 text-xs">
+                <div>
+                  <span className="font-bold text-slate-200 block">Dexametasona IV (0.15 - 0.5 mg/kg)</span>
+                  <span className="text-[10px] text-slate-400">Edema vía aérea / prevención PONV</span>
+                </div>
+                <div className="text-right">
+                  <span className="font-black text-purple-300 font-mono">{dexametasonaMinMg} - {dexametasonaMaxMg} mg</span>
+                </div>
+              </div>
+
+              {/* HIDROCORTISONA */}
+              <div className="flex items-center justify-between pt-1 border-t border-slate-800/60 text-xs">
+                <div>
+                  <span className="font-bold text-slate-200 block">Hidrocortisona IV (2 mg/kg)</span>
+                  <span className="text-[10px] text-slate-400">Protección estrés / alérgico</span>
+                </div>
+                <div className="text-right">
+                  <span className="font-black text-rose-300 font-mono">{hydrocortisoneMg} mg</span>
                 </div>
               </div>
             </div>

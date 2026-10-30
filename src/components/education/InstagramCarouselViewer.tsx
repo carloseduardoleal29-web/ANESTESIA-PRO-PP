@@ -20,6 +20,7 @@ import {
   Bell
 } from 'lucide-react';
 import { broadcastPushNotification } from '../../lib/pushNotificationService';
+import { deduplicateCarouselSlides } from '../../lib/educationStorage';
 
 interface InstagramCarouselViewerProps {
   resource: EducationalResource;
@@ -34,7 +35,7 @@ export const InstagramCarouselViewer: React.FC<InstagramCarouselViewerProps> = (
   isAdmin,
   onTriggerPush
 }) => {
-  // Extract all images for the carousel with resilient pairing
+  // Extract all images for the carousel with resilient pairing and automatic deduplication
   const images: string[] = React.useMemo(() => {
     const count = Math.max(
       Array.isArray(resource.images) ? resource.images.length : 0,
@@ -50,7 +51,7 @@ export const InstagramCarouselViewer: React.FC<InstagramCarouselViewerProps> = (
           list.push(item);
         }
       }
-      if (list.length > 0) return list;
+      if (list.length > 0) return deduplicateCarouselSlides(list);
     }
     if (resource.fileDataUrl && !resource.fileDataUrl.startsWith('data:application/pdf')) {
       return [resource.fileDataUrl];

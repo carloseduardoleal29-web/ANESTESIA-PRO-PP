@@ -16,13 +16,24 @@ import { ViewportFramingAssistant } from './components/ViewportFramingAssistant'
 import { AnimatedBanner } from './components/AnimatedBanner';
 import { forceAppUpdate } from './registerServiceWorker';
 import { syncEducationResourcesWithServer } from './lib/educationStorage';
+import { recordSectionVisit, syncGlobalVisit } from './lib/statsService';
 import { lockViewportFraming } from './lib/viewportManager';
-import { RefreshCw, Sparkles, X } from 'lucide-react';
+import { RefreshCw, Sparkles, X, Crown, Palette, Edit3, ShieldAlert, Brain, Calculator, FileText, Monitor } from 'lucide-react';
 import { DeveloperFooter } from './components/DeveloperFooter';
 import { DeveloperModal } from './components/DeveloperModal';
 import { ContactModal } from './components/ContactModal';
 import { ShareModal } from './components/ShareModal';
 import { FloatingRegistrationPrompt } from './components/FloatingRegistrationPrompt';
+import { UserRegistrationModal } from './components/UserRegistrationModal';
+import { PlanEliteModal } from './components/PlanEliteModal';
+import { EliteLabModule } from './components/EliteLabModule';
+import { MedicalArticleTranslator } from './components/MedicalArticleTranslator';
+import { OperatingRoomCrisisModule } from './components/crisis/OperatingRoomCrisisModule';
+import { MedicalCalculatorsEliteModule } from './components/calculators/MedicalCalculatorsEliteModule';
+import { ElitePreanesthesiaModule } from './components/preanesthesia/ElitePreanesthesiaModule';
+import { ThemeSelectorModal } from './components/ThemeSelectorModal';
+import { AdminBillingEditorModal } from './components/AdminBillingEditorModal';
+import { AppThemeMode, getActiveTheme, THEME_OPTIONS } from './lib/themeService';
 import { requestPushPermissionAndSubscribe } from './lib/pushNotificationService';
 
 export default function App() {
@@ -34,6 +45,11 @@ export default function App() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [showRegistrationModal, setShowRegistrationModal] = useState(false);
   const [registrationEditMode, setRegistrationEditMode] = useState(false);
+  const [showPlanEliteModal, setShowPlanEliteModal] = useState(false);
+  const [showThemeModal, setShowThemeModal] = useState(false);
+  const [showAdminBillingModal, setShowAdminBillingModal] = useState(false);
+  const [activeTheme, setActiveTheme] = useState<AppThemeMode>(() => getActiveTheme());
+  const [eliteLabTab, setEliteLabTab] = useState<'simulador' | 'traductor' | 'crisis' | 'preanestesia' | 'calculadoras' | null>(null);
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -54,12 +70,68 @@ export default function App() {
       setShowRegistrationModal(true);
     };
 
+    const handleOpenPlanElite = () => {
+      setShowPlanEliteModal(true);
+    };
+
+    const handleOpenEliteLab = (e: any) => {
+      setEliteLabTab(e.detail?.tab || 'simulador');
+    };
+
+    const handleOpenTranslator = () => {
+      setEliteLabTab('traductor');
+    };
+
+    const handleOpenCrisis = () => {
+      setEliteLabTab('crisis');
+    };
+
+    const handleOpenCalculadorasAvanzadas = () => {
+      setEliteLabTab('calculadoras');
+    };
+
+    const handleOpenPreanestesiaElite = () => {
+      setEliteLabTab('preanestesia');
+    };
+
+    const handleOpenTheme = () => {
+      setShowThemeModal(true);
+    };
+
+    const handleOpenAdminBilling = () => {
+      setShowAdminBillingModal(true);
+    };
+
+    const handleThemeUpdated = (e: any) => {
+      if (e.detail) {
+        setActiveTheme(e.detail);
+      }
+    };
+
     window.addEventListener('anestesiapro_open_user_registration', handleOpenRegistration);
     window.addEventListener('anestesiapro_open_registration_modal', handleOpenRegistration);
+    window.addEventListener('anestesiapro_open_plan_elite_modal', handleOpenPlanElite);
+    window.addEventListener('anestesiapro_open_elite_lab', handleOpenEliteLab);
+    window.addEventListener('anestesiapro_open_translator', handleOpenTranslator);
+    window.addEventListener('anestesiapro_open_crisis_modal', handleOpenCrisis);
+    window.addEventListener('anestesiapro_open_calculadoras_avanzadas', handleOpenCalculadorasAvanzadas);
+    window.addEventListener('anestesiapro_open_preanestesia_elite', handleOpenPreanestesiaElite);
+    window.addEventListener('anestesiapro_open_theme_modal', handleOpenTheme);
+    window.addEventListener('anestesiapro_open_admin_billing_modal', handleOpenAdminBilling);
+    window.addEventListener('anestesiapro_theme_updated', handleThemeUpdated);
 
     return () => {
       window.removeEventListener('anestesiapro_open_user_registration', handleOpenRegistration);
       window.removeEventListener('anestesiapro_open_registration_modal', handleOpenRegistration);
+      window.removeEventListener('anestesiapro_open_plan_elite_modal', handleOpenPlanElite);
+      window.removeEventListener('anestesiapro_open_elite_lab', handleOpenEliteLab);
+      window.removeEventListener('anestesiapro_open_translator', handleOpenTranslator);
+      window.removeEventListener('anestesiapro_open_crisis_modal', handleOpenCrisis);
+      window.removeEventListener('anestesiapro_open_calculadoras_avanzadas', handleOpenCalculadorasAvanzadas);
+      window.removeEventListener('anestesiapro_open_preanestesia_elite', handleOpenPreanestesiaElite);
+      window.removeEventListener('anestesiapro_open_theme_modal', handleOpenTheme);
+      window.removeEventListener('anestesiapro_open_admin_billing_modal', handleOpenAdminBilling);
+      window.removeEventListener('anestesiapro_theme_updated', handleThemeUpdated);
     };
   }, []);
 
@@ -71,6 +143,7 @@ export default function App() {
       await forceAppUpdate();
     }
   };
+
   const [activeTab, setActiveTab] = useState<TabType>(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
@@ -98,13 +171,33 @@ export default function App() {
         return recurso;
       }
     }
-    return null;
   });
 
-  // Track tab visits in analytics
+  // Sync global visit on initial app startup
   useEffect(() => {
-  //recordSectionVisit(activeTab);
+    syncGlobalVisit().catch(() => {});
+  }, []);
+
+  // Track visits to active main sections
+  useEffect(() => {
+    if (activeTab) {
+      recordSectionVisit(activeTab);
+    }
   }, [activeTab]);
+
+  // Track visits to Élite submodules
+  useEffect(() => {
+    if (eliteLabTab) {
+      const eliteKeyMap: Record<string, string> = {
+        simulador: 'simulador',
+        traductor: 'traductor',
+        crisis: 'crisis',
+        calculadoras: 'calculadoras_avanzadas',
+        preanestesia: 'preanestesia_elite'
+      };
+      recordSectionVisit(eliteKeyMap[eliteLabTab] || eliteLabTab);
+    }
+  }, [eliteLabTab]);
 
   // Global background sync to ensure all devices see uploaded resources in real-time
   useEffect(() => {
@@ -120,13 +213,10 @@ export default function App() {
       } catch {}
     };
 
-    // Initial sync
     runGlobalSync(true);
 
-    // Periodic sync every 60 seconds
     const interval = setInterval(() => runGlobalSync(false), 60000);
 
-    // Sync when device reconnects or tab regains focus
     const onFocusOrOnline = () => runGlobalSync(false);
     const onNewPublish = () => runGlobalSync(true);
 
@@ -167,13 +257,15 @@ export default function App() {
     };
   }, []);
 
+  const currentThemeObj = THEME_OPTIONS.find(t => t.id === activeTheme) || THEME_OPTIONS[0];
+
   return (
-    <div className="min-h-screen min-h-[100dvh] w-full max-w-full overflow-x-hidden bg-slate-950 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-slate-950 antialiased">
+    <div className={`min-h-screen min-h-[100dvh] w-full max-w-full overflow-x-hidden ${currentThemeObj.bgClasses} flex flex-col font-sans selection:bg-cyan-500 selection:text-slate-950 antialiased transition-colors duration-300`}>
       {/* Mobile Viewport & Auto-Framing Assistant */}
       <ViewportFramingAssistant />
 
       {/* Top Header */}
-   <Header 
+      <Header 
         setActiveTab={setActiveTab} 
         onSelectEducationResource={(id) => {
           setSelectedEducationId(id);
@@ -229,7 +321,7 @@ export default function App() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-5xl w-full mx-auto px-2.5 py-3 sm:px-4 sm:py-4 md:p-6 pb-28 md:pb-12 min-w-0 overflow-x-hidden">
+      <main className="flex-1 max-w-6xl w-full mx-auto px-2.5 py-3 sm:px-4 sm:py-4 md:p-6 pb-28 md:pb-12 min-w-0 overflow-x-hidden">
         {activeTab === 'inicio' && (
           <HomeModule 
             setActiveTab={setActiveTab} 
@@ -296,6 +388,78 @@ export default function App() {
           initialEditMode={registrationEditMode}
           onClose={() => setShowRegistrationModal(false)}
         />
+      )}
+
+      {/* Plan Élite Official Modal */}
+      {showPlanEliteModal && (
+        <PlanEliteModal
+          isOpen={showPlanEliteModal}
+          onClose={() => setShowPlanEliteModal(false)}
+        />
+      )}
+
+      {/* Theme Selector Modal */}
+      {showThemeModal && (
+        <ThemeSelectorModal
+          isOpen={showThemeModal}
+          onClose={() => setShowThemeModal(false)}
+          activeTheme={activeTheme}
+          onSelectTheme={(t) => setActiveTheme(t)}
+        />
+      )}
+
+      {/* Admin Billing Details Editor Modal (Dr. Carlos Leal) */}
+      {showAdminBillingModal && (
+        <AdminBillingEditorModal
+          isOpen={showAdminBillingModal}
+          onClose={() => setShowAdminBillingModal(false)}
+        />
+      )}
+
+      {/* Standalone Fullscreen Modal View for Élite Modules (NO extra administrative ribbons/headers) */}
+      {eliteLabTab && (
+        <div className="fixed inset-0 z-50 bg-slate-950 overflow-y-auto">
+          {/* DEDICATED CLEAN HEADER FOR EACH SPECIFIC ÉLITE MODULE */}
+          <div className="sticky top-0 z-50 bg-slate-900 border-b border-amber-500/40 px-4 py-3 flex items-center justify-between text-white shadow-xl">
+            <div className="flex items-center gap-2.5">
+              <div className="p-1.5 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-400/40 shrink-0">
+                <Crown className="w-4 h-4 fill-current text-amber-300" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-wider bg-amber-400 text-slate-950 px-2 py-0.2 rounded font-mono">
+                    MÓDULO ÉLITE
+                  </span>
+                </div>
+                <h3 className="font-extrabold text-xs sm:text-sm text-white">
+                  {
+                    eliteLabTab === 'simulador' ? 'Simulador de Casos Clínicos & Monitor Virtual' :
+                    eliteLabTab === 'traductor' ? 'Traduce y Resume con IA • Análisis & Traducción Fiel' :
+                    eliteLabTab === 'crisis' ? 'Crisis Intraoperatorias & Checklists de Rescate' :
+                    eliteLabTab === 'calculadoras' ? 'Calculadoras Médicas Avanzadas (TIVA / TCI & Vasoactivos)' :
+                    eliteLabTab === 'preanestesia' ? 'Preanestesia & Membretes Hospitalarios en PDF' : 'Módulo Élite'
+                  }
+                </h3>
+              </div>
+            </div>
+            
+            <button
+              onClick={() => setEliteLabTab(null)}
+              className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-black rounded-xl border border-slate-700 cursor-pointer transition-all hover:text-white shrink-0 active:scale-95"
+            >
+              ✕ Volver al Menú
+            </button>
+          </div>
+
+          {/* STANDALONE COMPONENT RENDER FOR EACH SPECIFIC MODULE */}
+          <div className="p-3 sm:p-5 max-w-6xl mx-auto">
+            {eliteLabTab === 'simulador' && <EliteLabModule initialTab="simulador" />}
+            {eliteLabTab === 'traductor' && <MedicalArticleTranslator />}
+            {eliteLabTab === 'crisis' && <OperatingRoomCrisisModule />}
+            {eliteLabTab === 'calculadoras' && <MedicalCalculatorsEliteModule />}
+            {eliteLabTab === 'preanestesia' && <ElitePreanesthesiaModule />}
+          </div>
+        </div>
       )}
 
       {/* Persistent Offline & Quirófano Status Indicator */}

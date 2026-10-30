@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Activity, Award, Download, Smartphone, X, Share, Share2, Lock, Unlock, KeyRound, ShieldCheck, ShieldAlert, Eye, BookMarked, BookOpen, Bell, Send, CheckCircle, CheckCircle2, ArrowRight, Sparkles, AlertCircle, MessageSquare, Mail, Phone, MapPin, User, Users, MessageCircle, SendHorizontal, Instagram, FileText, Calculator, Trash2, Copy, Check, Laptop, Monitor, RefreshCw, Volume2, VolumeX, Radio, Filter, Droplet, Wind, ExternalLink, Stethoscope, Zap, RotateCcw, Maximize2 } from 'lucide-react';
+import { Activity, Award, Download, Smartphone, X, Share, Share2, Lock, Unlock, KeyRound, ShieldCheck, ShieldAlert, Eye, BookMarked, BookOpen, Bell, Send, CheckCircle, CheckCircle2, ArrowRight, Sparkles, AlertCircle, MessageSquare, Mail, Phone, MapPin, User, Users, MessageCircle, SendHorizontal, Instagram, FileText, Calculator, Trash2, Copy, Check, Laptop, Monitor, RefreshCw, Volume2, VolumeX, Radio, Filter, Droplet, Wind, ExternalLink, Stethoscope, Zap, RotateCcw, Maximize2, Crown, Palette } from 'lucide-react';
 import { syncGlobalVisit, getGlobalStats, recordAppInstall, getNotifications, publishNewNotification, requestBrowserNotifications, sendBrowserPushNotification, playNotificationChime, playInstallCelebrationChime, submitUserFeedback, getFeedbackList, deleteUserFeedback, getCanonicalAppOrigin, SHORT_APP_URL, updateAdminStats, resetAllAdminStats, AppStats, AppNotification, UserFeedback, AdminActivityEvent, getAdminActivityEvents, clearAdminActivityEvents, formatLocalDisplayTime, formatShortLocalTime, getModuleVisits } from '../lib/statsService';
 import { LOGO_SHIELD_BASE64, LOGO_FULL_BASE64 } from '../lib/logoData';
 import { TabType } from '../types';
@@ -865,7 +865,7 @@ export const Header: React.FC<HeaderProps> = ({ setActiveTab, onSelectEducationR
               </div>
             </div>
             <div>
-              <div className="flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2">
+              <div className="flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 flex-wrap">
                 <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white flex items-center gap-1.5">
                   Anestesia<span className="text-cyan-300">Pro</span>
                 </h1>
@@ -875,6 +875,11 @@ export const Header: React.FC<HeaderProps> = ({ setActiveTab, onSelectEducationR
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-300"></span>
                   </span>
                   v2.5
+                </span>
+                {/* ANIMATED GOLDEN ÉLITE BADGE WITH MOVING CROWN */}
+                <span className="bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-slate-950 text-[10px] font-black px-2.5 py-0.5 rounded-full border border-amber-300 shadow-lg shadow-amber-500/30 flex items-center gap-1 uppercase tracking-wider animate-pulse">
+                  <Crown className="w-3 h-3 text-slate-950 fill-current" />
+                  <span className="tracking-wider">ÉLITE</span>
                 </span>
               </div>
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1 sm:gap-2 mt-0.5">
@@ -1004,6 +1009,16 @@ export const Header: React.FC<HeaderProps> = ({ setActiveTab, onSelectEducationR
                       Gratis
                     </span>
                   )}
+                </button>
+
+                {/* Theme Switcher Button */}
+                <button
+                  onClick={() => window.dispatchEvent(new CustomEvent('anestesiapro_open_theme_modal'))}
+                  className="h-9 px-3 sm:h-10 flex items-center justify-center gap-1.5 bg-slate-800/90 hover:bg-slate-700 text-cyan-300 rounded-xl border border-cyan-500/30 transition-all active:scale-95 text-xs font-bold shadow-md cursor-pointer"
+                  title="Cambiar tema visual de la aplicación"
+                >
+                  <Palette className="w-4 h-4 text-cyan-300" />
+                  <span className="hidden sm:inline">Temas</span>
                 </button>
 
                 {/* Developer Logo next to Install */}
@@ -1534,7 +1549,7 @@ export const Header: React.FC<HeaderProps> = ({ setActiveTab, onSelectEducationR
                       title="Traductor médico de alta fidelidad exclusivo en panel privado"
                     >
                       <BookOpen className="w-3.5 h-3.5" />
-                      <span>🌐 Traductor Clínico Fiel</span>
+                      <span>🌐 Traduce y Resume con IA</span>
                       <span className="px-1.5 py-0.2 rounded bg-amber-400 text-slate-950 font-black text-[9px]">PRO</span>
                     </button>
 

@@ -15,6 +15,15 @@ import { PediatricCalculatorTab } from './PediatricCalculatorTab';
 import { MablTransfusionTab } from './MablTransfusionTab';
 import { CalculatorShareBanner } from './CalculatorShareBanner';
 
+import pediatricCalcImg from '../../assets/images/pediatric_calc_cover_1793321097040.jpg';
+import mablBloodImg from '../../assets/images/mabl_blood_cover_1793321112499.jpg';
+import vasopressorPumpImg from '../../assets/images/vasopressor_pump_cover_1793321128705.jpg';
+import tivaTciImg from '../../assets/images/tiva_tci_cover_1793321142254.jpg';
+import airwayMacochaImg from '../../assets/images/airway_macocha_cover_1793321153732.jpg';
+import converterPercentImg from '../../assets/images/converter_percent_cover_1793321170386.jpg';
+import hemodynamicMonitorImg from '../../assets/images/hemodynamic_monitor_cover_1793321191503.jpg';
+import converterElectrolytesImg from '../../assets/images/converter_electrolytes_cover_1793321204800.jpg';
+
 export type CalculatorKey = 
   | 'overview'
   | 'pediatric'
@@ -84,7 +93,7 @@ export const MedicalCalculatorsEliteModule: React.FC<MedicalCalculatorsEliteModu
       borderColor: 'border-emerald-500/40 hover:border-emerald-400',
       icon: Baby,
       tag: 'TET Cole / PALS / 4-2-1',
-      imageUrl: 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=600&q=80'
+      imageUrl: pediatricCalcImg
     },
     {
       key: 'mabl',
@@ -97,7 +106,7 @@ export const MedicalCalculatorsEliteModule: React.FC<MedicalCalculatorsEliteModu
       borderColor: 'border-rose-500/40 hover:border-rose-400',
       icon: Droplets,
       tag: 'Fórmula Gross & Shock ATLS',
-      imageUrl: 'https://images.unsplash.com/photo-1615461066841-6116e61058f4?auto=format&fit=crop&w=600&q=80'
+      imageUrl: mablBloodImg
     },
     {
       key: 'infusions_direct',
@@ -110,7 +119,7 @@ export const MedicalCalculatorsEliteModule: React.FC<MedicalCalculatorsEliteModu
       borderColor: 'border-amber-500/40 hover:border-amber-400',
       icon: Flame,
       tag: 'Noradrenalina / Adrenalina',
-      imageUrl: 'https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&w=600&q=80'
+      imageUrl: vasopressorPumpImg
     },
     {
       key: 'infusions_reverse',
@@ -123,7 +132,7 @@ export const MedicalCalculatorsEliteModule: React.FC<MedicalCalculatorsEliteModu
       borderColor: 'border-amber-500/40 hover:border-amber-300',
       icon: RefreshCw,
       tag: 'Cálculo Real µg/kg/min',
-      imageUrl: 'https://images.unsplash.com/photo-1584515933487-779824d29309?auto=format&fit=crop&w=600&q=80'
+      imageUrl: vasopressorPumpImg
     },
     {
       key: 'infusions_pearls',
@@ -136,7 +145,7 @@ export const MedicalCalculatorsEliteModule: React.FC<MedicalCalculatorsEliteModu
       borderColor: 'border-yellow-500/40 hover:border-yellow-300',
       icon: Sparkles,
       tag: 'pH, Soluciones & Fotoprotección',
-      imageUrl: 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&w=600&q=80'
+      imageUrl: 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&w=800&q=80'
     },
     {
       key: 'infusions_drip',
@@ -149,7 +158,7 @@ export const MedicalCalculatorsEliteModule: React.FC<MedicalCalculatorsEliteModu
       borderColor: 'border-emerald-500/40 hover:border-emerald-300',
       icon: Activity,
       tag: 'Macrogotas / Microgotas',
-      imageUrl: 'https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?auto=format&fit=crop&w=600&q=80'
+      imageUrl: 'https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?auto=format&fit=crop&w=800&q=80'
     },
     {
       key: 'tiva',
@@ -162,7 +171,7 @@ export const MedicalCalculatorsEliteModule: React.FC<MedicalCalculatorsEliteModu
       borderColor: 'border-indigo-500/40 hover:border-indigo-400',
       icon: Syringe,
       tag: 'Propofol & Remifentanilo',
-      imageUrl: 'https://images.unsplash.com/photo-1551076805-e1869033e561?auto=format&fit=crop&w=600&q=80'
+      imageUrl: tivaTciImg
     },
     {
       key: 'converter_percent',
@@ -175,7 +184,7 @@ export const MedicalCalculatorsEliteModule: React.FC<MedicalCalculatorsEliteModu
       borderColor: 'border-cyan-500/40 hover:border-cyan-400',
       icon: ArrowLeftRight,
       tag: 'Bupivacaína / Lidocaína',
-      imageUrl: 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=600&q=80'
+      imageUrl: converterPercentImg
     },
     {
       key: 'converter_ratios',
@@ -188,7 +197,7 @@ export const MedicalCalculatorsEliteModule: React.FC<MedicalCalculatorsEliteModu
       borderColor: 'border-rose-400/40 hover:border-rose-300',
       icon: Zap,
       tag: '1:1.000 / 1:200.000',
-      imageUrl: 'https://images.unsplash.com/photo-1583912267670-6575ad4736f8?auto=format&fit=crop&w=600&q=80'
+      imageUrl: 'https://images.unsplash.com/photo-1583912267670-6575ad4736f8?auto=format&fit=crop&w=800&q=80'
     },
     {
       key: 'converter_dose',
@@ -201,7 +210,7 @@ export const MedicalCalculatorsEliteModule: React.FC<MedicalCalculatorsEliteModu
       borderColor: 'border-blue-500/40 hover:border-blue-400',
       icon: Gauge,
       tag: 'µg/kg/min / cmH2O / mmHg',
-      imageUrl: 'https://images.unsplash.com/photo-1530497610245-94d3c16cda28?auto=format&fit=crop&w=600&q=80'
+      imageUrl: 'https://images.unsplash.com/photo-1530497610245-94d3c16cda28?auto=format&fit=crop&w=800&q=80'
     },
     {
       key: 'converter_electrolytes',
@@ -214,7 +223,7 @@ export const MedicalCalculatorsEliteModule: React.FC<MedicalCalculatorsEliteModu
       borderColor: 'border-teal-500/40 hover:border-teal-300',
       icon: FlaskConical,
       tag: 'Albúmina / Salino 3%',
-      imageUrl: 'https://images.unsplash.com/photo-1579165466741-7f35e4755660?auto=format&fit=crop&w=600&q=80'
+      imageUrl: converterElectrolytesImg
     },
     {
       key: 'scales_fluids',
@@ -227,7 +236,7 @@ export const MedicalCalculatorsEliteModule: React.FC<MedicalCalculatorsEliteModu
       borderColor: 'border-sky-500/40 hover:border-sky-400',
       icon: Droplet,
       tag: 'Holliday 4-2-1 & Cirugía',
-      imageUrl: 'https://images.unsplash.com/photo-1631815589968-fdb09a223b1e?auto=format&fit=crop&w=600&q=80'
+      imageUrl: 'https://images.unsplash.com/photo-1631815589968-fdb09a223b1e?auto=format&fit=crop&w=800&q=80'
     },
     {
       key: 'scales_hemo',
@@ -240,7 +249,7 @@ export const MedicalCalculatorsEliteModule: React.FC<MedicalCalculatorsEliteModu
       borderColor: 'border-red-500/40 hover:border-red-400',
       icon: Heart,
       tag: 'PAM / Kirby PaFi / RVS',
-      imageUrl: 'https://images.unsplash.com/photo-1516574187841-cb9cc2ca948b?auto=format&fit=crop&w=600&q=80'
+      imageUrl: hemodynamicMonitorImg
     },
     {
       key: 'scales_macocha',
@@ -253,7 +262,7 @@ export const MedicalCalculatorsEliteModule: React.FC<MedicalCalculatorsEliteModu
       borderColor: 'border-purple-500/40 hover:border-purple-400',
       icon: Wind,
       tag: 'MACOCHA / qSOFA / STOP-BANG',
-      imageUrl: 'https://images.unsplash.com/photo-1505751172876-fa1923c5c528?auto=format&fit=crop&w=600&q=80'
+      imageUrl: airwayMacochaImg
     },
     {
       key: 'scales_antropo',
@@ -266,7 +275,7 @@ export const MedicalCalculatorsEliteModule: React.FC<MedicalCalculatorsEliteModu
       borderColor: 'border-indigo-400/40 hover:border-indigo-300',
       icon: Scale,
       tag: 'IMC / Devine IBW / Janma LBW',
-      imageUrl: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=600&q=80'
+      imageUrl: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=800&q=80'
     }
   ];
 

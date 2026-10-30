@@ -199,85 +199,114 @@ async function loadCarouselSlides(
 }
 
 /**
+ * Helper to ensure Firestore async operations NEVER hang or block execution (> 1.5s)
+ */
+function withTimeout<T>(promise: Promise<T>, ms = 1500, fallback: T): Promise<T> {
+  let timer: any;
+  const timeoutPromise = new Promise<T>((resolve) => {
+    timer = setTimeout(() => resolve(fallback), ms);
+  });
+  return Promise.race([
+    promise.then((res) => {
+      clearTimeout(timer);
+      return res;
+    }),
+    timeoutPromise
+  ]);
+}
+
+/**
  * Save or update a single resource directly into Cloud Firestore.
  * Automatically chunks large base64 media and carousels so writes NEVER fail.
+ * Bounded by a strict 1.5-second timeout and quota protection so the UI never freezes.
  */
 export async function saveCloudResource(resource: CloudResourceRecord): Promise<boolean> {
   if (!resource || !resource.id) return false;
-  try {
-    const docRef = doc(db, COLLECTION_NAME, resource.id);
-    let payload: CloudResourceRecord = {
-      ...resource,
-      updatedAt: resource.updatedAt || new Date().toISOString()
-    };
-
-    let hasMediaChunks = false;
-    let hasCarouselSlides = false;
-    let mediaChunksCount = 0;
-
-    // Handle large single file (PDF, video, heavy photo)
-    if (payload.fileDataUrl && payload.fileDataUrl.length > MAX_INLINE_MEDIA_SIZE) {
-      try {
-        mediaChunksCount = await saveMediaChunks(payload.id, payload.fileDataUrl);
-        hasMediaChunks = true;
-        // Keep a small cover or placeholder in fileDataUrl for the main doc to stay well under 1MB
-        payload.hasMediaChunks = true;
-        payload.mediaChunksCount = mediaChunksCount;
-        // If it's an image, we can keep the url; strip the multi-megabyte string from main doc
-        payload.fileDataUrl = payload.url || '';
-      } catch (chunkErr) {
-        console.warn(`[Firestore] Warning saving media chunks for ${resource.id}:`, chunkErr);
-      }
-    }
-
-    // Handle multi-image carousels
-    if (
-      payload.isCarousel || 
-      (Array.isArray(payload.images) && payload.images.length > 1) ||
-      (Array.isArray(payload.imagesData) && payload.imagesData.length > 1)
-    ) {
-      try {
-        const rawImages = payload.images || [];
-        const rawImagesData = payload.imagesData || [];
-        const captions = payload.imageCaptions || [];
-        
-        await saveCarouselSlides(payload.id, rawImages, rawImagesData, captions);
-        hasCarouselSlides = true;
-        payload.hasCarouselSlides = true;
-
-        // Keep first slide on main doc for instant cover card preview with genuine base64 data
-        const firstData = (rawImagesData[0] && rawImagesData[0].startsWith('data:')) 
-          ? rawImagesData[0] 
-          : (rawImages[0]?.startsWith('data:') ? rawImages[0] : '');
-        const firstUrl = rawImages[0] || firstData || '';
-
-        payload.images = firstUrl ? [firstUrl] : [];
-        payload.imagesData = firstData ? [firstData] : [];
-        if (!payload.url && firstUrl) {
-          payload.url = firstUrl;
-        }
-        if (!payload.fileDataUrl && firstData) {
-          payload.fileDataUrl = firstData;
-        }
-      } catch (slideErr) {
-        console.warn(`[Firestore] Warning saving carousel slides for ${resource.id}:`, slideErr);
-      }
-    }
-
-    const cleanedPayload = cleanForFirestore({
-      ...payload,
-      hasMediaChunks,
-      hasCarouselSlides,
-      mediaChunksCount
-    });
-
-    await setDoc(docRef, cleanedPayload, { merge: true });
-    console.log(`[Firestore] Successfully saved cloud resource: ${resource.id} (${resource.title})`);
-    return true;
-  } catch (error) {
-    console.error('[Firestore] saveCloudResource error:', error);
+  if (Date.now() < clientFirestoreQuotaExceededUntil) {
     return false;
   }
+
+  const saveOperation = async (): Promise<boolean> => {
+    try {
+      const docRef = doc(db, COLLECTION_NAME, resource.id);
+      let payload: CloudResourceRecord = {
+        ...resource,
+        updatedAt: resource.updatedAt || new Date().toISOString()
+      };
+
+      let hasMediaChunks = false;
+      let hasCarouselSlides = false;
+      let mediaChunksCount = 0;
+
+      // Handle large single file (PDF, video, heavy photo)
+      if (payload.fileDataUrl && payload.fileDataUrl.length > MAX_INLINE_MEDIA_SIZE) {
+        try {
+          mediaChunksCount = await withTimeout(saveMediaChunks(payload.id, payload.fileDataUrl), 1500, 0);
+          hasMediaChunks = mediaChunksCount > 0;
+          payload.hasMediaChunks = hasMediaChunks;
+          payload.mediaChunksCount = mediaChunksCount;
+          payload.fileDataUrl = payload.url || '';
+        } catch (chunkErr) {
+          console.warn(`[Firestore] Warning saving media chunks for ${resource.id}:`, chunkErr);
+        }
+      }
+
+      // Handle multi-image carousels
+      if (
+        payload.isCarousel || 
+        (Array.isArray(payload.images) && payload.images.length > 1) ||
+        (Array.isArray(payload.imagesData) && payload.imagesData.length > 1)
+      ) {
+        try {
+          const rawImages = payload.images || [];
+          const rawImagesData = payload.imagesData || [];
+          const captions = payload.imageCaptions || [];
+          
+          await withTimeout(saveCarouselSlides(payload.id, rawImages, rawImagesData, captions), 1500, 0);
+          hasCarouselSlides = true;
+          payload.hasCarouselSlides = true;
+
+          // Keep first slide on main doc for instant cover card preview with genuine base64 data
+          const firstData = (rawImagesData[0] && rawImagesData[0].startsWith('data:')) 
+            ? rawImagesData[0] 
+            : (rawImages[0]?.startsWith('data:') ? rawImages[0] : '');
+          const firstUrl = rawImages[0] || firstData || '';
+
+          payload.images = firstUrl ? [firstUrl] : [];
+          payload.imagesData = firstData ? [firstData] : [];
+          if (!payload.url && firstUrl) {
+            payload.url = firstUrl;
+          }
+          if (!payload.fileDataUrl && firstData) {
+            payload.fileDataUrl = firstData;
+          }
+        } catch (slideErr) {
+          console.warn(`[Firestore] Warning saving carousel slides for ${resource.id}:`, slideErr);
+        }
+      }
+
+      const cleanedPayload = cleanForFirestore({
+        ...payload,
+        hasMediaChunks,
+        hasCarouselSlides,
+        mediaChunksCount
+      });
+
+      await withTimeout(setDoc(docRef, cleanedPayload, { merge: true }), 1500, undefined);
+      console.log(`[Firestore] Saved cloud resource: ${resource.id} (${resource.title})`);
+      return true;
+    } catch (error: any) {
+      if (error?.message?.includes('Quota') || error?.code === 'resource-exhausted') {
+        clientFirestoreQuotaExceededUntil = Date.now() + 15 * 60 * 1000;
+        console.warn('[Firestore] Quota limit active; writes paused.');
+      } else {
+        console.warn('[Firestore] saveCloudResource notice:', error?.message || error);
+      }
+      return false;
+    }
+  };
+
+  return withTimeout(saveOperation(), 2000, false);
 }
 
 /**
@@ -417,47 +446,40 @@ export async function getCloudResources(): Promise<{ resources: CloudResourceRec
  */
 export async function deleteCloudResource(resourceId: string): Promise<boolean> {
   if (!resourceId) return false;
-  try {
-    const docRef = doc(db, COLLECTION_NAME, resourceId);
-    await deleteDoc(docRef);
-
-    // Delete subcollections if any
-    try {
-      const chunksCol = collection(db, COLLECTION_NAME, resourceId, 'media_chunks');
-      const chunkDocs = await getDocs(chunksCol);
-      chunkDocs.forEach(async (cd) => {
-        try { await deleteDoc(cd.ref); } catch {}
-      });
-
-      const slidesCol = collection(db, COLLECTION_NAME, resourceId, 'carousel_slides');
-      const slideDocs = await getDocs(slidesCol);
-      slideDocs.forEach(async (sd) => {
-        try { await deleteDoc(sd.ref); } catch {}
-      });
-    } catch (subErr) {
-      console.warn('[Firestore] Notice cleaning subcollections:', subErr);
-    }
-
-    // Record tombstone in cloud
-    try {
-      const tombstonesRef = doc(db, APP_META_COLLECTION, TOMBSTONES_DOC);
-      const tombSnap = await getDoc(tombstonesRef);
-      const existingIds: string[] = tombSnap.exists() && Array.isArray(tombSnap.data()?.ids) 
-        ? tombSnap.data()!.ids 
-        : [];
-      if (!existingIds.includes(resourceId)) {
-        await setDoc(tombstonesRef, { ids: [...existingIds, resourceId], updatedAt: new Date().toISOString() }, { merge: true });
-      }
-    } catch (tombErr) {
-      console.warn('[Firestore] Error saving tombstone:', tombErr);
-    }
-
-    console.log(`[Firestore] Successfully deleted cloud resource: ${resourceId}`);
-    return true;
-  } catch (error) {
-    console.error('[Firestore] deleteCloudResource error:', error);
+  if (Date.now() < clientFirestoreQuotaExceededUntil) {
     return false;
   }
+  const deleteOp = async () => {
+    try {
+      const docRef = doc(db, COLLECTION_NAME, resourceId);
+      await withTimeout(deleteDoc(docRef), 1500, undefined);
+
+      // Record tombstone in cloud
+      try {
+        const tombstonesRef = doc(db, APP_META_COLLECTION, TOMBSTONES_DOC);
+        const tombSnap = await withTimeout(getDoc(tombstonesRef), 1500, null as any);
+        const existingIds: string[] = tombSnap && tombSnap.exists() && Array.isArray(tombSnap.data()?.ids) 
+          ? tombSnap.data()!.ids 
+          : [];
+        if (!existingIds.includes(resourceId)) {
+          await withTimeout(setDoc(tombstonesRef, { ids: [...existingIds, resourceId], updatedAt: new Date().toISOString() }, { merge: true }), 1500, undefined);
+        }
+      } catch (tombErr) {
+        console.warn('[Firestore] Error updating tombstones doc:', tombErr);
+      }
+
+      console.log(`[Firestore] Deleted cloud resource: ${resourceId}`);
+      return true;
+    } catch (error: any) {
+      if (error?.message?.includes('Quota') || error?.code === 'resource-exhausted') {
+        clientFirestoreQuotaExceededUntil = Date.now() + 15 * 60 * 1000;
+      }
+      console.warn('[Firestore] deleteCloudResource notice:', error?.message || error);
+      return false;
+    }
+  };
+
+  return withTimeout(deleteOp(), 2000, false);
 }
 
 /**

@@ -223,6 +223,42 @@ async function startServer() {
     return null;
   };
 
+  // Helper to deduplicate carousel slides and collapse exact double-mounts
+  const deduplicateServerSlides = (list: string[]): string[] => {
+    if (!Array.isArray(list) || list.length <= 1) return Array.isArray(list) ? list : [];
+    const valid = list.filter(item => typeof item === "string" && item.trim().length > 0);
+    if (valid.length <= 1) return valid;
+
+    // Detect exact double mount (e.g. 5 slides duplicated to 10)
+    if (valid.length >= 4 && valid.length % 2 === 0) {
+      const half = valid.length / 2;
+      const firstHalf = valid.slice(0, half);
+      const secondHalf = valid.slice(half);
+      const isDouble = firstHalf.every((slide, idx) => {
+        const match = secondHalf[idx];
+        if (slide === match) return true;
+        if (typeof slide === "string" && typeof match === "string") {
+          if (slide.length === match.length && slide.slice(0, 100) === match.slice(0, 100)) {
+            return true;
+          }
+        }
+        return false;
+      });
+      if (isDouble) return firstHalf;
+    }
+
+    const seen = new Set<string>();
+    const unique: string[] = [];
+    for (const item of valid) {
+      const key = item.length > 500 ? `${item.length}_${item.slice(0, 80)}_${item.slice(-80)}` : item;
+      if (!seen.has(key)) {
+        seen.add(key);
+        unique.push(item);
+      }
+    }
+    return unique.length > 0 ? unique : valid;
+  };
+
   // Self-heal: ensure media files exist on disk from base64 backups if server container restarts
   const selfHealMediaFiles = (items: any[]) => {
     if (!Array.isArray(items)) return;
@@ -977,18 +1013,24 @@ async function startServer() {
           for (let imgIdx = 0; imgIdx < item.images.length; imgIdx++) {
             const imgData = item.images[imgIdx];
             if (typeof imgData === "string" && imgData.startsWith("data:")) {
-              rawBase64Images.push(imgData);
+              if (!rawBase64Images.includes(imgData)) {
+                rawBase64Images.push(imgData);
+              }
               const savedImg = saveBase64ToDisk(imgData, `carousel_${imgIdx}`, "jpg");
               if (savedImg) {
                 savedImages.push(savedImg);
               } else {
-                savedImages.push(imgData); // NEVER lose image if base64 write had an issue
+                savedImages.push(imgData);
               }
             } else if (typeof imgData === "string") {
               savedImages.push(imgData);
             }
           }
         }
+
+        // Deduplicate slides to prevent duplicate 10-slide mounts
+        savedImages = deduplicateServerSlides(savedImages);
+        rawBase64Images = deduplicateServerSlides(rawBase64Images);
 
         const isCarouselItem = Boolean(item.isCarousel || savedImages.length > 1 || (Array.isArray(item.images) && item.images.length > 1));
         if (isCarouselItem && savedImages.length > 0) {
@@ -1205,7 +1247,9 @@ async function startServer() {
         for (let i = 0; i < updates.images.length; i++) {
           const img = updates.images[i];
           if (typeof img === "string" && img.startsWith("data:")) {
-            rawBase64Images.push(img);
+            if (!rawBase64Images.includes(img)) {
+              rawBase64Images.push(img);
+            }
             const saved = saveBase64ToDisk(img, `slide_${i}`, "jpg");
             savedImages.push(saved || img);
           } else if (typeof img === "string") {
@@ -1213,6 +1257,9 @@ async function startServer() {
           }
         }
       }
+
+      savedImages = deduplicateServerSlides(savedImages);
+      rawBase64Images = deduplicateServerSlides(rawBase64Images);
 
       const isCarousel = Boolean(updates.isCarousel || savedImages.length > 1 || (Array.isArray(updates.images) && updates.images.length > 1));
 
@@ -2005,6 +2052,8 @@ async function startServer() {
       appInstalls: 0,
       totalDownloads: 0,
       itemDownloads: {},
+      itemViews: {},
+      moduleVisits: {},
       devices: {},
       locations: {},
       downloadLocations: {}
@@ -2031,6 +2080,12 @@ async function startServer() {
         merged.itemViews = merged.itemViews || {};
         for (const [k, v] of Object.entries(c.itemViews)) {
           merged.itemViews[k] = Math.max(merged.itemViews[k] || 0, Number(v) || 0);
+        }
+      }
+      if (c.moduleVisits && typeof c.moduleVisits === "object") {
+        merged.moduleVisits = merged.moduleVisits || {};
+        for (const [k, v] of Object.entries(c.moduleVisits)) {
+          merged.moduleVisits[k] = Math.max(merged.moduleVisits[k] || 0, Number(v) || 0);
         }
       }
       if (c.devices && typeof c.devices === "object") {
@@ -2061,9 +2116,9 @@ async function startServer() {
   app.get("/api/stats", handleGetStats);
   app.get("/api/stats/summary", handleGetStats);
 
-  // Check if incoming stats request explicitly asks to skip metrics
+  // Check if incoming stats request explicitly asks to skip metrics (admin user)
   const isRequestFromAdmin = (req: express.Request): boolean => {
-    if (req.query?.skipMetrics === "true") return true;
+    if (req.query?.skipMetrics === "true" || req.body?.skipMetrics === true) return true;
     return false;
   };
 
@@ -2098,7 +2153,7 @@ async function startServer() {
         current.locations[loc] = (Number(current.locations[loc]) || 0) + 1;
       }
 
-      // Sync installs and downloads if client has higher counts
+      // Sync installs, downloads, itemViews and moduleVisits if client has counts
       if (body.clientAppInstalls && Number(body.clientAppInstalls) > (Number(current.appInstalls) || 0)) {
         current.appInstalls = Number(body.clientAppInstalls);
       }
@@ -2110,6 +2165,22 @@ async function startServer() {
         Object.entries(body.clientItemDownloads).forEach(([k, v]) => {
           current.itemDownloads[k] = Math.max(Number(current.itemDownloads[k]) || 0, Number(v) || 0);
         });
+      }
+      if (body.clientItemViews && typeof body.clientItemViews === "object") {
+        current.itemViews = current.itemViews || {};
+        Object.entries(body.clientItemViews).forEach(([k, v]) => {
+          current.itemViews[k] = Math.max(Number(current.itemViews[k]) || 0, Number(v) || 0);
+        });
+      }
+      if (body.clientModuleVisits && typeof body.clientModuleVisits === "object") {
+        current.moduleVisits = current.moduleVisits || {};
+        Object.entries(body.clientModuleVisits).forEach(([k, v]) => {
+          current.moduleVisits[k] = (Number(current.moduleVisits[k]) || 0) + (Number(v) || 0);
+        });
+      }
+      if (body.visitedModule && typeof body.visitedModule === "string") {
+        current.moduleVisits = current.moduleVisits || {};
+        current.moduleVisits[body.visitedModule] = (Number(current.moduleVisits[body.visitedModule]) || 0) + 1;
       }
 
       saveStats(current);
@@ -2548,7 +2619,7 @@ async function startServer() {
     return deduplicateUserRecords(merged);
   };
 
-  app.get("/api/users", async (req, res) => {
+  const handleGetUsersList = async (req: express.Request, res: express.Response) => {
     try {
       if (!isAuthorizedAuthor(req)) {
         return res.status(403).json({ error: "Acceso denegado. Solo el Dr. Carlos Leal (Administrador) puede ver la lista de usuarios." });
@@ -2620,13 +2691,15 @@ async function startServer() {
           pendingElite: 0,
           inactiveElite: standardDoctors,
           countriesCount,
-          specialtiesCount
         }
       });
     } catch (e: any) {
       return res.status(500).json({ success: false, error: e?.message || "Error al obtener usuarios" });
     }
-  });
+  };
+
+  app.get("/api/users", handleGetUsersList);
+  app.get("/api/users/registered", handleGetUsersList);
 
   // Deep Cloud Rescue Endpoint - Scans all Firestore collections & backups for any doctor records
   app.post("/api/users/deep-cloud-rescue", async (req, res) => {

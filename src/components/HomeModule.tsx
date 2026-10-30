@@ -1,10 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { TabType } from '../types';
-import { FileText, Wind, BarChart2, Calculator, BookOpen, GraduationCap, Sparkles, ArrowRight, ShieldCheck, Stethoscope, Instagram, Activity, Zap, Flame, Clock, CheckCircle2, ChevronRight, BookMarked, Brain, Film, Compass, Play, LifeBuoy, Droplet, HeartHandshake, Syringe, Pill, Layers, Trophy, Download, Eye, User, Star, Award } from 'lucide-react';
+import { 
+  FileText, Wind, BarChart2, Calculator, BookOpen, GraduationCap, 
+  Sparkles, ArrowRight, ShieldCheck, Stethoscope, Instagram, Activity, 
+  Zap, Flame, Clock, CheckCircle2, ChevronRight, BookMarked, Brain, 
+  Film, Compass, Play, LifeBuoy, Droplet, HeartHandshake, Syringe, 
+  Pill, Layers, Trophy, Download, Eye, User, Star, Award, Crown, 
+  ShieldAlert, Monitor, Lock, Unlock, Check, DollarSign
+} from 'lucide-react';
 import { LOGO_SHIELD_BASE64, LOGO_FALLBACK_SVG } from '../lib/logoData';
 import { getCanonicalAppOrigin, getGlobalStats, getModuleVisits } from '../lib/statsService';
 import { getStoredUserProfile, isUserEliteActive, RegisteredUser } from '../lib/userRegistrationService';
 import { HomeNotificationBanner } from './HomeNotificationBanner';
+import { AnimatedEliteBanner } from './AnimatedEliteBanner';
+import { WhatsAppShareBanner } from './WhatsAppShareBanner';
 
 interface HomeModuleProps {
   setActiveTab: (tab: TabType) => void;
@@ -21,6 +30,8 @@ export const HomeModule: React.FC<HomeModuleProps> = ({ setActiveTab, onSelectEd
     window.addEventListener('anestesiapro_user_profile_updated', handleUserUpdate);
     return () => window.removeEventListener('anestesiapro_user_profile_updated', handleUserUpdate);
   }, []);
+
+  const isEliteActive = isUserEliteActive(currentUserProfile);
 
   // Real-time Community Top Ranking Data (Compact)
   const [statsData, setStatsData] = useState<{
@@ -100,43 +111,6 @@ export const HomeModule: React.FC<HomeModuleProps> = ({ setActiveTab, onSelectEd
       image: '/images/preeclampsia_placenta_maternal_connection.svg',
       desc: 'Compendio de alta complejidad obstétrica y anestésica: Fisiopatología celular en dos fases (sFlt-1/PlGF), neuroprotección NMDA con Sulfato de Magnesio (Zuspan/Pritchard), manejo escalonado de crisis hipertensiva en 15 min (Labetalol, Hidralazina, Nifedipino oral), restricción hídrica estricta (60-80 mL/h), umbrales de plaquetas para punción neuroaxial (≥70-80k) y Atlas Visual Interactivo con 8 Láminas Ultra-HD. Incluye Guía Oficial descargable en PDF de 5 páginas.',
       cta: 'Ver Protocolo, Atlas HD & PDF'
-    },
-    {
-      id: 'res-protocolo-emotive-hemorragia-posparto-2026',
-      type: 'education',
-      title: '🩸 Protocolo E-MOTIVE: Paquete de Intervención para Hemorragia Posparto (NEJM / OMS / FIGO)',
-      tag: 'GUÍA CLÍNICA OBSTÉTRICA',
-      date: 'Agosto 2026 • NEJM 2023 / OMS / SOAP',
-      badgeColor: 'bg-rose-500/20 text-rose-300 border-rose-400/40',
-      gradient: 'from-slate-900 via-rose-950 to-indigo-950 border-rose-500/50 hover:border-rose-400',
-      iconColor: 'bg-gradient-to-br from-rose-500 to-red-600 text-white',
-      image: '/images/emotive_vdrape.jpg',
-      desc: 'Detección temprana con bolsa colectora calibrada V-Drape y respuesta médica simultánea en los primeros 15 minutos: Masaje bimanual + Uterotónicos + Ácido Tranexámico 1g IV + Cristaloides tibios 37°C + Examen 4Ts + Balón de Bakri y PTM 1:1:1. Reduce en un 60% la HPP severa. Incluye Atlas visual con imágenes por cada letra, simulador cronológico y Guía PDF Oficial.',
-      cta: 'Ver Protocolo E-MOTIVE (Atlas & PDF)'
-    },
-    {
-      id: 'res-enfoque-vortex-via-aerea-dificil',
-      type: 'education',
-      title: '🌀 El Enfoque VORTEX en Vía Aérea Difícil & Rescate CICO (BJA / DAS 2026)',
-      tag: 'GUÍA CLÍNICA',
-      date: 'Agosto 2026 • Dr. Nicholas Chrimes',
-      badgeColor: 'bg-cyan-500/20 text-cyan-300 border-cyan-400/40',
-      gradient: 'from-slate-900 via-cyan-950 to-indigo-950 border-cyan-500/50 hover:border-cyan-400',
-      iconColor: 'bg-gradient-to-br from-cyan-400 to-teal-500 text-slate-950',
-      desc: 'Ayuda cognitiva en tiempo real: Zona Verde (SpO2/EtCO2), 3 Líneas de Vida no quirúrgicas, 5 Optimizaciones del Mejor Esfuerzo y Gatillo Inmediato CICO (eFONA: Escalpelo - Bougie - Tubo 6.0). Simulador del Embudo y Guía PDF.',
-      cta: 'Ver Enfoque VORTEX (Simulador & PDF)'
-    },
-    {
-      id: 'res-orexina-interruptor-despertar-2026',
-      type: 'education',
-      title: "🧠 El 'Interruptor' del Despertar: Sistema Orexina / Hipocretina en Anestesia",
-      tag: 'NEUROANESTESIA',
-      date: 'Agosto 2026 • Neuroanestesia',
-      badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40',
-      gradient: 'from-slate-900 via-teal-950 to-indigo-950 border-emerald-500/50 hover:border-emerald-400',
-      iconColor: 'bg-gradient-to-br from-emerald-400 to-teal-500 text-slate-950',
-      desc: 'Emergencia Activa vs Pasiva: Agonistas OX2R (Danavorexton/TAK-925), bloqueo DORA (Suvorexant), BIS de <40 a >80 en <3 min y rescate ventilatorio sin pérdida de analgesia. Simulador de circuito y PDF oficial.',
-      cta: "Ver 'Interruptor' Orexina (Simulador & PDF)"
     }
   ];
 
@@ -151,80 +125,171 @@ export const HomeModule: React.FC<HomeModuleProps> = ({ setActiveTab, onSelectEd
     }
   };
 
+  // MAIN MENU CARDS (STRICTLY 3 SUBMENUS PER ROW ON DESKTOP WITH STRIKING GOLD FRAMES)
   const cards = [
     {
-      id: 'indiceShock' as TabType,
-      title: '🩸 Índice de Shock & Reanimación Hemodinámica',
-      badge: '🚨 NUEVO • EVALUACIÓN DE SHOCK & PAM',
-      desc: 'Calculadora especializada de IS (FC/PAS), MSI (FC/PAM) y Presión Arterial Media (PAM), con protocolo completo de hidratación balanceada, solución ideal, dosis por objetivos y paquete de transfusión masiva.',
-      icon: Activity,
-      color: 'from-rose-600 via-indigo-600 to-cyan-600',
-      image: 'https://images.unsplash.com/photo-1579154204601-01588f351e67?auto=format&fit=crop&w=800&q=80',
-      highlight: true,
-      superLlamativo: true
-    },
-    {
-      id: 'preanestesia' as TabType,
-      title: '1. Formato de Evaluación Preanestésica',
-      badge: 'EVALUACIÓN CLÍNICA',
-      desc: 'Formulario clínico completo, cálculo automático del Índice de Vía Aérea en 7 acápites y exportación en PDF.',
+      id: 'preanestesia_elite' as any,
+      title: '1. Evaluación Preanestésica & Membretes',
+      badge: 'ÉLITE 👑 • INFORME PDF',
+      isElite: true,
+      desc: 'Formulario clínico con 7 parámetros de El-Ganzouri (EGRI), clasificación de Chien, paraclínicos, membrete hospitalario con logo, firma manuscrita y exportación PDF.',
       icon: FileText,
-      color: 'from-blue-600 to-indigo-600',
-      image: 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&w=600&q=80',
-      highlight: true
+      color: 'from-amber-400 via-yellow-400 to-amber-500',
+      image: 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&w=800&q=80',
+      customAction: 'preanestesia_elite'
     },
     {
       id: 'viaAerea' as TabType,
-      title: '2. Vía Aérea y Anestesia',
+      title: '2. Vía Aérea & Algoritmo VORTEX',
       badge: 'ALGORITMOS VORTEX & DAS',
-      desc: 'Índice EGRI (El-Ganzouri), Escalas Han, Cormack-Lehane, POGO, farmacología SRI y protocolos de rescate.',
+      isElite: false,
+      desc: 'Índice EGRI (El-Ganzouri), Escalas Han, Cormack-Lehane, POGO, farmacología SRI y protocolo de rescate CICO / eFONA.',
       icon: Wind,
       color: 'from-indigo-600 to-cyan-600',
-      image: 'https://images.unsplash.com/photo-1551076805-e1869033e561?auto=format&fit=crop&w=600&q=80'
+      image: 'https://images.unsplash.com/photo-1551076805-e1869033e561?auto=format&fit=crop&w=800&q=80',
+      tabId: 'viaAerea'
     },
     {
       id: 'escalas' as TabType,
-      title: '3. Escalas Usadas en Anestesiología',
+      title: '3. Escalas en Anestesiología',
       badge: 'ASA, CAPRINI, PACU & SHOCK',
-      desc: 'Clasificación ASA (I-VI), Escala de Caprini (TEV/TVP), Índice de Shock (IS/MSI/PAM), Ramsay, Bromage, Aldrete para URPA, EVA y RASS.',
+      isElite: false,
+      desc: 'Clasificación ASA (I-VI), Caprini (TEV/TVP), Índice de Shock (IS/MSI/PAM), Ramsay, Bromage, Aldrete para URPA, EVA y RASS.',
       icon: BarChart2,
       color: 'from-cyan-600 to-teal-600',
-      image: 'https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&w=600&q=80'
+      image: 'https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&w=800&q=80',
+      tabId: 'escalas'
     },
     {
       id: 'calculadora' as TabType,
       title: '4. Calculadora de Inducción Anestésica',
-      badge: 'DOSIS POR PESO',
-      desc: 'Cálculo de dosis farmacológicas para inducción anestésica ajustadas por peso (hipnóticos, opioides, relajantes y reversión) en mg y mL.',
+      badge: '⚖️ DOSIS PESO REAL (BÁSICA)',
+      isElite: false,
+      desc: 'Cálculo de inducción estándar por peso en mg y mL para hipnóticos (Propofol, Ketamina, Midazolam), opioides, relajantes y reversores.',
+      icon: Syringe,
+      color: 'from-amber-400 via-yellow-400 to-amber-500',
+      image: 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=800&q=80',
+      tabId: 'calculadora'
+    },
+    {
+      id: 'indiceShock' as TabType,
+      title: '5. Índice de Shock & Reanimación',
+      badge: '🚨 EVALUACIÓN DE SHOCK & PAM',
+      isElite: false,
+      desc: 'Calculadora de IS (FC/PAS), MSI (FC/PAM) y PAM, con protocolo completo de hidratación balanceada, metas hemodinámicas y paquete PTM 1:1:1.',
+      icon: Activity,
+      color: 'from-rose-600 via-indigo-600 to-cyan-600',
+      image: 'https://images.unsplash.com/photo-1579154204601-01588f351e67?auto=format&fit=crop&w=800&q=80',
+      tabId: 'indiceShock'
+    },
+    {
+      id: 'calculadoras_avanzadas' as any,
+      title: '6. Calculadoras Médicas Avanzadas',
+      badge: 'ÉLITE 👑 • TIVA, TCI & UCI',
+      isElite: true,
+      desc: 'Suite Élite de 15 calculadoras: TIVA/TCI (Schnider/Minto), infusiones vasoactivos directas/inversas (Noradrenalina/Adrenalina), gotero, pediatría, MABL, electrolitos.',
       icon: Calculator,
-      color: 'from-teal-600 to-emerald-600',
-      image: 'https://images.unsplash.com/photo-1579154204601-01588f351e67?auto=format&fit=crop&w=600&q=80'
+      color: 'from-amber-400 via-yellow-400 to-emerald-500',
+      image: 'https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?auto=format&fit=crop&w=800&q=80',
+      customAction: 'calculadoras_avanzadas'
+    },
+    {
+      id: 'preeclampsia' as any,
+      title: '7. Protocolo Obstétrico & Preeclampsia',
+      badge: 'ACOG / FIGO / E-MOTIVE 2026',
+      isElite: false,
+      desc: 'Protocolo Obstétrico Oficial: Preeclampsia, Eclampsia, Síndrome HELLP, sulfato de magnesio, manejo de crisis hipertensiva en 15 min, hemorragia posparto E-MOTIVE y Atlas Visual HD.',
+      icon: HeartHandshake,
+      color: 'from-rose-500 via-pink-600 to-indigo-600',
+      image: '/images/preeclampsia_placenta_maternal_connection.svg',
+      customAction: 'preeclampsia'
     },
     {
       id: 'vademecum' as TabType,
-      title: '5. Vademécum Farmacológico',
+      title: '8. Vademécum Farmacológico',
       badge: 'DICCIONARIO CLÍNICO',
-      desc: 'Farmacodinamia, mecanismos de acción, dosis, perlas clínicas y emergencias anestesiológicas.',
+      isElite: false,
+      desc: 'Farmacodinamia, mecanismos de acción, dosis por indicación, interacciones, perlas clínicas y antídotos anestesiológicos.',
       icon: BookOpen,
       color: 'from-indigo-700 to-slate-800',
-      image: 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=600&q=80'
+      image: 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=800&q=80',
+      tabId: 'vademecum'
     },
     {
       id: 'educacion' as TabType,
-      title: '6. Educación Continua & Biblioteca Médica',
-      badge: '🧬 NUEVO • PREECLAMPSIA 2026 & ATLAS HD',
-      desc: 'Biblioteca médica interactiva oficial: Nuevo Protocolo Obstétrico y Anestésico de Preeclampsia, Eclampsia y HELLP (ACOG / FIGO / SOAP 2026 con 8 Láminas Ultra-HD y Dossier PDF), Hemorragia Posparto E-MOTIVE, VORTEX en Vía Aérea Difícil, vademécum y calculadoras clínicas.',
+      title: '9. Educación Continua & Biblioteca',
+      badge: '🧬 PREECLAMPSIA 2026 & ATLAS HD',
+      isElite: false,
+      desc: 'Biblioteca médica interactiva oficial: Protocolo Obstétrico de Preeclampsia 2026, E-MOTIVE, VORTEX, infografías, atlas HD y PDF descargables.',
       icon: GraduationCap,
       color: 'from-rose-600 via-indigo-600 to-cyan-600',
       image: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=800&q=80',
-      highlight: true,
-      superLlamativo: true
+      tabId: 'educacion'
+    },
+    {
+      id: 'crisis' as any,
+      title: '10. Crisis Intraoperatorias & Protocolos',
+      badge: 'ÉLITE 👑 • CHECKLISTS EMERGENCIA',
+      isElite: true,
+      desc: 'Algoritmos y listas de verificación cognitiva en tiempo real: Hipertermia maligna, paro cardíaco en quirófano, LAST, anafilaxia y laringoespasmo.',
+      icon: ShieldAlert,
+      color: 'from-amber-400 via-rose-600 to-red-600',
+      image: 'https://images.unsplash.com/photo-1516574187841-cb9cc2ca948b?auto=format&fit=crop&w=800&q=80',
+      customAction: 'crisis'
+    },
+    {
+      id: 'simulador' as any,
+      title: '11. Simulador de Casos Clínicos',
+      badge: 'ÉLITE 👑 • MONITOR VIRTUAL',
+      isElite: true,
+      desc: 'Laboratorio de simulación médica educativa con monitor quirúrgico virtual en tiempo real, trazados ECG/SpO2/Capnografía y escenarios clínicos.',
+      icon: Monitor,
+      color: 'from-amber-400 via-cyan-500 to-blue-600',
+      image: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=800&q=80',
+      customAction: 'simulador'
+    },
+    {
+      id: 'traductor' as any,
+      title: '12. Traduce y Resume con IA',
+      badge: 'ÉLITE 👑 • INTELIGENCIA ARTIFICIAL',
+      isElite: true,
+      desc: 'Traducción técnica médica fiel, análisis crítico y resumen ejecutivo con IA para artículos científicos de PubMed, BJA, Anesthesiology y NEJM.',
+      icon: Brain,
+      color: 'from-amber-400 via-purple-500 to-indigo-600',
+      image: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=800&q=80',
+      customAction: 'traductor'
     }
   ];
 
+  const handleCardClick = (card: typeof cards[0]) => {
+    if (card.isElite && !isEliteActive) {
+      window.dispatchEvent(new CustomEvent('anestesiapro_open_plan_elite_modal'));
+      return;
+    }
+
+    if (card.customAction === 'simulador') {
+      window.dispatchEvent(new CustomEvent('anestesiapro_open_elite_lab'));
+    } else if (card.customAction === 'traductor') {
+      window.dispatchEvent(new CustomEvent('anestesiapro_open_translator'));
+    } else if (card.customAction === 'crisis') {
+      window.dispatchEvent(new CustomEvent('anestesiapro_open_crisis_modal'));
+    } else if (card.customAction === 'calculadoras_avanzadas') {
+      window.dispatchEvent(new CustomEvent('anestesiapro_open_calculadoras_avanzadas'));
+    } else if (card.customAction === 'preanestesia_elite') {
+      window.dispatchEvent(new CustomEvent('anestesiapro_open_preanestesia_elite'));
+    } else if (card.customAction === 'preeclampsia') {
+      if (onSelectEducationResource) {
+        onSelectEducationResource('res-preeclampsia-eclampsia-enfoque-anestesiologico');
+      }
+      setActiveTab('educacion');
+    } else if (card.tabId) {
+      setActiveTab(card.tabId as TabType);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fadeIn pb-8">
-      {/* BLINKING NOTIFICATION BANNER (Eliminates upon click/dismiss) */}
+      {/* BLINKING NOTIFICATION BANNER */}
       <HomeNotificationBanner
         onOpenResource={(resourceId) => {
           if (onSelectEducationResource) {
@@ -243,7 +308,6 @@ export const HomeModule: React.FC<HomeModuleProps> = ({ setActiveTab, onSelectEd
 
         <div className="relative z-10 max-w-2xl space-y-3">
           <div className="flex items-center gap-3">
-            {/* Animated Logo Container with Vital Glow Halo and Cardiac Heartbeat Pulse */}
             <div className="relative shrink-0 flex items-center justify-center">
               <div className="absolute -inset-1.5 bg-gradient-to-r from-cyan-400 via-sky-300 to-blue-500 rounded-2xl opacity-60 blur-[4px] animate-vital-glow pointer-events-none" />
               <div className="relative p-1.5 bg-white rounded-2xl border-2 border-cyan-300 shadow-xl overflow-hidden flex items-center justify-center animate-cardiac-logo shadow-cyan-500/40">
@@ -263,8 +327,8 @@ export const HomeModule: React.FC<HomeModuleProps> = ({ setActiveTab, onSelectEd
                 <span className="bg-cyan-500/20 text-cyan-200 border border-cyan-400/30 text-xs font-black px-3 py-1 rounded-full uppercase tracking-wider flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-cyan-300" /> Sistema Anestésico Integrado
                 </span>
-                <span className="bg-blue-500/20 text-blue-200 border border-blue-400/30 text-xs font-bold px-3 py-1 rounded-full">
-                  Edición 2026
+                <span className="bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-slate-950 text-xs font-black px-3 py-1 rounded-full shadow-md flex items-center gap-1">
+                  <Crown className="w-3.5 h-3.5 fill-current text-slate-950" /> Versión Élite 2026
                 </span>
               </div>
               <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight mt-1">
@@ -273,93 +337,22 @@ export const HomeModule: React.FC<HomeModuleProps> = ({ setActiveTab, onSelectEd
             </div>
           </div>
 
-          <p className="text-xs md:text-sm text-blue-100/90 leading-relaxed">
-            Plataforma médica unificada para la evaluación preanestésica, predicción de vía aérea difícil, cálculo de dosis por peso, escalas clínicas e información farmacológica académica.
+          <p className="text-xs md:text-sm text-blue-100/90 leading-relaxed font-medium">
+            Plataforma médica unificada para la evaluación preanestésica, predicción de vía aérea difícil, cálculo de dosis por peso, escalas clínicas, vademécum y simulaciones avanzadas.
           </p>
 
           <div className="pt-2 flex flex-wrap gap-2 text-[11px] text-blue-100">
             <span className="flex items-center gap-1.5 bg-emerald-950/70 text-emerald-300 px-3 py-1.5 rounded-xl border border-emerald-700/60 font-bold shadow-sm">
               <Zap className="w-3.5 h-3.5 text-emerald-400 fill-current" /> 100% Funcional Offline (Quirófano)
             </span>
-            <span className="flex items-center gap-1.5 bg-blue-950/60 px-3 py-1.5 rounded-xl border border-blue-800/50">
-              <ShieldCheck className="w-3.5 h-3.5 text-cyan-300" /> Formato de Evaluación Oficial
-            </span>
-            <span className="flex items-center gap-1.5 bg-blue-950/60 px-3 py-1.5 rounded-xl border border-blue-800/50">
-              <Sparkles className="w-3.5 h-3.5 text-cyan-300" /> Generador de PDF Preanestésico
+            <span className="flex items-center gap-1.5 bg-amber-950/70 text-amber-300 px-3 py-1.5 rounded-xl border border-amber-500/50 font-bold shadow-sm">
+              <Crown className="w-3.5 h-3.5 text-amber-400" /> Herramientas Élite Habilitadas
             </span>
           </div>
         </div>
       </div>
 
-      {/* REGISTRATION / DIGITAL MEDICAL CREDENTIAL CALLOUT CARD */}
-      {!currentUserProfile ? (
-        <div className="bg-gradient-to-r from-slate-900 via-[#0a1f33] to-slate-900 border-2 border-cyan-500/50 rounded-2xl p-3.5 sm:p-4 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-3 text-slate-100 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-48 h-48 bg-cyan-500/10 rounded-full blur-2xl pointer-events-none" />
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-cyan-500/20 text-cyan-300 rounded-2xl border border-cyan-400/40 shrink-0">
-              <User className="w-6 h-6 text-cyan-400" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black uppercase tracking-wider bg-cyan-500/30 text-cyan-300 px-2 py-0.5 rounded border border-cyan-400/40">
-                  COMUNIDAD MÉDICA • 1 SOLA VEZ
-                </span>
-              </div>
-              <h4 className="text-sm sm:text-base font-black text-white mt-0.5">
-                ¡Registra tu perfil médico en AnestesiaPro!
-              </h4>
-              <p className="text-xs text-slate-300 max-w-xl">
-                Vincula este dispositivo de forma permanente para obtener tu <strong>Carnet Digital de Especialista</strong> y personalizar tus <strong>reportes preanestésicos en PDF</strong> con tu nombre, cédula y hospital.
-              </p>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => window.dispatchEvent(new CustomEvent('anestesiapro_open_registration_modal'))}
-            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-cyan-950/60 transition-all cursor-pointer shrink-0 active:scale-95"
-          >
-            <span>Registrarme Gratis</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
-        </div>
-      ) : (
-        <div className="bg-slate-900/90 border border-cyan-500/30 rounded-2xl p-3 sm:p-3.5 flex flex-col sm:flex-row items-center justify-between gap-2.5 text-slate-200">
-          <div className="flex items-center gap-2.5">
-            <span className="p-2 bg-emerald-500/20 text-emerald-400 rounded-xl border border-emerald-500/30 shrink-0">
-              <CheckCircle2 className="w-4 h-4" />
-            </span>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-black text-white truncate">
-                  Colega Verificado: {currentUserProfile.fullName}
-                </span>
-                <span className="text-xs font-bold text-cyan-300">{currentUserProfile.country}</span>
-                <span className={`text-[9px] font-black px-1.5 py-0.2 rounded border ${
-                  isUserEliteActive(currentUserProfile) 
-                    ? 'bg-amber-500/20 text-amber-300 border-amber-400/50' 
-                    : 'bg-cyan-500/20 text-cyan-300 border-cyan-400/30'
-                }`}>
-                  {isUserEliteActive(currentUserProfile) ? '⭐ ÉLITE HABILITADO' : 'PLAN ESTÁNDAR ✓'}
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400 truncate">
-                {currentUserProfile.specialty} &bull; C.I: {currentUserProfile.idNumber}
-              </p>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => window.dispatchEvent(new CustomEvent('anestesiapro_open_registration_modal'))}
-            className="text-xs font-bold text-cyan-300 hover:text-white bg-slate-950 hover:bg-slate-800 border border-cyan-500/40 px-3 py-1.5 rounded-xl transition-all cursor-pointer shrink-0 self-end sm:self-auto"
-          >
-            Ver Carnet Digital
-          </button>
-        </div>
-      )}
-
-      {/* TOP DESCARGAS & TOP MÓDULOS (COMPACTO Y DISCRETO) */}
+      {/* TOP DESCARGAS & TOP MÓDULOS */}
       <div className="bg-slate-900/95 border border-slate-800/90 hover:border-slate-700/80 rounded-2xl p-3 sm:p-3.5 shadow-md text-slate-200">
         <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800/80">
           <div className="flex items-center gap-2">
@@ -370,13 +363,12 @@ export const HomeModule: React.FC<HomeModuleProps> = ({ setActiveTab, onSelectEd
               Ránking de la Comunidad Médica
             </span>
           </div>
-          <span className="text-[10px] text-slate-400 bg-slate-950 px-2 py-0.5 rounded-md border border-slate-800">
+          <span className="text-[10px] text-slate-400 bg-slate-950 px-2 py-0.5 rounded-md border border-slate-800 font-mono">
             En vivo
           </span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 text-xs">
-          {/* COL 1: TOP ARCHIVOS DESCARGADOS */}
           <div className="bg-slate-950/60 rounded-xl p-2 border border-slate-800/60 space-y-1">
             <div className="flex items-center justify-between text-[11px] font-bold text-cyan-400 px-1 py-0.5">
               <span className="flex items-center gap-1.5">
@@ -414,7 +406,6 @@ export const HomeModule: React.FC<HomeModuleProps> = ({ setActiveTab, onSelectEd
             </div>
           </div>
 
-          {/* COL 2: TOP MÓDULOS MÁS VISITADOS */}
           <div className="bg-slate-950/60 rounded-xl p-2 border border-slate-800/60 space-y-1">
             <div className="flex items-center justify-between text-[11px] font-bold text-amber-400 px-1 py-0.5">
               <span className="flex items-center gap-1.5">
@@ -447,190 +438,109 @@ export const HomeModule: React.FC<HomeModuleProps> = ({ setActiveTab, onSelectEd
         </div>
       </div>
 
-      {/* SECCIÓN DE NOVEDAD RECIENTE (ÚLTIMA PUBLICACIÓN 48H) */}
+      {/* ANIMATED GOLDEN BANNER FOR PLAN ÉLITE */}
+      <AnimatedEliteBanner 
+        onOpenPlanElite={() => window.dispatchEvent(new CustomEvent('anestesiapro_open_plan_elite_modal'))}
+        isEliteActive={isEliteActive}
+      />
+
+      {/* WHATSAPP RECOMMENDATION & BENEFITS BANNER */}
+      <WhatsAppShareBanner
+        title="AnestesiaPro • Suite Clínica 2026"
+        description="Plataforma médica unificada creada por el Dr. Carlos Leal: Evaluación preanestésica con informe PDF, Vía Aérea VORTEX, Calculadoras de inducción, Protocolo Preeclampsia E-MOTIVE y Simulador Virtual."
+        theme="amber"
+      />
+
+      {/* REORGANIZED MAIN MENU GRID (STRICTLY 3 SUBMENUS PER ROW WITH GOLDEN FRAMES) */}
       <div className="space-y-3.5">
         <div className="flex items-center justify-between px-1">
-          <div className="flex items-center gap-2">
-            <span className="p-1.5 bg-gradient-to-r from-rose-500/20 to-indigo-500/20 text-rose-300 rounded-xl border border-rose-400/40 shadow-sm">
-              <Flame className="w-4 h-4 text-rose-400 fill-current animate-pulse" />
+          <h3 className="text-xs font-black uppercase tracking-wider text-slate-300 flex items-center gap-2">
+            <span>Menú Principal de Módulos Anestésicos</span>
+            <span className="text-[10px] font-extrabold text-amber-400 bg-amber-950/80 px-2 py-0.5 rounded-full border border-amber-500/40">
+              3 por Fila
             </span>
-            <div>
-              <h3 className="text-sm font-black uppercase tracking-wider text-slate-100 flex items-center gap-2">
-                Última Publicación Clínica (48 Horas)
-              </h3>
-              <p className="text-[11px] text-slate-400 font-medium">
-                Contenido recién añadido por el Dr. Carlos Leal
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => setActiveTab('educacion')}
-            className="text-xs font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1 cursor-pointer transition-colors"
-          >
-            <span>Biblioteca completa</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
+          </h3>
+          <span className="text-[11px] text-slate-400 font-medium">
+            Toca una tarjeta para ingresar
+          </span>
         </div>
 
-        {/* HERO CARD DESTACADO: PROTOCOLO PREECLAMPSIA & ATLAS VISUAL (ACOG / FIGO / SOAP 2026) */}
-        <div 
-          onClick={() => handleNovedadClick(novedades[0])}
-          className="group cursor-pointer bg-gradient-to-br from-slate-950 via-rose-950/90 to-indigo-950 border-2 border-rose-500/80 hover:border-rose-400 rounded-3xl p-5 sm:p-6 shadow-2xl transition-all duration-300 relative overflow-hidden text-white"
-        >
-          <div className="absolute top-0 right-0 -mr-12 -mt-12 w-80 h-80 bg-rose-500/20 rounded-full blur-3xl pointer-events-none group-hover:bg-rose-400/25 transition-all" />
-          
-          <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-            {/* Visual Thumbnail & Content */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-1">
-              <div className="relative shrink-0 group/img">
-                <img 
-                  src="/images/preeclampsia_placenta_maternal_connection.svg" 
-                  alt="Placenta Humana, Conexión Materna & Cascada de Preeclampsia" 
-                  className="w-28 h-28 sm:w-36 sm:h-36 rounded-2xl object-cover border-2 border-rose-400/60 shadow-xl shadow-rose-950/50 group-hover/img:scale-105 transition-transform"
-                />
-                <span className="absolute -bottom-1 -right-1 bg-gradient-to-r from-rose-500 to-amber-400 text-slate-950 p-1 rounded-full shadow-md">
-                  <Sparkles className="w-3.5 h-3.5 fill-current" />
-                </span>
-              </div>
-
-              <div className="space-y-2.5">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="bg-gradient-to-r from-rose-500 via-red-500 to-amber-400 text-slate-950 font-black text-[10px] px-3 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1.5 shadow-md animate-pulse">
-                    <Flame className="w-3.5 h-3.5 fill-current text-slate-950" />
-                    RECIÉN PUBLICADO • DESTACADO #1
-                  </span>
-                  <span className="bg-rose-500/20 text-rose-300 border border-rose-400/50 text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                    <Activity className="w-3 h-3 text-rose-400" />
-                    ACOG / FIGO / SOAP 2026
-                  </span>
-                  <span className="text-[10px] font-semibold text-amber-200/90 flex items-center gap-1">
-                    <Sparkles className="w-3 h-3 text-amber-300" />
-                    Atlas 8 Láminas HD + Guía PDF Oficial
-                  </span>
-                </div>
-
-                <h3 className="text-lg sm:text-xl md:text-2xl font-black text-white group-hover:text-rose-300 transition-colors tracking-tight leading-tight">
-                  🧬 Protocolo Obstétrico y Atlas Visual: Preeclampsia, Eclampsia y Síndrome HELLP
-                </h3>
-
-                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-medium max-w-2xl">
-                  Fisiopatología celular (desbalance sFlt-1/PlGF), neuroprotección NMDA con Sulfato de Magnesio (Zuspan/Pritchard), manejo escalonado de crisis hipertensiva en 15 min, restricción hídrica estricta (60-80 mL/h), umbrales neuroaxiales (≥70-80k plaquetas) y Guía Oficial descargable en PDF de 5 páginas.
-                </p>
-
-                <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                  {['🧬 Fisiopatología sFlt-1', '📋 Criterios ACOG/FIGO', '💊 MgSO4 NMDA', '🩸 Crisis HTA 15 min', '💧 Restricción 60-80 mL/h', '🎯 Umbrales Neuroaxiales', '🖼️ Atlas 8 Láminas HD', '📄 Guía PDF 5 Páginas'].map((pill, pIdx) => (
-                    <span key={pIdx} className="text-[10px] font-extrabold bg-slate-900/90 text-rose-300 border border-slate-700/80 px-2 py-0.5 rounded-lg">
-                      {pill}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="shrink-0 flex flex-col sm:flex-row lg:flex-col gap-2.5 w-full lg:w-auto">
-              <div className="bg-slate-900/90 border border-rose-500/40 rounded-2xl p-2.5 text-center space-y-1 shadow-inner hidden sm:block">
-                <span className="text-[9px] font-bold text-rose-400 uppercase">Compendio Médico Oficial</span>
-                <div className="flex items-center justify-center gap-1 font-mono text-[11px] font-black">
-                  <span className="text-amber-300 bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-700">8 Láminas HD</span>
-                  <ArrowRight className="w-3 h-3 text-rose-400" />
-                  <span className="text-emerald-400 bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-800">Dossier PDF 5 Págs</span>
-                </div>
-              </div>
-
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleNovedadClick(novedades[0]);
-                }}
-                className="bg-gradient-to-r from-rose-500 via-red-500 to-amber-500 hover:from-rose-400 hover:to-amber-400 text-slate-950 font-black text-xs px-5 py-3 rounded-2xl shadow-xl shadow-rose-500/20 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 group-hover:scale-105 w-full"
-              >
-                <Play className="w-4 h-4 text-slate-950 fill-current" />
-                <span>Ver Protocolo, Atlas HD & PDF</span>
-                <ArrowRight className="w-4 h-4 text-slate-950" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Cards Grid */}
-      <div className="space-y-3">
-        <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 px-1">
-          Menú de Módulos Clínicos
-        </h3>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {/* 3 COLUMNS GRID ON TABLET / DESKTOP */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
           {cards.map((card) => {
             const Icon = card.icon;
-            const isSuper = card.superLlamativo;
+            const isLockedForUser = card.isElite && !isEliteActive;
+
             return (
               <div
                 key={card.id}
-                onClick={() => setActiveTab(card.id)}
-                className={`group cursor-pointer bg-white hover:bg-slate-50/90 border rounded-2xl overflow-hidden transition-all duration-300 shadow-sm hover:shadow-2xl flex flex-col justify-between relative ${
-                  isSuper
-                    ? 'border-indigo-400 ring-2 ring-indigo-500/40 hover:ring-rose-500/60 md:col-span-2 shadow-indigo-500/10 hover:shadow-rose-500/20 bg-gradient-to-br from-white via-slate-50 to-indigo-50/30'
-                    : card.highlight
-                    ? 'border-blue-300 ring-2 ring-blue-500/20 md:col-span-2'
-                    : 'border-slate-200 hover:border-blue-300'
+                onClick={() => handleCardClick(card)}
+                className={`group cursor-pointer rounded-2xl overflow-hidden transition-all duration-300 shadow-lg hover:shadow-2xl flex flex-col justify-between relative ${
+                  card.isElite
+                    ? 'border-2 border-amber-400/90 ring-2 ring-amber-400/30 shadow-amber-950/50 bg-gradient-to-br from-slate-900 via-[#1e1708] to-slate-950 hover:border-amber-300 hover:ring-amber-300/50 hover:scale-[1.02]'
+                    : 'bg-slate-900/90 hover:bg-slate-800/90 border border-slate-700/80 hover:border-cyan-400/80 hover:scale-[1.01]'
                 }`}
               >
                 {/* Image Header / Thumbnail */}
-                <div className={`relative ${isSuper ? 'h-48' : 'h-40'} w-full overflow-hidden bg-slate-100`}>
+                <div className="relative h-36 w-full overflow-hidden bg-slate-950">
                   <img
                     src={card.image}
                     alt={card.title}
                     referrerPolicy="no-referrer"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-80 group-hover:opacity-100"
                   />
-                  <div className={`absolute inset-0 bg-gradient-to-t ${isSuper ? 'from-slate-950 via-slate-900/40 to-transparent' : 'from-slate-900/80 via-slate-900/30 to-transparent'}`} />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
                   
-                  {/* Badge & Icon over image */}
-                  <div className="absolute top-3 left-3 right-3 flex items-center justify-between z-10">
-                    <div className="flex items-center gap-2">
-                      <div className={`p-2 rounded-xl text-white shadow-md bg-gradient-to-br ${card.color}`}>
-                        <Icon className="w-5 h-5" />
+                  {/* Badge & Lock Status over Image */}
+                  <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between z-10 gap-2">
+                    <div className="flex items-center gap-1.5 max-w-[85%]">
+                      <div className={`p-1.5 rounded-xl text-slate-950 shadow-md bg-gradient-to-br ${card.color} shrink-0`}>
+                        <Icon className="w-4 h-4 stroke-[2.5]" />
                       </div>
-                      <span className={`text-[10px] font-black px-2.5 py-1 rounded-full shadow-md backdrop-blur-md border ${
-                        isSuper 
-                          ? 'bg-rose-600/90 text-white border-rose-400/50 animate-pulse' 
-                          : 'bg-slate-900/80 text-white border-white/20'
+                      <span className={`text-[9px] font-black px-2 py-0.5 rounded-full shadow-md backdrop-blur-md border truncate ${
+                        card.isElite
+                          ? 'bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-slate-950 border-amber-300 font-black'
+                          : 'bg-slate-900/90 text-slate-200 border-slate-700'
                       }`}>
                         {card.badge}
                       </span>
                     </div>
 
-                    {isSuper && (
-                      <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-cyan-500 text-slate-950 shadow-lg font-mono">
-                        ✨ Mód. #6 Destacado
+                    {isLockedForUser && (
+                      <span className="p-1 rounded-full bg-slate-950/90 text-amber-400 border border-amber-500/60 shadow-md shrink-0 animate-pulse" title="Requiere Plan Élite">
+                        <Lock className="w-3.5 h-3.5" />
                       </span>
                     )}
                   </div>
                 </div>
 
                 {/* Card Content */}
-                <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
+                <div className="p-4 flex-1 flex flex-col justify-between space-y-2.5">
                   <div>
-                    <h4 className={`text-base font-extrabold transition-colors ${
-                      isSuper
-                        ? 'text-indigo-950 group-hover:text-rose-600 text-lg'
-                        : 'text-slate-900 group-hover:text-blue-600'
+                    <h4 className={`text-sm font-black transition-colors leading-snug flex items-center justify-between ${
+                      card.isElite
+                        ? 'text-white group-hover:text-amber-300'
+                        : 'text-white group-hover:text-cyan-300'
                     }`}>
-                      {card.title}
+                      <span>{card.title}</span>
+                      {card.isElite && (
+                        <Crown className="w-4 h-4 text-amber-300 animate-bounce shrink-0 ml-1.5 fill-amber-300/40" title="Módulo Élite Exclusivo" />
+                      )}
                     </h4>
-                    <p className="text-xs text-slate-600 mt-1.5 leading-relaxed font-normal">
+                    <p className="text-xs text-slate-300/90 mt-1 leading-relaxed font-normal line-clamp-3">
                       {card.desc}
                     </p>
                   </div>
 
-                  <div className="pt-3 flex items-center justify-between border-t border-slate-100">
-                    <span className="text-[11px] text-slate-500 font-semibold">
-                      {isSuper ? 'Biblioteca Digital Oficial' : 'Módulo Anestésico'}
+                  <div className="pt-2.5 flex items-center justify-between border-t border-slate-800/80">
+                    <span className="text-[10px] text-slate-400 font-bold truncate">
+                      {card.isElite ? '👑 Módulo Élite' : 'Módulo Anestésico'}
                     </span>
-                    <span className={`flex items-center gap-1.5 text-xs font-bold transition-transform group-hover:translate-x-1 ${
-                      isSuper ? 'text-rose-600 font-black' : 'text-blue-600'
+                    <span className={`flex items-center gap-1 text-[11px] font-bold transition-transform group-hover:translate-x-1 shrink-0 ${
+                      card.isElite ? 'text-amber-400 font-black' : 'text-cyan-400 font-extrabold'
                     }`}>
-                      Ingresar al módulo <ArrowRight className="w-4 h-4" />
+                      <span>{isLockedForUser ? 'Ver Élite' : 'Ingresar'}</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
                     </span>
                   </div>
                 </div>
@@ -640,7 +550,7 @@ export const HomeModule: React.FC<HomeModuleProps> = ({ setActiveTab, onSelectEd
         </div>
 
         {/* Contacto Directo & Sugerencias Banner */}
-        <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border border-cyan-500/30 rounded-3xl p-6 shadow-xl text-white space-y-3">
+        <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border border-cyan-500/30 rounded-3xl p-6 shadow-xl text-white space-y-3 mt-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3 text-center sm:text-left">
               <div className="p-3 bg-cyan-500/10 text-cyan-400 rounded-2xl border border-cyan-500/30 shrink-0">

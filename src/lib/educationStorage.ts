@@ -50,6 +50,9 @@ export const DEFAULT_TOMBSTONES: string[] = [
   'res-ciprofol-hsk3486-hipnotico-gabaa-2026',
   'res-ciprofol-reel-farmacoclinico-2026',
   'res-1789897417281-7jwq5',
+  'res-dia-del-anestesiologo-16-octubre-2026',
+  'res-1792141910896-91jgz',
+  'res-test-speed',
   'test-item-1'
 ];
 
@@ -57,6 +60,52 @@ export const DEFAULT_TOMBSTONES: string[] = [
  * Strips all legacy static template image paths (/images/...) from resources so that
  * all devices (phones & PCs) only show genuine user-uploaded images.
  */
+/**
+ * Robust deduplication of carousel slides.
+ * Detects and collapses exact double mounts (e.g., 5 slides duplicated to 10 slides)
+ * and eliminates duplicate URLs or base64 entries.
+ */
+export function deduplicateCarouselSlides(list: string[]): string[] {
+  if (!Array.isArray(list) || list.length <= 1) return Array.isArray(list) ? list : [];
+
+  // Filter valid strings
+  const valid = list.filter(item => typeof item === 'string' && item.trim().length > 0);
+  if (valid.length <= 1) return valid;
+
+  // 1. Detect exact double mount (e.g. 5 slides duplicated to 10)
+  if (valid.length >= 4 && valid.length % 2 === 0) {
+    const half = valid.length / 2;
+    const firstHalf = valid.slice(0, half);
+    const secondHalf = valid.slice(half);
+    const isDouble = firstHalf.every((slide, idx) => {
+      const match = secondHalf[idx];
+      if (slide === match) return true;
+      if (typeof slide === 'string' && typeof match === 'string') {
+        if (slide.length === match.length && slide.slice(0, 100) === match.slice(0, 100)) {
+          return true;
+        }
+      }
+      return false;
+    });
+    if (isDouble) {
+      return firstHalf;
+    }
+  }
+
+  // 2. Filter duplicate slides by key/fingerprint
+  const seen = new Set<string>();
+  const unique: string[] = [];
+  for (const item of valid) {
+    const key = item.length > 500 ? `${item.length}_${item.slice(0, 80)}_${item.slice(-80)}` : item;
+    if (!seen.has(key)) {
+      seen.add(key);
+      unique.push(item);
+    }
+  }
+
+  return unique.length > 0 ? unique : valid;
+}
+
 export function sanitizeResource(item: any): any {
   if (!item || typeof item !== 'object') return item;
   
@@ -73,6 +122,7 @@ export function sanitizeResource(item: any): any {
       !img.startsWith('/images/') &&
       (img.startsWith('/uploads/') || img.startsWith('data:image/') || img.startsWith('blob:') || img.startsWith('http://') || img.startsWith('https://'))
     );
+    cleanImages = deduplicateCarouselSlides(cleanImages);
   }
 
   let cleanImagesData: string[] = [];
@@ -83,6 +133,7 @@ export function sanitizeResource(item: any): any {
       !img.startsWith('/images/') &&
       (img.startsWith('data:image/') || img.startsWith('/uploads/'))
     );
+    cleanImagesData = deduplicateCarouselSlides(cleanImagesData);
   }
 
   let cleanFileDataUrl = item.fileDataUrl || '';
@@ -90,12 +141,17 @@ export function sanitizeResource(item: any): any {
     cleanFileDataUrl = '';
   }
 
+  const isCarousel = Boolean(item.isCarousel || cleanImages.length > 1 || cleanImagesData.length > 1);
+  const fileSize = isCarousel && cleanImages.length > 1 ? `${cleanImages.length} láminas HD` : item.fileSize;
+
   return {
     ...item,
     url: cleanUrl,
     images: cleanImages,
     imagesData: cleanImagesData,
-    fileDataUrl: cleanFileDataUrl
+    fileDataUrl: cleanFileDataUrl,
+    isCarousel,
+    fileSize
   };
 }
 

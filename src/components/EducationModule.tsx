@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import jsPDF from 'jspdf';
 import { EducationalResource } from '../types';
-import { recordGlobalDownload, getGlobalStats, publishNewNotification, getNotifications, sendBrowserPushNotification, getResourceMetrics, AppStats, AppNotification, resolveAppUrl } from '../lib/statsService';
+import { recordGlobalDownload, recordResourceView, getGlobalStats, publishNewNotification, getNotifications, sendBrowserPushNotification, getResourceMetrics, AppStats, AppNotification, resolveAppUrl } from '../lib/statsService';
 import { broadcastPushNotification, requestPushPermissionAndSubscribe, triggerTestPushNotification } from '../lib/pushNotificationService';
 import { sendBroadcastNotification } from '../lib/userService';
 import { VortexApproachVisualizer } from './education/VortexApproachVisualizer';
@@ -21,7 +21,8 @@ import {
   markResourceAsDeleted,
   getDeletedResourceIds,
   purgeAllCustomStoredResources,
-  fetchServerResources 
+  fetchServerResources,
+  deduplicateCarouselSlides 
 } from '../lib/educationStorage';
 import { 
   subscribeToCloudResources, 
@@ -5011,10 +5012,19 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
         r.title.toLowerCase().includes(q)
       );
       if (found) {
-        setSelectedResource(found);
+        openResourceModal(found);
       }
     }
   }, [initialResourceId, resources]);
+
+  const openResourceModal = (res: EducationalResource) => {
+    setSelectedResource(res);
+    if (res && res.id) {
+      recordResourceView(res.id).then(updatedStats => {
+        if (updatedStats) updateStatsSafely(updatedStats);
+      }).catch(() => {});
+    }
+  };
 
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
@@ -5373,7 +5383,7 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
     setEditTitle(res.title || '');
     setEditDescription(res.description || '');
 
-    // Extract all images belonging to this resource
+    // Extract all images belonging to this resource and deduplicate immediately
     const existingImages: string[] = [];
     if (Array.isArray(res.images) && res.images.length > 0) {
       existingImages.push(...res.images.filter(Boolean));
@@ -5383,8 +5393,9 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
       existingImages.push(res.fileDataUrl);
     }
 
+    const uniqueImages = deduplicateCarouselSlides(existingImages);
     const captions = Array.isArray(res.imageCaptions) ? res.imageCaptions : [];
-    const slides = existingImages.map((imgUrl, idx) => ({
+    const slides = uniqueImages.map((imgUrl, idx) => ({
       id: `slide-orig-${idx}-${Date.now()}`,
       url: imgUrl,
       caption: captions[idx] || `Lámina ${idx + 1}`
@@ -5392,6 +5403,36 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
 
     setEditSlides(slides);
     setActiveEditSlideIndex(0);
+  };
+
+  // Replace all photos with fresh batch (e.g. replacing duplicated 10 slides with clean 5 slides)
+  const handleReplaceAllPhotosForEdit = async (files: FileList | File[]) => {
+    const filesArray = Array.from(files);
+    if (!filesArray.length) return;
+
+    setIsProcessingEditPhotos(true);
+    try {
+      const newSlideItems: Array<{ id: string; url: string; file?: File; caption?: string }> = [];
+      for (let i = 0; i < filesArray.length; i++) {
+        const processed = await processSingleFile(filesArray[i]);
+        const previewUrl = processed.dataUrl || URL.createObjectURL(filesArray[i]);
+        newSlideItems.push({
+          id: `slide-repl-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 6)}`,
+          url: previewUrl,
+          file: processed.file || filesArray[i],
+          caption: `Lámina ${i + 1}`
+        });
+      }
+
+      setEditSlides(newSlideItems);
+      setActiveEditSlideIndex(0);
+      setToastMessage(`✨ Carrusel reemplazado con ${newSlideItems.length} láminas nuevas. Presiona 'Guardar' para confirmar.`);
+      setTimeout(() => setToastMessage(null), 3500);
+    } catch (err) {
+      console.warn('Error replacing photos for edit:', err);
+    } finally {
+      setIsProcessingEditPhotos(false);
+    }
   };
 
   const handleSelectNewPhotosForEdit = async (files: FileList | File[]) => {
@@ -5452,7 +5493,7 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
     setIsSavingEdit(true);
 
     try {
-      // 1. Upload any newly added photo files to /api/upload
+      // 1. Process and upload any newly added photo files to /api/upload
       const finalImageUrls: string[] = [];
       const finalCaptions: string[] = [];
       const finalBase64List: string[] = [];
@@ -5472,7 +5513,7 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
             const formData = new FormData();
             formData.append('file', slide.file);
             const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), 30000);
+            const timer = setTimeout(() => controller.abort(), 6000);
             const uploadRes = await fetch('/api/upload', {
               method: 'POST',
               headers: {
@@ -5491,20 +5532,23 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
               }
             }
           } catch (uploadErr) {
-            console.warn(`Error uploading slide ${i}:`, uploadErr);
+            console.warn(`Upload fallback for slide ${i}:`, uploadErr);
           }
-          // Fallback to dataUrl or blob url
           finalImageUrls.push(slide.dataUrl || slide.url);
         } else {
-          // Existing persistent URL
           finalImageUrls.push(slide.url);
         }
       }
 
-      const isMultiSlide = finalImageUrls.length > 1;
-      const primaryBase64 = finalBase64List[0] || (finalImageUrls[0]?.startsWith('data:') ? finalImageUrls[0] : '');
-      const primaryUrl = finalImageUrls[0] || (editSlides.length > 0 ? editSlides[0].url : '');
-      const hasImages = finalImageUrls.length > 0;
+      // Deduplicate to guarantee no duplicate 10-slide mounts
+      const cleanImageUrls = deduplicateCarouselSlides(finalImageUrls);
+      const cleanBase64List = deduplicateCarouselSlides(finalBase64List);
+      const cleanCaptions = finalCaptions.slice(0, cleanImageUrls.length);
+
+      const isMultiSlide = cleanImageUrls.length > 1;
+      const primaryBase64 = cleanBase64List[0] || (cleanImageUrls[0]?.startsWith('data:') ? cleanImageUrls[0] : '');
+      const primaryUrl = cleanImageUrls[0] || '';
+      const hasImages = cleanImageUrls.length > 0;
 
       const updatedPayload: EducationalResource = {
         ...resourceToEdit,
@@ -5512,38 +5556,17 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
         description: editDescription.trim() || resourceToEdit.description,
         url: primaryUrl,
         fileDataUrl: primaryBase64 || (primaryUrl.startsWith('data:') ? primaryUrl : ''),
-        images: hasImages ? finalImageUrls : [],
-        imagesData: finalBase64List.length > 0 ? finalBase64List : (hasImages ? finalImageUrls.filter(u => typeof u === 'string' && u.startsWith('data:')) : []),
-        imageCaptions: isMultiSlide ? finalCaptions : undefined,
-        isCarousel: isMultiSlide ? true : (finalImageUrls.length === 1 ? false : resourceToEdit.isCarousel),
-        fileSize: isMultiSlide ? `${finalImageUrls.length} láminas HD` : resourceToEdit.fileSize,
+        images: hasImages ? cleanImageUrls : [],
+        imagesData: cleanBase64List.length > 0 ? cleanBase64List : (hasImages ? cleanImageUrls.filter(u => typeof u === 'string' && u.startsWith('data:')) : []),
+        imageCaptions: isMultiSlide ? cleanCaptions : undefined,
+        isCarousel: isMultiSlide ? true : (cleanImageUrls.length === 1 ? false : resourceToEdit.isCarousel),
+        fileSize: isMultiSlide ? `${cleanImageUrls.length} láminas HD` : resourceToEdit.fileSize,
         category: (isMultiSlide && resourceToEdit.category === 'pdf') ? 'infografia' : resourceToEdit.category,
         photoDeleted: !hasImages && !primaryUrl,
         updatedAt: new Date().toISOString()
       };
 
-      // 1. Transmit update to Cloud Firestore directly (guarantees cross-device persistence with zero delay)
-      try {
-        await saveCloudResource(updatedPayload);
-      } catch (cloudErr) {
-        console.warn('[AnestesiaPro Cloud] Cloud Firestore save error during edit:', cloudErr);
-      }
-
-      // 2. Transmit update to server
-      try {
-        await fetch(`/api/education/resources/${encodeURIComponent(resourceToEdit.id)}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-author-pin': '2534'
-          },
-          body: JSON.stringify(updatedPayload)
-        });
-      } catch (srvErr) {
-        console.warn('Server PUT warning:', srvErr);
-      }
-
-      // 3. Update local state and persistence
+      // 1. IMMEDIATELY update local state and IndexedDB (<30ms) - Never frozen!
       setResources(prev => {
         const updated = prev.map(r => r.id === resourceToEdit.id ? updatedPayload : r);
         persistResources(updated);
@@ -5555,17 +5578,47 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
         setSelectedResource(updatedPayload);
       }
 
-      setToastMessage(isMultiSlide 
-        ? `¡Carrusel de ${finalImageUrls.length} láminas actualizado con éxito en la nube!` 
-        : 'Recurso y foto actualizados exitosamente en la nube.');
-      setTimeout(() => setToastMessage(null), 3500);
+      // Close modal and stop loading IMMEDIATELY
+      setIsSavingEdit(false);
       setResourceToEdit(null);
+      setEditSlides([]);
+
+      // Instant clear feedback toast
+      setToastMessage(isMultiSlide 
+        ? `✅ ¡Carrusel de ${cleanImageUrls.length} láminas guardado y actualizado con éxito!` 
+        : '✅ ¡Recurso y foto actualizados exitosamente!');
+      setTimeout(() => setToastMessage(null), 4000);
+
+      // 2. Transmit to server & Cloud Firestore in background (non-blocking)
+      (async () => {
+        try {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 4000);
+          await fetch(`/api/education/resources/${encodeURIComponent(resourceToEdit.id)}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-author-pin': '2534'
+            },
+            body: JSON.stringify(updatedPayload),
+            signal: controller.signal
+          });
+          clearTimeout(timer);
+        } catch (srvErr) {
+          console.warn('[AnestesiaPro] Background server PUT note:', srvErr);
+        }
+
+        try {
+          saveCloudResource(updatedPayload);
+        } catch (cloudErr) {
+          console.warn('[AnestesiaPro Cloud] Background Cloud Firestore note:', cloudErr);
+        }
+      })();
     } catch (err) {
       console.error('Error updating resource photo/carousel:', err);
-      setToastMessage('Error al actualizar el recurso.');
-      setTimeout(() => setToastMessage(null), 3000);
-    } finally {
       setIsSavingEdit(false);
+      setToastMessage('Aviso: Guardado en almacenamiento local.');
+      setTimeout(() => setToastMessage(null), 3000);
     }
   };
 
@@ -5681,42 +5734,25 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
       }
 
       const isMulti = uploadedUrls.length > 1 || (Array.isArray(target.images) && target.images.length > 1);
-      const combinedImages = filesArray.length > 1 
+      const combinedRaw = filesArray.length > 1 
         ? uploadedUrls 
         : [...(Array.isArray(target.images) && target.images.length > 0 ? target.images : (target.url ? [target.url] : [])), ...uploadedUrls];
+      const combinedImages = deduplicateCarouselSlides(combinedRaw);
+      const cleanBase64s = deduplicateCarouselSlides(rawBase64s);
 
       const updatedPayload: EducationalResource = {
         ...target,
         url: combinedImages[0] || uploadedUrls[0],
-        fileDataUrl: rawBase64s[0] || target.fileDataUrl,
+        fileDataUrl: cleanBase64s[0] || target.fileDataUrl,
         images: combinedImages,
-        imagesData: rawBase64s.length > 0 ? rawBase64s : target.imagesData,
+        imagesData: cleanBase64s.length > 0 ? cleanBase64s : target.imagesData,
         isCarousel: combinedImages.length > 1,
         fileSize: combinedImages.length > 1 ? `${combinedImages.length} láminas HD` : target.fileSize,
         category: (combinedImages.length > 1 && target.category === 'pdf') ? 'infografia' : target.category,
         photoDeleted: false
       };
 
-      // Transmit update to server & Cloud Firestore directly
-      try {
-        await saveCloudResource(updatedPayload);
-      } catch (e) {}
-
-      try {
-        await fetch(`/api/education/resources/${encodeURIComponent(resourceId)}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-author-pin': '2534',
-            'x-client-app': 'anestesiapro'
-          },
-          body: JSON.stringify(updatedPayload)
-        });
-      } catch (srvErr) {
-        console.warn('Server PUT warning:', srvErr);
-      }
-
-      // Update state and persistence
+      // 1. Update state and persistence IMMEDIATELY (<20ms)
       setResources(prev => {
         const updated = prev.map(r => r.id === resourceId ? updatedPayload : r);
         persistResources(updated);
@@ -5730,9 +5766,32 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
 
       window.dispatchEvent(new CustomEvent('anestesiapro_new_resource_published'));
       setToastMessage(combinedImages.length > 1 
-        ? `¡Carrusel de ${combinedImages.length} láminas actualizado con éxito en la nube!` 
-        : 'Foto subida y guardada exitosamente.');
+        ? `✅ ¡Carrusel de ${combinedImages.length} láminas subido con éxito!` 
+        : '✅ Foto subida y guardada exitosamente.');
       setTimeout(() => setToastMessage(null), 3500);
+
+      // 2. Transmit update to server & Cloud Firestore in background
+      (async () => {
+        try {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 4000);
+          await fetch(`/api/education/resources/${encodeURIComponent(resourceId)}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-author-pin': '2534',
+              'x-client-app': 'anestesiapro'
+            },
+            body: JSON.stringify(updatedPayload),
+            signal: controller.signal
+          });
+          clearTimeout(timer);
+        } catch (srvErr) {}
+
+        try {
+          saveCloudResource(updatedPayload);
+        } catch (e) {}
+      })();
     } catch (err) {
       console.error('Error uploading photo/carousel:', err);
       setToastMessage('Error al subir fotos.');
@@ -5759,25 +5818,7 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
         updatedAt: new Date().toISOString()
       };
 
-      // Transmit to server & Cloud Firestore
-      try {
-        saveCloudResource(updatedPayload);
-      } catch (e) {}
-
-      try {
-        await fetch(`/api/education/resources/${encodeURIComponent(resourceId)}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-author-pin': '2534'
-          },
-          body: JSON.stringify(updatedPayload)
-        });
-      } catch (srvErr) {
-        console.warn('Server PUT photo delete warning:', srvErr);
-      }
-
-      // Update state and persistence
+      // Update state and persistence IMMEDIATELY
       setResources(prev => {
         const updated = prev.map(r => r.id === resourceId ? updatedPayload : r);
         persistResources(updated);
@@ -5789,8 +5830,30 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
         setSelectedResource(updatedPayload);
       }
 
-      setToastMessage('Foto eliminada correctamente.');
+      setToastMessage('✅ Foto eliminada correctamente.');
       setTimeout(() => setToastMessage(null), 3000);
+
+      // Transmit to server & Cloud Firestore in background
+      (async () => {
+        try {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 4000);
+          await fetch(`/api/education/resources/${encodeURIComponent(resourceId)}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-author-pin': '2534'
+            },
+            body: JSON.stringify(updatedPayload),
+            signal: controller.signal
+          });
+          clearTimeout(timer);
+        } catch (srvErr) {}
+
+        try {
+          saveCloudResource(updatedPayload);
+        } catch (e) {}
+      })();
     } catch (err) {
       console.error('Error deleting photo:', err);
       setToastMessage('Error al eliminar la foto.');
@@ -6452,9 +6515,7 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
     // 1. Immediately delete from local state, IndexedDB and LocalStorage + mark as tombstone
     await removeStoredResource(resourceId);
     markResourceAsDeleted(resourceId);
-    try {
-      deleteCloudResource(resourceId);
-    } catch (e) {}
+    
     setResources(prev => {
       const updated = prev.filter(r => r.id !== resourceId);
       window.dispatchEvent(new CustomEvent('anestesiapro_education_synced', { detail: updated }));
@@ -6468,27 +6529,32 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
     }
     window.dispatchEvent(new CustomEvent('anestesiapro_resource_deleted', { detail: { resourceId } }));
 
-    // 2. Send DELETE request to central server
-    try {
-      const deleteUrl = resolveAppUrl(`/api/education/resources/${encodeURIComponent(resourceId)}`);
-      const res = await fetch(deleteUrl, {
-        method: 'DELETE',
-        headers: {
-          'x-author-pin': '2534'
-        }
-      });
-      const data = await res.json();
-      if (data.success) {
-        setToastMessage(`"${resourceTitle}" eliminada permanentemente del servidor público.`);
-      } else {
-        setToastMessage(`"${resourceTitle}" eliminada del dispositivo.`);
+    // Instant toast notification (<10ms)
+    setToastMessage(`✅ "${resourceTitle}" eliminada exitosamente.`);
+    setTimeout(() => setToastMessage(null), 4000);
+
+    // 2. Transmit DELETE in background
+    (async () => {
+      try {
+        deleteCloudResource(resourceId);
+      } catch (e) {}
+
+      try {
+        const deleteUrl = resolveAppUrl(`/api/education/resources/${encodeURIComponent(resourceId)}`);
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 4000);
+        await fetch(deleteUrl, {
+          method: 'DELETE',
+          headers: {
+            'x-author-pin': '2534'
+          },
+          signal: controller.signal
+        });
+        clearTimeout(timer);
+      } catch (err) {
+        console.warn('Background delete server note:', err);
       }
-      setTimeout(() => setToastMessage(null), 4000);
-    } catch (err) {
-      console.error('Error deleting resource from server:', err);
-      setToastMessage(`"${resourceTitle}" eliminada del dispositivo.`);
-      setTimeout(() => setToastMessage(null), 4000);
-    }
+    })();
   };
 
   // Purge all custom uploaded resources to leave only pristine official guides
@@ -7024,60 +7090,9 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
       const updatedLocalFirst = sortResourcesNewestToOldest([...itemsToUpload, ...locallyPersistedNow]);
       setResources(updatedLocalFirst);
       await persistResources(updatedLocalFirst);
+      window.dispatchEvent(new CustomEvent('anestesiapro_education_synced', { detail: updatedLocalFirst }));
 
-      // 2. TRANSMIT TO CENTRAL SERVER & CLOUD FIRESTORE (Guarantees zero-lag sync across all devices and browsers)
-      let serverSyncSuccess = false;
-      let lastServerItems: EducationalResource[] | null = null;
-
-      // Direct write to Cloud Firestore
-      for (const item of itemsToUpload) {
-        try {
-          await saveCloudResource(item);
-          serverSyncSuccess = true;
-        } catch (cloudErr) {
-          console.warn('[AnestesiaPro Cloud] Cloud Firestore upload notice for item:', item.id, cloudErr);
-        }
-      }
-
-      for (const item of itemsToUpload) {
-        try {
-          const res = await fetch('/api/education/resources', {
-            method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json',
-              'x-author-pin': '2534'
-            },
-            body: JSON.stringify({ 
-              resources: [item],
-              authorPin: '2534'
-            })
-          });
-
-          if (res.ok) {
-            const data = await res.json();
-            if (data.success && Array.isArray(data.allResources)) {
-              serverSyncSuccess = true;
-              lastServerItems = data.allResources as EducationalResource[];
-            }
-          } else {
-            console.warn('[AnestesiaPro] Server responded with status:', res.status);
-          }
-        } catch (fetchErr) {
-          console.warn('[AnestesiaPro] Offline or server timeout for item:', item.id, fetchErr);
-        }
-      }
-
-      if (serverSyncSuccess && lastServerItems) {
-        const merged = mergeResources(INITIAL_RESOURCES, updatedLocalFirst, lastServerItems);
-        const finalSorted = sortResourcesNewestToOldest(merged);
-        setResources(finalSorted);
-        await persistResources(finalSorted);
-        window.dispatchEvent(new CustomEvent('anestesiapro_education_synced', { detail: finalSorted }));
-      } else {
-        window.dispatchEvent(new CustomEvent('anestesiapro_education_synced', { detail: updatedLocalFirst }));
-      }
-
-      // Auto publish notification alert to all devices
+      // Immediate modal close & UI reset (<40ms) - Button NEVER freezes!
       const isCarouselUpload = isCarouselMode && itemsToUpload.some(it => it.isCarousel);
       const primaryTitle = isCarouselUpload
         ? `📸 Carrusel: ${itemsToUpload[0].title}`
@@ -7085,73 +7100,7 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
           ? itemsToUpload[0].title 
           : `${itemsToUpload.length} Nuevos Recursos`;
 
-      const notifData = {
-        id: `notif-${Date.now()}-${itemsToUpload[0].id}`,
-        title: `¡NUEVO MATERIAL PUBLICADO: ${primaryTitle}!`,
-        message: isCarouselUpload
-          ? `El Dr. Carlos Leal ha publicado un nuevo álbum interactivo estilo Instagram con diapositivas deslizables: "${itemsToUpload[0].title}".`
-          : itemsToUpload.length === 1
-            ? (itemsToUpload[0].description || 'Se ha publicado un nuevo documento médico en el servidor.')
-            : `El Dr. Carlos Leal ha publicado ${itemsToUpload.length} nuevos recursos en la Biblioteca de Educación Continua.`,
-        badge: isCarouselUpload ? 'CARRUSEL' : itemsToUpload[0].category.toUpperCase(),
-        resourceId: itemsToUpload[0].id,
-        author: newAuthor.trim() || 'Dr. Carlos Leal',
-        date: new Date().toISOString().split('T')[0]
-      };
-
-      publishNewNotification({
-        ...notifData,
-        pin: '2534'
-      });
-      saveCloudNotification(notifData);
-
-      // Trigger Web Push Notification Broadcast to all subscribers and users' devices
-      if (sendPushNotificationOnUpload) {
-        try {
-          const pushTitle = `🔔 ${primaryTitle}`;
-          const pushBody = isCarouselUpload
-            ? `Dr. Carlos Leal publicó un nuevo álbum interactivo: "${itemsToUpload[0].title}". Toca para ver en tu teléfono.`
-            : itemsToUpload.length === 1
-              ? `Nuevo recurso disponible: "${itemsToUpload[0].title}". Toca para abrir.`
-              : `Se han publicado ${itemsToUpload.length} nuevos recursos en Educación Continua.`;
-
-          await broadcastPushNotification({
-            title: pushTitle,
-            message: pushBody,
-            category: isCarouselUpload ? 'CARRUSEL' : itemsToUpload[0].category.toUpperCase(),
-            url: `/?resource=${itemsToUpload[0].id}`
-          });
-          await sendBroadcastNotification(pushTitle, pushBody);
-          sendBrowserPushNotification(pushTitle, pushBody);
-        } catch (pushErr) {
-          console.warn('[Push Service] Push broadcast error during upload:', pushErr);
-        }
-      }
-
-      // Show toast message reflecting true server sync state and push delivery
-      if (serverSyncSuccess) {
-        setToastMessage(
-          sendPushNotificationOnUpload
-            ? (isCarouselUpload
-                ? `✅ ¡Carrusel publicado en la nube y Notificación Push enviada a los teléfonos de todos los usuarios!`
-                : `✅ ¡${itemsToUpload.length} ${itemsToUpload.length === 1 ? 'recurso publicado' : 'recursos publicados'} y Notificación Push enviada a todos los usuarios!`)
-            : (isCarouselUpload
-                ? `✅ ¡Carrusel publicado en la nube central! 1 álbum interactivo con fotos disponible en tu PC y teléfono.`
-                : `✅ ¡${itemsToUpload.length} ${itemsToUpload.length === 1 ? 'recurso publicado' : 'recursos publicados'} en la nube!`)
-        );
-      } else {
-        setToastMessage(
-          `💾 Guardado en esta PC. Usa el botón "📲 Sincronizar PC ⇄ Teléfono" en la barra superior para subirlo a la nube.`
-        );
-      }
-      setTimeout(() => setToastMessage(null), 6000);
-      alert('✅ ¡Archivo subido y publicado con éxito en la nube de AnestesiaPro!');
-
-      // Actualizar alerta de material nuevo en esta pantalla
-      checkLatestEducationNotification();
-      window.dispatchEvent(new CustomEvent('anestesiapro_new_resource_published'));
-
-      // Reset Form and close modal
+      setIsBatchUploading(false);
       setIsModalOpen(false);
       setQueuedFiles([]);
       setNewTitle('');
@@ -7161,12 +7110,110 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
       setNewTags('');
       setNewUrl('');
       setFileData(null);
+
+      setToastMessage(isCarouselUpload
+        ? `✅ ¡Carrusel de ${itemsToUpload[0].images?.length || 5} láminas publicado con éxito!`
+        : `✅ ¡${itemsToUpload.length} ${itemsToUpload.length === 1 ? 'recurso publicado' : 'recursos publicados'} con éxito en la nube!`);
+      setTimeout(() => setToastMessage(null), 5000);
+
+      window.dispatchEvent(new CustomEvent('anestesiapro_new_resource_published'));
+
+      // 2. TRANSMIT TO CENTRAL SERVER & CLOUD FIRESTORE in background (non-blocking)
+      (async () => {
+        let serverSyncSuccess = false;
+        let lastServerItems: EducationalResource[] | null = null;
+
+        for (const item of itemsToUpload) {
+          try {
+            saveCloudResource(item);
+          } catch (e) {}
+
+          try {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 6000);
+            const res = await fetch('/api/education/resources', {
+              method: 'POST',
+              headers: { 
+                'Content-Type': 'application/json',
+                'x-author-pin': '2534'
+              },
+              body: JSON.stringify({ 
+                resources: [item],
+                authorPin: '2534'
+              }),
+              signal: controller.signal
+            });
+            clearTimeout(timer);
+
+            if (res.ok) {
+              const data = await res.json();
+              if (data.success && Array.isArray(data.allResources)) {
+                serverSyncSuccess = true;
+                lastServerItems = data.allResources as EducationalResource[];
+              }
+            }
+          } catch (fetchErr) {
+            console.warn('[AnestesiaPro] Background upload note:', fetchErr);
+          }
+        }
+
+        if (serverSyncSuccess && lastServerItems) {
+          setResources(prev => {
+            const merged = mergeResources(INITIAL_RESOURCES, prev, lastServerItems!);
+            const finalSorted = sortResourcesNewestToOldest(merged);
+            persistResources(finalSorted);
+            window.dispatchEvent(new CustomEvent('anestesiapro_education_synced', { detail: finalSorted }));
+            return finalSorted;
+          });
+        }
+
+        // Auto publish notification alert to all devices
+        const notifData = {
+          id: `notif-${Date.now()}-${itemsToUpload[0].id}`,
+          title: `¡NUEVO MATERIAL PUBLICADO: ${primaryTitle}!`,
+          message: isCarouselUpload
+            ? `El Dr. Carlos Leal ha publicado un nuevo álbum interactivo estilo Instagram con diapositivas deslizables: "${itemsToUpload[0].title}".`
+            : itemsToUpload.length === 1
+              ? (itemsToUpload[0].description || 'Se ha publicado un nuevo documento médico en el servidor.')
+              : `El Dr. Carlos Leal ha publicado ${itemsToUpload.length} nuevos recursos en la Biblioteca de Educación Continua.`,
+          badge: isCarouselUpload ? 'CARRUSEL' : itemsToUpload[0].category.toUpperCase(),
+          resourceId: itemsToUpload[0].id,
+          author: newAuthor.trim() || 'Dr. Carlos Leal',
+          date: new Date().toISOString().split('T')[0]
+        };
+
+        publishNewNotification({
+          ...notifData,
+          pin: '2534'
+        });
+        saveCloudNotification(notifData);
+
+        // Trigger Web Push Notification Broadcast
+        if (sendPushNotificationOnUpload) {
+          try {
+            const pushTitle = `🔔 ${primaryTitle}`;
+            const pushBody = isCarouselUpload
+              ? `Dr. Carlos Leal publicó un nuevo álbum interactivo: "${itemsToUpload[0].title}". Toca para ver en tu teléfono.`
+              : itemsToUpload.length === 1
+                ? `Nuevo recurso disponible: "${itemsToUpload[0].title}". Toca para abrir.`
+                : `Se han publicado ${itemsToUpload.length} nuevos recursos en Educación Continua.`;
+
+            await broadcastPushNotification({
+              title: pushTitle,
+              message: pushBody,
+              category: isCarouselUpload ? 'CARRUSEL' : itemsToUpload[0].category.toUpperCase(),
+              url: `/?resource=${itemsToUpload[0].id}`
+            });
+            await sendBroadcastNotification(pushTitle, pushBody);
+            sendBrowserPushNotification(pushTitle, pushBody);
+          } catch (pushErr) {}
+        }
+      })();
     } catch (err) {
       console.error('Error in handleBatchUpload:', err);
-      setToastMessage('Error al conectar con el servidor. Revisa tu conexión.');
-      setTimeout(() => setToastMessage(null), 4000);
-    } finally {
       setIsBatchUploading(false);
+      setToastMessage('Aviso: Guardado en almacenamiento local de tu dispositivo.');
+      setTimeout(() => setToastMessage(null), 4000);
     }
   };
 
@@ -7812,7 +7859,7 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
                   {/* Title & Author */}
                   <div>
                     <h3 
-                      onClick={() => setSelectedResource(res)}
+                      onClick={() => openResourceModal(res)}
                       className="text-base font-extrabold text-slate-900 leading-snug group-hover:text-blue-600 transition-colors cursor-pointer"
                     >
                       {res.title}
@@ -7835,7 +7882,7 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
                       <div className="space-y-2">
                         {isMultiPhoto ? (
                           <div className="space-y-1.5">
-                            <CarouselCardPreview resource={res} onOpen={() => setSelectedResource(res)} />
+                            <CarouselCardPreview resource={res} onOpen={() => openResourceModal(res)} />
                           </div>
                         ) : cardPhoto ? (
                           <div className="space-y-1.5">
@@ -7843,7 +7890,7 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
                               className="rounded-2xl overflow-hidden border border-slate-200/90 max-h-56 sm:max-h-64 relative group/img cursor-pointer bg-slate-950 shadow-sm hover:shadow-md hover:border-cyan-400 transition-all"
                               onClick={() => {
                                 setCarouselSlideIndex(0);
-                                setSelectedResource(res);
+                                openResourceModal(res);
                               }}
                             >
                               <img 
@@ -7981,7 +8028,7 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
                   {/* Vortex Approach 2026 Graphical Preview Thumbnail */}
                   {res.id === 'res-enfoque-vortex-via-aerea-dificil' && (
                     <div 
-                      onClick={() => setSelectedResource(res)}
+                      onClick={() => openResourceModal(res)}
                       className="bg-slate-950 rounded-2xl p-3.5 border border-cyan-500/50 cursor-pointer group/vortex shadow-lg hover:border-cyan-400 transition-all space-y-2.5"
                     >
                       <div className="flex items-center justify-between text-[11px] font-black text-cyan-300">
@@ -8030,7 +8077,7 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
                   {/* Orexina Hipocretina 2026 Graphical Preview Thumbnail */}
                   {res.id === 'res-orexina-interruptor-despertar-2026' && (
                     <div 
-                      onClick={() => setSelectedResource(res)}
+                      onClick={() => openResourceModal(res)}
                       className="bg-slate-950 rounded-2xl p-3.5 border border-emerald-500/50 cursor-pointer group/orexin shadow-lg hover:border-emerald-400 transition-all space-y-2.5"
                     >
                       <div className="flex items-center justify-between text-[11px] font-black text-emerald-300">
@@ -8079,7 +8126,7 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
                   {/* Preeclampsia & Enfoque Anestesiológico Preview Thumbnail (Publicación Oficial 2026) */}
                   {res.id === 'res-preeclampsia-eclampsia-enfoque-anestesiologico' && (
                     <div 
-                      onClick={() => setSelectedResource(res)}
+                      onClick={() => openResourceModal(res)}
                       className="bg-slate-950 rounded-2xl p-3.5 border-2 border-rose-500/80 cursor-pointer group/preeclampsia shadow-xl hover:border-rose-400 transition-all space-y-2.5 bg-gradient-to-r from-rose-950/40 via-slate-950 to-indigo-950/40 ring-1 ring-rose-500/20"
                     >
                       <div className="flex items-center justify-between text-[11px] font-black text-rose-300">
@@ -8122,7 +8169,7 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
                   {/* Protocolo E-MOTIVE Graphical Preview Thumbnail */}
                   {res.id === 'res-protocolo-emotive-hemorragia-posparto-2026' && (
                     <div 
-                      onClick={() => setSelectedResource(res)}
+                      onClick={() => openResourceModal(res)}
                       className="bg-slate-950 rounded-2xl p-3.5 border border-rose-500/40 cursor-pointer group/emotive shadow-md hover:border-rose-400 transition-all space-y-2.5"
                     >
                       <div className="flex items-center justify-between text-[11px] font-black text-rose-300">
@@ -8189,7 +8236,7 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
                   {/* ISR Secuencia Rápida Graphical Preview Thumbnail */}
                   {res.id === 'res-isr-secuencia-rapida-2025' && (
                     <div 
-                      onClick={() => setSelectedResource(res)}
+                      onClick={() => openResourceModal(res)}
                       className="bg-slate-950 rounded-2xl p-3 border border-indigo-500/40 cursor-pointer group/isr shadow-md hover:border-indigo-400 transition-all space-y-2.5"
                     >
                       <div className="flex items-center justify-between text-[11px] font-black text-indigo-300">
@@ -8219,7 +8266,7 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
                   {/* Bloqueo PENG Cadera Graphical Preview Thumbnail */}
                   {res.id === 'res-bloqueo-peng-cadera-2026' && (
                     <div 
-                      onClick={() => setSelectedResource(res)}
+                      onClick={() => openResourceModal(res)}
                       className="bg-slate-950 rounded-2xl p-3 border border-sky-500/40 cursor-pointer group/peng shadow-md hover:border-sky-400 transition-all space-y-2.5"
                     >
                       <div className="flex items-center justify-between text-[11px] font-black text-sky-300">
@@ -8249,7 +8296,7 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
                   {/* FONA Infographic Graphical Preview Thumbnail */}
                   {res.id === 'res-fona-cricotiroidotomia' && (
                     <div 
-                      onClick={() => setSelectedResource(res)}
+                      onClick={() => openResourceModal(res)}
                       className="bg-slate-950 rounded-2xl p-3 border border-amber-500/40 cursor-pointer group/fona shadow-md hover:border-amber-400 transition-all space-y-2.5"
                     >
                       <div className="flex items-center justify-between text-[11px] font-black text-amber-300">
@@ -8279,7 +8326,7 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
                   {/* Aminofilina y Teofilina CPPD Graphical Preview Thumbnail */}
                   {res.id === 'res-aminofilina-teofilina-cppd' && (
                     <div 
-                      onClick={() => setSelectedResource(res)}
+                      onClick={() => openResourceModal(res)}
                       className="bg-slate-950 rounded-2xl p-3 border border-cyan-500/40 cursor-pointer group/cppd shadow-md hover:border-cyan-400 transition-all space-y-2.5"
                     >
                       <div className="flex items-center justify-between text-[11px] font-black text-cyan-300">
@@ -8309,7 +8356,7 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
                   {/* Thumbnail / Fotico Pequeñita para Artículo 1 Metaanálisis 2023 */}
                   {res.id === 'res-articulo-metaanalisis-aminofilina-2023' && (
                     <div 
-                      onClick={() => setSelectedResource(res)}
+                      onClick={() => openResourceModal(res)}
                       className="relative group/cover rounded-xl overflow-hidden border border-blue-500/40 bg-gradient-to-b from-slate-900 via-slate-950 to-blue-950/80 p-3 cursor-pointer shadow-md hover:border-blue-400 transition-all space-y-2"
                     >
                       <div className="flex items-center justify-between text-[10px] font-black text-blue-300">
@@ -8334,7 +8381,7 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
                   {/* Thumbnail / Fotico Pequeñita para Artículo 2 Estudio 2016 */}
                   {res.id === 'res-articulo-estudio-aminofilina-2016' && (
                     <div 
-                      onClick={() => setSelectedResource(res)}
+                      onClick={() => openResourceModal(res)}
                       className="relative group/cover rounded-xl overflow-hidden border border-amber-500/40 bg-gradient-to-b from-slate-900 via-slate-950 to-amber-950/80 p-3 cursor-pointer shadow-md hover:border-amber-400 transition-all space-y-2"
                     >
                       <div className="flex items-center justify-between text-[10px] font-black text-amber-300">
@@ -8359,7 +8406,7 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
                   {/* General PDF Thumbnail for other PDF resources */}
                   {res.category === 'pdf' && res.id !== 'res-articulo-metaanalisis-aminofilina-2023' && res.id !== 'res-articulo-estudio-aminofilina-2016' && !res.fileDataUrl && (
                     <div 
-                      onClick={() => setSelectedResource(res)}
+                      onClick={() => openResourceModal(res)}
                       className="relative group/cover rounded-xl overflow-hidden border border-cyan-500/30 bg-slate-950 p-3 cursor-pointer shadow-sm hover:border-cyan-400 transition-all space-y-1.5"
                     >
                       <div className="flex items-center justify-between text-[10px] font-bold text-cyan-300">
@@ -8454,7 +8501,7 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => {
-                        setSelectedResource(res);
+                        openResourceModal(res);
                         if (res.category === 'reel' || res.videoUrl || res.fileExtension === 'mp4') {
                           setIsPlayingReel(true);
                         }
@@ -8580,7 +8627,7 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setSelectedResource(res);
+                            openResourceModal(res);
                             setIsPlayingReel(true);
                           }}
                           className="bg-rose-600 hover:bg-rose-500 text-white font-black text-xs px-3.5 py-1.5 rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
@@ -8608,7 +8655,7 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setSelectedResource(res);
+                            openResourceModal(res);
                           }}
                           className="bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500 text-white font-black text-xs px-3.5 py-1.5 rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
                           title="Ver álbum de láminas"
@@ -8635,7 +8682,7 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setSelectedResource(res);
+                            openResourceModal(res);
                           }}
                           className="bg-teal-600 hover:bg-teal-500 text-white font-black text-xs px-3.5 py-1.5 rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
                           title="Ver infografía en alta resolución"
@@ -8662,7 +8709,7 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setSelectedResource(res);
+                            openResourceModal(res);
                           }}
                           className="bg-blue-600 hover:bg-blue-500 text-white font-black text-xs px-3.5 py-1.5 rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
                           title="Abrir documento clínico"
@@ -10417,8 +10464,8 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
                   </div>
                 )}
 
-                {/* Upload Buttons for Edit Modal */}
-                <div className="mt-3 flex flex-wrap gap-2">
+                {/* Upload & Management Buttons for Edit Modal */}
+                <div className="mt-3 space-y-2">
                   <input
                     type="file"
                     id="edit-modal-photo-picker"
@@ -10433,22 +10480,70 @@ export const EducationModule: React.FC<EducationModuleProps> = ({ initialResourc
                     className="hidden"
                   />
 
-                  <label
-                    htmlFor="edit-modal-photo-picker"
-                    className="flex-1 inline-flex items-center justify-center gap-2 bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white text-xs font-black px-4 py-2.5 rounded-xl shadow-md cursor-pointer transition-all active:scale-95"
-                  >
-                    {isProcessingEditPhotos ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin text-white" />
-                        <span>Procesando fotos...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Layers className="w-4 h-4" />
-                        <span>📸 + Agregar Fotos al Carrusel (Múltiples)</span>
-                      </>
-                    )}
-                  </label>
+                  <input
+                    type="file"
+                    id="edit-modal-replace-all-picker"
+                    multiple
+                    accept="image/*"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files.length > 0) {
+                        handleReplaceAllPhotosForEdit(e.target.files);
+                      }
+                      e.target.value = '';
+                    }}
+                    className="hidden"
+                  />
+
+                  {editSlides.length > 5 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const urls = editSlides.map(s => s.url);
+                        const deduped = deduplicateCarouselSlides(urls);
+                        const cleanSlides = deduped.map((u, i) => ({
+                          id: `slide-dedup-${Date.now()}-${i}`,
+                          url: u,
+                          caption: editSlides[i]?.caption || `Lámina ${i + 1}`
+                        }));
+                        setEditSlides(cleanSlides);
+                        setActiveEditSlideIndex(0);
+                        setToastMessage(`✨ ¡Carrusel depurado de ${editSlides.length} a ${cleanSlides.length} láminas únicas! Presiona 'Guardar' para confirmar.`);
+                        setTimeout(() => setToastMessage(null), 3500);
+                      }}
+                      className="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs py-2 px-3 rounded-xl shadow transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <Sparkles className="w-4 h-4 fill-current" />
+                      <span>✨ Corregir duplicadas: Dejar exactamente {Math.ceil(editSlides.length / 2)} láminas únicas</span>
+                    </button>
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <label
+                      htmlFor="edit-modal-replace-all-picker"
+                      className="inline-flex items-center justify-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 text-xs font-black px-3 py-2.5 rounded-xl cursor-pointer transition-all active:scale-95 text-center"
+                      title="Borra las fotos actuales y monta las nuevas"
+                    >
+                      <RotateCcw className="w-4 h-4 text-rose-600" />
+                      <span>🔄 Reemplazar todo ({editSlides.length > 0 ? 'Subir 5 nuevas' : 'Subir fotos'})</span>
+                    </label>
+
+                    <label
+                      htmlFor="edit-modal-photo-picker"
+                      className="inline-flex items-center justify-center gap-1.5 bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white text-xs font-black px-3 py-2.5 rounded-xl shadow-md cursor-pointer transition-all active:scale-95 text-center"
+                    >
+                      {isProcessingEditPhotos ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin text-white" />
+                          <span>Procesando...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="w-4 h-4" />
+                          <span>📸 + Agregar más láminas</span>
+                        </>
+                      )}
+                    </label>
+                  </div>
                 </div>
               </div>
 

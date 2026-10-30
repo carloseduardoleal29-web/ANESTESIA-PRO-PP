@@ -5,6 +5,7 @@ export interface AppStats {
   totalDownloads: number;
   itemDownloads: Record<string, number>;
   itemViews?: Record<string, number>;
+  moduleVisits?: Record<string, number>;
   devices?: Record<string, number>;
   locations?: Record<string, number>;
   downloadLocations?: Record<string, number>;
@@ -137,8 +138,8 @@ function getLocalCache(): AppStats {
   const inst = rawInst !== null ? (parseInt(rawInst, 10) || 0) : 0;
 
   let itemD: Record<string, number> = {};
-
   let itemV: Record<string, number> = {};
+  let moduleV: Record<string, number> = {};
 
   try {
     const raw = localStorage.getItem('anestesiapro_resource_downloads');
@@ -166,6 +167,18 @@ function getLocalCache(): AppStats {
     }
   } catch (err) {}
 
+  try {
+    const rawMV = localStorage.getItem('anestesiapro_module_visits');
+    if (rawMV) {
+      const parsed = JSON.parse(rawMV);
+      if (parsed && typeof parsed === 'object') {
+        Object.keys(parsed).forEach(k => {
+          moduleV[k] = Math.max(moduleV[k] || 0, Number(parsed[k]) || 0);
+        });
+      }
+    }
+  } catch (err) {}
+
   const itemSum = Object.values(itemD).reduce((a, b) => a + b, 0);
   const rawD = localStorage.getItem('anestesiapro_total_downloads');
   const d = rawD !== null ? (parseInt(rawD, 10) || 0) : itemSum;
@@ -181,6 +194,7 @@ function getLocalCache(): AppStats {
     totalDownloads: d || 0, 
     itemDownloads: itemD, 
     itemViews: itemV, 
+    moduleVisits: moduleV,
     devices, 
     locations, 
     downloadLocations 
@@ -197,6 +211,9 @@ function saveLocalCache(stats: AppStats): AppStats {
     localStorage.setItem('anestesiapro_resource_downloads', JSON.stringify(stats.itemDownloads || {}));
     if (stats.itemViews) {
       localStorage.setItem('anestesiapro_resource_views', JSON.stringify(stats.itemViews));
+    }
+    if (stats.moduleVisits) {
+      localStorage.setItem('anestesiapro_module_visits', JSON.stringify(stats.moduleVisits));
     }
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('anestesiapro_stats_updated', { detail: stats }));
@@ -229,6 +246,13 @@ function mergeMonotonic(serverStats: any, localStats: AppStats): AppStats {
     });
   }
 
+  const mergedModuleVisits: Record<string, number> = { ...(localStats.moduleVisits || {}) };
+  if (serverStats?.moduleVisits && typeof serverStats.moduleVisits === 'object') {
+    Object.keys(serverStats.moduleVisits).forEach(k => {
+      mergedModuleVisits[k] = Math.max(Number(serverStats.moduleVisits[k]) || 0, mergedModuleVisits[k] || 0);
+    });
+  }
+
   const itemSum = Object.values(mergedItemD).reduce((a, b) => a + b, 0);
   const v = serverStats.visits !== undefined ? Math.max(Number(serverStats.visits), localStats.visits) : localStats.visits;
   const inst = serverStats.appInstalls !== undefined ? Math.max(Number(serverStats.appInstalls), localStats.appInstalls || 0) : localStats.appInstalls;
@@ -251,7 +275,7 @@ function mergeMonotonic(serverStats: any, localStats: AppStats): AppStats {
     ...(serverStats?.downloadLocations || {})
   };
 
-  return { visits: v, uniqueDevices: uDev, appInstalls: inst, totalDownloads: d, itemDownloads: mergedItemD, itemViews: mergedItemV, devices, locations, downloadLocations };
+  return { visits: v, uniqueDevices: uDev, appInstalls: inst, totalDownloads: d, itemDownloads: mergedItemD, itemViews: mergedItemV, moduleVisits: mergedModuleVisits, devices, locations, downloadLocations };
 }
 
 // Determine if current session belongs to Dr. Carlos Leal (Super Admin)
@@ -341,6 +365,7 @@ export function isAdministratorUser(): boolean {
 
 // Global Stats Sync with Backend Server
 export async function syncGlobalVisit(): Promise<AppStats> {
+  const admin = isAdministratorUser();
   const local = getLocalCache();
 
   const device = detectDevice();
@@ -378,6 +403,9 @@ export async function syncGlobalVisit(): Promise<AppStats> {
         clientAppInstalls: local.appInstalls,
         clientDownloads: local.totalDownloads,
         clientItemDownloads: local.itemDownloads,
+        clientItemViews: local.itemViews,
+        clientModuleVisits: local.moduleVisits,
+        skipMetrics: admin,
         device,
         location,
         isNewDevice
@@ -392,8 +420,8 @@ export async function syncGlobalVisit(): Promise<AppStats> {
     console.warn('Backend stats sync unavailable, fallback to local cache:', e);
   }
 
-  // Local fallback increment
-  const updatedLocal = { ...local, visits: local.visits + 1 };
+  // Local fallback increment (only if not admin)
+  const updatedLocal = admin ? local : { ...local, visits: local.visits + 1 };
   return saveLocalCache(updatedLocal);
 }
 
@@ -498,13 +526,14 @@ export async function getGlobalStats(): Promise<AppStats> {
 }
 
 export async function recordGlobalDownload(resourceId?: string): Promise<AppStats> {
+  const admin = isAdministratorUser();
   const local = getLocalCache();
-  if (resourceId) {
+  if (resourceId && !admin) {
     local.itemDownloads[resourceId] = (local.itemDownloads[resourceId] || 0) + 1;
+    const itemSum = Object.values(local.itemDownloads).reduce((a, b) => a + b, 0);
+    local.totalDownloads = Math.max(local.totalDownloads + 1, itemSum);
+    saveLocalCache(local);
   }
-  const itemSum = Object.values(local.itemDownloads).reduce((a, b) => a + b, 0);
-  local.totalDownloads = Math.max(local.totalDownloads + 1, itemSum);
-  saveLocalCache(local);
 
   const device = detectDevice();
   const location = detectLocation();
@@ -523,6 +552,7 @@ export async function recordGlobalDownload(resourceId?: string): Promise<AppStat
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         resourceId,
+        skipMetrics: admin,
         clientVisits: local.visits,
         clientDownloads: local.totalDownloads,
         clientItemDownloads: local.itemDownloads,
@@ -543,18 +573,19 @@ export async function recordGlobalDownload(resourceId?: string): Promise<AppStat
 }
 
 export async function recordResourceView(resourceId: string): Promise<AppStats> {
+  const admin = isAdministratorUser();
   const local = getLocalCache();
-  if (resourceId) {
+  if (resourceId && !admin) {
     local.itemViews = local.itemViews || {};
     local.itemViews[resourceId] = (local.itemViews[resourceId] || 0) + 1;
+    saveLocalCache(local);
   }
-  saveLocalCache(local);
 
   try {
     const res = await fetch(resolveAppUrl('/api/stats/view'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ resourceId })
+      body: JSON.stringify({ resourceId, skipMetrics: admin })
     });
     const data = await res.json();
     if (data.success && data.stats) {
@@ -578,9 +609,8 @@ export function getResourceMetrics(resourceId?: string, currentStats?: AppStats)
       : 0;
     
     const rawViews = (stats.itemViews && typeof stats.itemViews === 'object') ? stats.itemViews[resourceId] : undefined;
-    const views = rawViews !== undefined
-      ? Number(rawViews) || 0
-      : 0;
+    const initialViews = rawViews !== undefined ? Number(rawViews) || 0 : 0;
+    const views = Math.max(initialViews, downloads);
 
     return { views, downloads };
   } catch (e) {
@@ -1158,6 +1188,7 @@ export async function getAdminActivityEvents(): Promise<AdminActivityEvent[]> {
 }
 
 export function recordSectionVisit(tab: string): void {
+  const admin = isAdministratorUser();
   try {
     const lastTabKey = `anestesiapro_last_tab_log_${tab}`;
     const lastTime = parseInt(sessionStorage.getItem(lastTabKey) || '0', 10);
@@ -1167,9 +1198,25 @@ export function recordSectionVisit(tab: string): void {
     sessionStorage.setItem(lastTabKey, Date.now().toString());
 
     // Persist module visit counter
-    const storedVisits = JSON.parse(localStorage.getItem('anestesiapro_module_visits') || '{}');
-    storedVisits[tab] = (storedVisits[tab] || 0) + 1;
-    localStorage.setItem('anestesiapro_module_visits', JSON.stringify(storedVisits));
+    if (!admin) {
+      const storedVisits = JSON.parse(localStorage.getItem('anestesiapro_module_visits') || '{}');
+      storedVisits[tab] = (storedVisits[tab] || 0) + 1;
+      localStorage.setItem('anestesiapro_module_visits', JSON.stringify(storedVisits));
+    }
+  } catch (e) {}
+
+  // Sync visit to server API asynchronously
+  try {
+    fetch(resolveAppUrl('/api/stats/visit'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        visitedModule: tab,
+        skipMetrics: admin,
+        device: detectDevice(),
+        location: detectLocation()
+      })
+    }).catch(() => {});
   } catch (e) {}
 
   const titles: Record<string, { title: string; detail: string }> = {
@@ -1180,14 +1227,20 @@ export function recordSectionVisit(tab: string): void {
     indiceShock: { title: '🩸 Visita: Índice de Shock', detail: 'Cálculo de IS, PAM y protocolo de transfusión masiva' },
     calculadora: { title: '🧮 Visita: Calculadora de Inducción Anestésica', detail: 'Cálculo de dosis farmacológicas de inducción anestésica por peso' },
     vademecum: { title: '📖 Visita: Diccionario / Vademécum', detail: 'Consulta de vademécum de anestésicos y reversiones' },
-    educacion: { title: '🎓 Visita: Educación Médica Continua', detail: 'Lectura de guías clínicas y protocolos actualizados' }
+    educacion: { title: '🎓 Visita: Educación Médica Continua', detail: 'Lectura de guías clínicas y protocolos actualizados' },
+    calculadoras_avanzadas: { title: '👑 Élite: Calculadoras Especializadas', detail: 'Calculadoras avanzadas para Anestesia Pediátrica, TCI, Obstetricia, Cardiovascular' },
+    simulador: { title: '👑 Élite: Simulador Hemodinámico & PK/PD', detail: 'Simulación de curvas de concentración plasmática/efecto y hemodinámica' },
+    crisis: { title: '👑 Élite: Algoritmos de Crisis en Quirófano', detail: 'Manejo de Hipertermia Maligna, Paro Cardíaco, Colapso Espinal y Anafilaxia' },
+    traductor: { title: '👑 Élite: Traductor Médico Quirúrgico', detail: 'Traducción terminológica anestésica e instrumental en tiempo real' },
+    preanestesia_elite: { title: '👑 Élite: Preanestesia Inteligente High-Risk', detail: 'Evaluación prequirúrgica avanzada con predicción de riesgo multimodal' },
+    preeclampsia: { title: '👑 Élite: Atlas & Manejo de Preeclampsia Severa', detail: 'Criterios de severidad, esquema Zuspan, monitoreo invasivo y seguridad neuroaxial' }
   };
 
   const meta = titles[tab] || { title: `🔍 Visita: Sección ${tab}`, detail: 'Interacción con sección clínica de AnestesiaPro' };
   logAdminActivity('explore', meta.title, meta.detail);
 }
 
-export function getModuleVisits(): Record<string, { label: string; count: number; icon: string }> {
+export function getModuleVisits(currentStats?: AppStats): Record<string, { label: string; count: number; icon: string }> {
   const baseCounts: Record<string, { label: string; count: number; icon: string }> = {
     educacion: { label: 'Educación Médica & Atlas Preeclampsia', count: 320, icon: '🎓' },
     viaAerea: { label: 'Vía Aérea Difícil & Algoritmos VORTEX', count: 284, icon: '🫁' },
@@ -1195,15 +1248,24 @@ export function getModuleVisits(): Record<string, { label: string; count: number
     indiceShock: { label: 'Índice de Shock & Reanimación', count: 212, icon: '🩸' },
     calculadora: { label: 'Calculadora de Inducción por Peso', count: 185, icon: '🧮' },
     escalas: { label: 'Escalas Clínicas (Aldrete / ASA)', count: 156, icon: '📊' },
-    vademecum: { label: 'Vademécum Farmacológico', count: 138, icon: '📖' }
+    vademecum: { label: 'Vademécum Farmacológico', count: 138, icon: '📖' },
+    calculadoras_avanzadas: { label: 'Élite: Calculadoras Especializadas', count: 165, icon: '👑' },
+    simulador: { label: 'Élite: Simulador Hemodinámico & PK/PD', count: 142, icon: '📈' },
+    crisis: { label: 'Élite: Crisis en Quirófano & Soporte Vital', count: 198, icon: '🚨' },
+    traductor: { label: 'Élite: Traductor Médico Quirúrgico', count: 110, icon: '🌐' },
+    preanestesia_elite: { label: 'Élite: Preanestesia Inteligente High-Risk', count: 175, icon: '🛡️' },
+    preeclampsia: { label: 'Élite: Atlas Preeclampsia & Zuspan', count: 230, icon: '🩸' }
   };
 
   try {
-    const stored = JSON.parse(localStorage.getItem('anestesiapro_module_visits') || '{}');
-    Object.keys(stored).forEach((key) => {
-      if (baseCounts[key]) {
-        baseCounts[key].count += stored[key];
-      }
+    const stats = currentStats || getLocalCache();
+    const serverVisits = stats?.moduleVisits || {};
+    const localVisits = JSON.parse(localStorage.getItem('anestesiapro_module_visits') || '{}');
+
+    Object.keys(baseCounts).forEach((key) => {
+      const serverCount = Number(serverVisits[key]) || 0;
+      const localCount = Number(localVisits[key]) || 0;
+      baseCounts[key].count += Math.max(serverCount, localCount);
     });
   } catch {}
 
